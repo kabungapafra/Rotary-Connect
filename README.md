@@ -1,17 +1,45 @@
-# rotary_connect
+# Rotary Connect
 
-A new Flutter project.
+A member app for the **Rotary Club of Mbalwa** — meeting check-in, events, projects, member directory, gallery, treasury and attendance, all in one place. Built with Flutter for Android.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- **Member login & guest access** — sign in with a member number and PIN, or continue as a visiting guest.
+- **QR check-in** — a full-screen live camera scanner reads the club's meeting QR code to record attendance for members and guests.
+- **Today at fellowship** — see who's checked in, visiting guests, and clubs represented at the current meeting.
+- **Events** — weekly and monthly calendar views, add/edit/delete events with a photo, and generate a QR/link registration sheet per event (with PDF export for printing).
+- **Projects** — track club projects with progress, deadlines, photos, and a "done" status; add and edit your own.
+- **Members** — searchable directory with board/officer grouping, member profiles (email, phone, date of birth), and the ability to add new members.
+- **Gallery** — browse photo albums from past fellowships and projects, and upload new photos.
+- **Treasury** — dues collection status, outstanding balances, and recent transactions.
+- **Attendance** — personal attendance history, certificates, and a club-wide register with downloadable reports.
 
-A few resources to get you started if this is your first Flutter project:
+## Getting started
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Requires a physical device or emulator with a camera for the QR check-in feature.
+
+## Project structure
+
+```
+lib/
+  app_state.dart      # Single shared app state (navigation, data, UI state)
+  data.dart            # Static seed data (members, events, projects, etc.)
+  theme.dart            # Colors and Poppins text theme
+  main.dart              # App entry point and screen routing
+  screens/               # One file per top-level screen
+  widgets/               # Shared reusable widgets (cards, avatars, overlays)
+assets/
+  images/                 # Logo and Rotary wheel artwork
+  fonts/                    # Bundled Poppins font weights
+```
+
+## Tech notes
+
+- State management is a single `AppState` (a `ChangeNotifier`) rather than a routing/navigation package — screens are swapped by a `tab` string, matching a simple single-page app model.
+- No backend — all data is seeded in memory and resets when the app restarts.
+- Camera QR scanning uses [`mobile_scanner`](https://pub.dev/packages/mobile_scanner); event registration PDFs are generated on-device with [`pdf`](https://pub.dev/packages/pdf) and [`printing`](https://pub.dev/packages/printing).
