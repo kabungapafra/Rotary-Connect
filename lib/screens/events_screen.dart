@@ -1,0 +1,1097 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import '../app_state.dart';
+import '../data.dart';
+import '../theme.dart';
+import '../widgets/common.dart';
+
+class EventsScreen extends StatelessWidget {
+  final AppState state;
+  const EventsScreen({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = state.visibleEvents;
+    return Stack(
+      children: [
+        ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              color: RCColors.blue,
+              padding: EdgeInsets.fromLTRB(
+                  20, 18 + MediaQuery.of(context).padding.top, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Events',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 2),
+                          Text('Tap a date to filter',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: .8),
+                                  fontSize: 12)),
+                        ],
+                      ),
+                      ElevatedButton(
+                        onPressed: state.openAddEvent,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.gold,
+                          foregroundColor: RCColors.blue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('＋ Add event',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 12.5)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _CalTab(
+                              label: 'Week',
+                              active: state.calendarView == 'week',
+                              onTap: state.pickCalendarWeek),
+                        ),
+                        Expanded(
+                          child: _CalTab(
+                              label: 'Month',
+                              active: state.calendarView == 'month',
+                              onTap: state.pickCalendarMonth),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (state.calendarView == 'week') ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (var i = 0; i < weekDays.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 6),
+                          Expanded(
+                              child:
+                                  _WeekDayBox(day: weekDays[i], state: state)),
+                        ],
+                      ],
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 10),
+                    _MonthGrid(state: state),
+                  ],
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(state.eventsSectionLabel,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: RCColors.textDark)),
+                      const Text('Tap an event to edit',
+                          style: TextStyle(
+                              fontSize: 11, color: Color(0xFF8B96A8))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (visible.isEmpty)
+                    RCCard(
+                      padding: const EdgeInsets.fromLTRB(20, 26, 20, 26),
+                      child: Column(
+                        children: [
+                          const Text('Nothing planned this day',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: RCColors.textMuted)),
+                          const SizedBox(height: 10),
+                          ElevatedButton(
+                            onPressed: state.openAddEvent,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: RCColors.chipBg,
+                              foregroundColor: RCColors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('＋ Add event',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5)),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    for (var i = 0; i < visible.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      _EventCard(event: visible[i], state: state),
+                    ],
+                  const SizedBox(height: 20),
+                  const RCSectionHeader(title: 'Fellowship posters'),
+                  const SizedBox(height: 10),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.86,
+                    children: [
+                      for (final p in posters) _PosterCard(poster: p),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (state.eventEditor != null) _EditorSheet(state: state),
+        if (state.eventQR != null) _QRSheet(state: state),
+      ],
+    );
+  }
+}
+
+class _CalTab extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _CalTab(
+      {required this.label, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active ? RCColors.gold : Colors.transparent,
+      borderRadius: BorderRadius.circular(9),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(9),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: active ? RCColors.blue : Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// July 2026 month grid — the app's fixed "today" is Wed 8 July 2026,
+/// matching the date used throughout the rest of the app.
+class _MonthGrid extends StatelessWidget {
+  final AppState state;
+  const _MonthGrid({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final firstWeekday = DateTime(2026, 7, 1).weekday; // 1=Mon..7=Sun
+    final leadBlanks = (firstWeekday - 1) % 7;
+    final daysInMonth = DateTime(2026, 8, 0).day;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          const Text('July 2026',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final l in const ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
+                Expanded(
+                  child: Text(l,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: .6),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          GridView.count(
+            crossAxisCount: 7,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            children: [
+              for (var i = 0; i < leadBlanks; i++) const SizedBox.shrink(),
+              for (var day = 1; day <= daysInMonth; day++)
+                _MonthCell(
+                    day: day,
+                    dow: weekOrder[DateTime(2026, 7, day).weekday - 1],
+                    state: state),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthCell extends StatelessWidget {
+  final int day;
+  final String dow;
+  final AppState state;
+  const _MonthCell({required this.day, required this.dow, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = state.selectedDay == dow;
+    final isToday = day == 8;
+    final hasEvents = state.dayHasEvents(dow);
+    return Material(
+      color: selected
+          ? RCColors.gold
+          : (isToday
+              ? RCColors.blue.withValues(alpha: .06)
+              : Colors.transparent),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => state.pickDay(dow),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('$day',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? RCColors.blue : Colors.white,
+                )),
+            const SizedBox(height: 2),
+            Opacity(
+              opacity: hasEvents ? 1 : 0,
+              child: Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: selected ? RCColors.blue : RCColors.gold,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekDayBox extends StatelessWidget {
+  final WeekDay day;
+  final AppState state;
+  const _WeekDayBox({required this.day, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = state.selectedDay == day.dow;
+    final hasEvents = state.dayHasEvents(day.dow);
+    return Material(
+      color: selected ? RCColors.gold : Colors.white.withValues(alpha: .1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => state.pickDay(day.dow),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            // Today (WED) keeps a gold inset outline when not selected.
+            border: day.isToday && !selected
+                ? Border.all(color: RCColors.gold, width: 1.5)
+                : null,
+          ),
+          child: Column(
+            children: [
+              Text(day.dow,
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: (selected ? RCColors.blue : Colors.white)
+                          .withValues(alpha: .8),
+                      height: 1)),
+              const SizedBox(height: 3),
+              Text(day.num,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: selected ? RCColors.blue : Colors.white)),
+              const SizedBox(height: 3),
+              Opacity(
+                opacity: hasEvents ? 1 : 0,
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: selected ? RCColors.blue : RCColors.gold,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventCard extends StatelessWidget {
+  final EventItem event;
+  final AppState state;
+  const _EventCard({required this.event, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+              color: RCColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => state.openEditEvent(event),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (event.photo != null)
+              Image.memory(event.photo!, height: 110, fit: BoxFit.cover),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                        color: RCColors.chipBg,
+                        borderRadius: BorderRadius.circular(10)),
+                    child: Column(
+                      children: [
+                        Text(event.dow,
+                            style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: RCColors.blue,
+                                height: 1.1)),
+                        Text(event.num,
+                            style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: RCColors.blue,
+                                height: 1.1)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(event.name,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: RCColors.textDark)),
+                        const SizedBox(height: 2),
+                        Text(event.meta,
+                            style: const TextStyle(
+                                fontSize: 11.5, color: RCColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => state.openQR(event),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: RCColors.blue,
+                      side: const BorderSide(
+                          color: Color(0xFFD4DBE8), width: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('▦ Register',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorSheet extends StatelessWidget {
+  final AppState state;
+  const _EditorSheet({required this.state});
+
+  Future<void> _pickPhoto() async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    state.setEditorPhoto(await file.readAsBytes());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ed = state.eventEditor!;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: state.closeEditor,
+            child: Container(color: const Color(0x8C0A1223)),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * .86),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4DBE8),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(state.canDeleteEvent ? 'Edit event' : 'New event',
+                            style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: RCColors.textDark)),
+                        Material(
+                          color: RCColors.chipBg,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: state.closeEditor,
+                            child: const SizedBox(
+                              width: 30,
+                              height: 30,
+                              child: Center(
+                                  child: Text('✕',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF5A6A85)))),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (ed.photo == null)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: _pickPhoto,
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F9FC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: const Color(0xFFB9C4D6), width: 1.5),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text('＋',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      color: RCColors.blue,
+                                      fontWeight: FontWeight.w800)),
+                              SizedBox(height: 4),
+                              Text('Add photo or poster',
+                                  style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: RCColors.blue)),
+                              SizedBox(height: 4),
+                              Text('Shown on the event card',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Color(0xFF8B96A8))),
+                            ],
+                          ),
+                        ),
+                      )
+                    else ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(ed.photo!,
+                            height: 130,
+                            width: double.infinity,
+                            fit: BoxFit.cover),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _pickPhoto,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: RCColors.blue,
+                                side: const BorderSide(
+                                    color: Color(0xFFD4DBE8), width: 1.5),
+                                padding: const EdgeInsets.all(9),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: const Text('Change photo',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: state.removeEventPhoto,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFDECEA),
+                                foregroundColor: RCColors.red,
+                                padding: const EdgeInsets.all(9),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                elevation: 0,
+                              ),
+                              child: const Text('Remove',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    const _FieldLabel('EVENT NAME'),
+                    const SizedBox(height: 6),
+                    _EditorInput(
+                      hint: 'e.g. Charter Night planning',
+                      value: ed.name,
+                      onChanged: state.setEditorTitle,
+                    ),
+                    const SizedBox(height: 14),
+                    const _FieldLabel('TIME & VENUE'),
+                    const SizedBox(height: 6),
+                    _EditorInput(
+                      hint: 'e.g. 6:00 PM · Mbalwa Gardens Hall',
+                      value: ed.meta,
+                      onChanged: state.setEditorMeta,
+                    ),
+                    const SizedBox(height: 14),
+                    const _FieldLabel('DAY'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        for (var i = 0; i < weekOrder.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 6),
+                          Expanded(
+                            child: _DayChip(
+                              label: weekOrder[i],
+                              active: ed.dow == weekOrder[i],
+                              onTap: () => state.setEditorDay(weekOrder[i]),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        if (state.canDeleteEvent) ...[
+                          ElevatedButton(
+                            onPressed: state.deleteEvent,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFDECEA),
+                              foregroundColor: RCColors.red,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 13),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text('Delete',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 13)),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: state.saveEvent,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: RCColors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(13),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text('Save event',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 14)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QRSheet extends StatelessWidget {
+  final AppState state;
+  const _QRSheet({required this.state});
+
+  Future<void> _exportPdf(EventItem event, String link) async {
+    final doc = pw.Document();
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a5,
+        build: (context) => pw.Center(
+          child: pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              pw.Container(
+                padding:
+                    const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: const pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFF17458F),
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(999)),
+                ),
+                child: pw.Text('ROTARY CLUB OF MBALWA',
+                    style: const pw.TextStyle(
+                        color: PdfColors.white,
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 11)),
+              ),
+              pw.SizedBox(height: 18),
+              pw.Text(event.name,
+                  style: const pw.TextStyle(
+                      fontSize: 22, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text(event.meta,
+                  style: const pw.TextStyle(
+                      fontSize: 12, color: PdfColors.grey700)),
+              pw.SizedBox(height: 24),
+              pw.BarcodeWidget(
+                barcode: pw.Barcode.qrCode(),
+                data: link,
+                width: 200,
+                height: 200,
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text(link,
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey700)),
+              pw.SizedBox(height: 24),
+              pw.Text('Scan to RSVP, or visit the link above.',
+                  style: const pw.TextStyle(
+                      fontSize: 9, color: PdfColors.grey500)),
+            ],
+          ),
+        ),
+      ),
+    );
+    await Printing.layoutPdf(onLayout: (format) async => doc.save());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = state.eventQR!;
+    final link = state.qrLink;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: state.closeQR,
+            child: Container(color: const Color(0x8C0A1223)),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * .86),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4DBE8),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Event registration',
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: RCColors.textDark)),
+                        Material(
+                          color: RCColors.chipBg,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: state.closeQR,
+                            child: const SizedBox(
+                              width: 30,
+                              height: 30,
+                              child: Center(
+                                  child: Text('✕',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF5A6A85)))),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(event.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: RCColors.textDark)),
+                    const SizedBox(height: 2),
+                    Text(event.meta,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 12, color: RCColors.textMuted)),
+                    const SizedBox(height: 14),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        state.qrImageUrl(240),
+                        width: 200,
+                        height: 200,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 200,
+                          height: 200,
+                          color: RCColors.chipBg,
+                          alignment: Alignment.center,
+                          child: const Text('QR code needs internet',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 11, color: RCColors.textMuted)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 13, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7F9FC),
+                        border: Border.all(
+                            color: const Color(0xFFEAEEF5), width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(link,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF4A5670))),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: link));
+                              state.copyQRLink();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: RCColors.blue,
+                              side: const BorderSide(
+                                  color: Color(0xFFD4DBE8), width: 1.5),
+                              padding: const EdgeInsets.all(12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: Text(
+                                state.qrCopied ? 'Copied ✓' : 'Copy link',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: state.closeQR,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: RCColors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text('Done',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 13)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton(
+                      onPressed: () => _exportPdf(event, link),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: RCColors.blue,
+                        backgroundColor: const Color(0xFFF7F9FC),
+                        side: const BorderSide(
+                            color: Color(0xFFB9C4D6),
+                            width: 1.5,
+                            style: BorderStyle.solid),
+                        padding: const EdgeInsets.all(12),
+                        minimumSize: const Size.fromHeight(0),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('⬇ Export as PDF for printing',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Share this link or QR so guests can RSVP online without an account.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: Color(0xFF9AA5B8)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1,
+          color: Color(0xFF8B96A8)),
+    );
+  }
+}
+
+class _EditorInput extends StatelessWidget {
+  final String hint;
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _EditorInput(
+      {required this.hint, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        );
+    return TextField(
+      controller: TextEditingController(text: value)
+        ..selection = TextSelection.collapsed(offset: value.length),
+      onChanged: onChanged,
+      style: const TextStyle(color: RCColors.textDark, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: border(const Color(0xFFD4DBE8)),
+        enabledBorder: border(const Color(0xFFD4DBE8)),
+        focusedBorder: border(RCColors.blue),
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _DayChip(
+      {required this.label, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active ? RCColors.blue : RCColors.chipBg,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: active ? Colors.white : const Color(0xFF5A6A85),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PosterCard extends StatelessWidget {
+  final Poster poster;
+  const _PosterCard({required this.poster});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x1417458F), blurRadius: 8, offset: Offset(0, 2))
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+              child: RCPhotoPlaceholder(
+                  label: poster.placeholder, borderRadius: BorderRadius.zero)),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(poster.title,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textDark,
+                        height: 1.3)),
+                const SizedBox(height: 2),
+                Text(poster.date,
+                    style: const TextStyle(
+                        fontSize: 11, color: RCColors.textMuted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
