@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../app_state.dart';
-import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
@@ -77,15 +76,37 @@ class GalleryScreen extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var a = 0; a < galleryAlbums.length; a++) ...[
-                    if (a > 0) const SizedBox(height: 18),
-                    _Album(album: galleryAlbums[a], state: state),
+              child: Builder(builder: (context) {
+                // Real albums only: group whatever has been uploaded by
+                // album name; no seeded placeholder albums.
+                final albumNames = <String>[];
+                for (final up in state.galleryUploads) {
+                  if (!albumNames.contains(up.album)) albumNames.add(up.album);
+                }
+                if (albumNames.isEmpty) {
+                  return const RCCard(
+                    padding: EdgeInsets.all(28),
+                    child: Text(
+                      'No photos yet.\nUse ＋ Upload to start the club\'s first album.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: RCColors.textMuted,
+                          height: 1.5),
+                    ),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var a = 0; a < albumNames.length; a++) ...[
+                      if (a > 0) const SizedBox(height: 18),
+                      _Album(name: albumNames[a], state: state),
+                    ],
                   ],
-                ],
-              ),
+                );
+              }),
             ),
           ],
         ),
@@ -96,33 +117,13 @@ class GalleryScreen extends StatelessWidget {
 }
 
 class _Album extends StatelessWidget {
-  final GalleryAlbum album;
+  final String name;
   final AppState state;
-  const _Album({required this.album, required this.state});
+  const _Album({required this.name, required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final uploads = state.uploadsFor(album.activity);
-    final labels = album.photoLabels;
-    final tiles = <Widget>[
-      for (final up in uploads)
-        GestureDetector(
-          onTap: () => state.openPhoto(
-              PhotoInfo('', album.activity, album.date, src: up.src)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.memory(up.src, height: 100, fit: BoxFit.cover),
-          ),
-        ),
-      for (final label in labels)
-        GestureDetector(
-          onTap: () => state.openPhoto(
-            PhotoInfo(
-                '$label — drop real image here', album.activity, album.date),
-          ),
-          child: RCPhotoPlaceholder(label: label),
-        ),
-    ];
+    final uploads = state.uploadsFor(name);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -131,12 +132,12 @@ class _Album extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(album.activity,
+            Text(name,
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: RCColors.textDark)),
-            Text(album.date,
+            Text('${uploads.length} photo${uploads.length == 1 ? '' : 's'}',
                 style:
                     const TextStyle(fontSize: 11, color: RCColors.textMuted)),
           ],
@@ -149,11 +150,18 @@ class _Album extends StatelessWidget {
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
           childAspectRatio: 1.0,
-          children: [for (final t in tiles) SizedBox(height: 100, child: t)],
+          children: [
+            for (final up in uploads)
+              GestureDetector(
+                onTap: () =>
+                    state.openPhoto(PhotoInfo('', name, '', src: up.src)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(up.src, height: 100, fit: BoxFit.cover),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(album.caption,
-            style: const TextStyle(fontSize: 11.5, color: RCColors.textMuted)),
       ],
     );
   }
@@ -162,13 +170,6 @@ class _Album extends StatelessWidget {
 class _UploadSheet extends StatelessWidget {
   final AppState state;
   const _UploadSheet({required this.state});
-
-  static const _albums = [
-    'Community Health Camp',
-    'Weekly Fellowship Meeting',
-    'Green Mbalwa Tree Drive',
-    'Charter Night 2025',
-  ];
 
   Future<void> _pickPhotos() async {
     final files = await ImagePicker().pickMultiImage();
@@ -244,24 +245,42 @@ class _UploadSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    const Text('ALBUM',
+                    const Text('ALBUM NAME',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1,
                             color: Color(0xFF8B96A8))),
                     const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final a in _albums)
-                          _AlbumChip(
-                            label: a,
-                            active: sheet.album == a,
-                            onTap: () => state.pickUploadAlbum(a),
-                          ),
-                      ],
+                    TextField(
+                      controller: TextEditingController(text: sheet.album)
+                        ..selection = TextSelection.collapsed(
+                            offset: sheet.album.length),
+                      onChanged: state.pickUploadAlbum,
+                      style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: RCColors.textDark),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'e.g. Community Health Camp',
+                        hintStyle: const TextStyle(
+                            fontSize: 13, color: Color(0xFF8B96A8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 11),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD4DBE8))),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD4DBE8))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: RCColors.blue)),
+                      ),
                     ),
                     if (sheet.srcs.isNotEmpty) ...[
                       const SizedBox(height: 14),
@@ -339,33 +358,3 @@ class _UploadSheet extends StatelessWidget {
   }
 }
 
-class _AlbumChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _AlbumChip(
-      {required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: active ? RCColors.blue : RCColors.chipBg,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: active ? Colors.white : const Color(0xFF5A6A85),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

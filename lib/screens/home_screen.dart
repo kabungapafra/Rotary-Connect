@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
-import '../data.dart';
 import '../theme.dart';
 import '../widgets/club_logo.dart';
 import '../widgets/common.dart';
@@ -20,7 +19,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _StatsCard(),
+              _StatsCard(state: state),
               const SizedBox(height: 20),
               if (AppState.isTreasurer) ...[
                 _TreasuryCard(state: state),
@@ -33,86 +32,116 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 10),
               GestureDetector(
                 onTap: state.goGallery,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < galleryPreview.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 8),
-                      Expanded(
-                        child: SizedBox(
-                          height: 86,
-                          child: RCPhotoPlaceholder(
-                            label: galleryPreview[i],
-                            labelAlignment: Alignment.bottomLeft,
-                          ),
+                child: state.galleryUploads.isEmpty
+                    ? const SizedBox(
+                        height: 86,
+                        child: RCPhotoPlaceholder(
+                          label: 'No photos yet — upload the first',
+                          labelAlignment: Alignment.center,
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              RCSectionHeader(
-                  title: 'Fellowships & posters',
-                  actionLabel: 'See calendar',
-                  onAction: state.goEvents),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 168,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: posters.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) {
-                    final p = posters[i];
-                    return SizedBox(
-                      width: 150,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Color(0x1417458F),
-                                blurRadius: 8,
-                                offset: Offset(0, 2))
-                          ],
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              height: 96,
-                              child: RCPhotoPlaceholder(
-                                  label: p.placeholder,
-                                  borderRadius: BorderRadius.zero),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p.title,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: RCColors.textDark,
-                                          height: 1.3)),
-                                  const SizedBox(height: 2),
-                                  Text(p.date,
-                                      style: const TextStyle(
-                                          fontSize: 11,
-                                          color: RCColors.textMuted)),
-                                ],
+                      )
+                    : Row(
+                        children: [
+                          for (var i = 0;
+                              i < 3 && i < state.galleryUploads.length;
+                              i++) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            Expanded(
+                              child: SizedBox(
+                                height: 86,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.memory(
+                                      state.galleryUploads[i].src,
+                                      fit: BoxFit.cover),
+                                ),
                               ),
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                    );
-                  },
-                ),
               ),
+              const SizedBox(height: 20),
+              RCSectionHeader(
+                  title: 'Upcoming events',
+                  actionLabel: 'See calendar',
+                  onAction: state.goEvents),
+              const SizedBox(height: 10),
+              if (state.events.isEmpty)
+                RCCard(
+                  onTap: state.goEvents,
+                  child: const Text(
+                    'No events on the calendar yet',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textMuted),
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 168,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: state.events.length.clamp(0, 6),
+                    separatorBuilder: (_, sep) => const SizedBox(width: 12),
+                    itemBuilder: (context, i) {
+                      final e = state.events[i];
+                      return SizedBox(
+                        width: 150,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0x1417458F),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2))
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                height: 96,
+                                child: RCPhotoPlaceholder(
+                                    label: e.dow,
+                                    borderRadius: BorderRadius.zero),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(e.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: RCColors.textDark,
+                                            height: 1.3)),
+                                    const SizedBox(height: 2),
+                                    Text(e.meta,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            color: RCColors.textMuted)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               const SizedBox(height: 20),
               RCSectionHeader(
                   title: 'Club projects',
@@ -225,7 +254,7 @@ class _Header extends StatelessWidget {
                   height: 1.15,
                   letterSpacing: -.3)),
           const SizedBox(height: 3),
-          Text('Wednesday 8 July · Service Above Self',
+          Text(state.todayLine,
               style: TextStyle(
                   color: Colors.white.withValues(alpha: .8), fontSize: 13)),
           const SizedBox(height: 16),
@@ -260,8 +289,8 @@ class _Header extends StatelessWidget {
                         color: RCColors.blue.withValues(alpha: .12),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text('TODAY · 6:00 PM',
-                          style: TextStyle(
+                      child: Text(state.todayBadge,
+                          style: const TextStyle(
                               color: RCColors.blue,
                               fontSize: 11,
                               fontWeight: FontWeight.w800)),
@@ -269,13 +298,13 @@ class _Header extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 11),
-                const Text('Weekly Fellowship Meeting',
-                    style: TextStyle(
+                Text(state.summary?.todayMeetingName ?? 'Weekly Fellowship Meeting',
+                    style: const TextStyle(
                         color: RCColors.blue,
                         fontSize: 17,
                         fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
-                Text('Mbalwa Gardens Hall · Guest speaker: District Governor',
+                Text(state.clubName,
                     style: TextStyle(
                         color: RCColors.blue.withValues(alpha: .85),
                         fontSize: 12.5)),
@@ -327,12 +356,15 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Single white card with three stat columns separated by hairline dividers.
+/// Single white card with three stat columns separated by hairline dividers,
+/// showing the logged-in member's real numbers from the backend.
 class _StatsCard extends StatelessWidget {
-  const _StatsCard();
+  final AppState state;
+  const _StatsCard({required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final s = state.summary;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
@@ -343,16 +375,22 @@ class _StatsCard extends StatelessWidget {
               color: RCColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))
         ],
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(
-              child: _Stat(value: '92%', label: 'Attendance', divider: true)),
-          Expanded(
-              child: _Stat(value: '7', label: 'Week streak', divider: true)),
+              child: _Stat(
+                  value: s == null ? '—' : '${s.attendancePercent}%',
+                  label: 'Attendance',
+                  divider: true)),
           Expanded(
               child: _Stat(
-                  value: '2',
-                  label: 'Certificates',
+                  value: s == null ? '—' : '${s.checkInCount}',
+                  label: 'Check-ins',
+                  divider: true)),
+          Expanded(
+              child: _Stat(
+                  value: s == null ? '—' : '${s.memberCount}',
+                  label: 'Members',
                   valueColor: RCColors.amber)),
         ],
       ),
@@ -433,7 +471,7 @@ class _TreasuryCard extends StatelessWidget {
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
-                    Text('Dues, fines & collections · 9 payments pending',
+                    Text('Dues, fines & collections',
                         style:
                             TextStyle(fontSize: 11, color: Color(0xFFB9C8E4))),
                   ],

@@ -166,20 +166,6 @@ class EventsScreen extends StatelessWidget {
                       if (i > 0) const SizedBox(height: 10),
                       _EventCard(event: visible[i], state: state),
                     ],
-                  const SizedBox(height: 20),
-                  const RCSectionHeader(title: 'Fellowship posters'),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.86,
-                    children: [
-                      for (final p in posters) _PosterCard(poster: p),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -1100,52 +1086,6 @@ class _DayChip extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PosterCard extends StatelessWidget {
-  final Poster poster;
-  const _PosterCard({required this.poster});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x1417458F), blurRadius: 8, offset: Offset(0, 2))
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-              child: RCPhotoPlaceholder(
-                  label: poster.placeholder, borderRadius: BorderRadius.zero)),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(poster.title,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: RCColors.textDark,
-                        height: 1.3)),
-                const SizedBox(height: 2),
-                Text(poster.date,
-                    style: const TextStyle(
-                        fontSize: 11, color: RCColors.textMuted)),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

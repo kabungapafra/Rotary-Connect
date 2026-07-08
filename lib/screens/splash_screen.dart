@@ -113,18 +113,23 @@ class _SplashScreenState extends State<SplashScreen>
                             radius: 3,
                           ),
                           const SizedBox(height: 24),
-                          _FadeSlideIn(
-                            progress: _slice(0.10, 0.55),
-                            child: const Text(
-                              'Welcome to\nfellowship.',
-                              style: TextStyle(
-                                color: RCColors.blue,
-                                fontSize: 38,
-                                fontWeight: FontWeight.w800,
-                                height: 1.15,
-                                letterSpacing: -.5,
-                              ),
-                            ),
+                          // The welcome text gets its own signature entrance:
+                          // each line rises with a soft overshoot, staggered.
+                          _WelcomeLine(
+                            progress: CurvedAnimation(
+                                parent: _intro,
+                                curve: const Interval(0.10, 0.50,
+                                    curve: Curves.easeOutBack)),
+                            fade: _slice(0.10, 0.40),
+                            text: 'Welcome to',
+                          ),
+                          _WelcomeLine(
+                            progress: CurvedAnimation(
+                                parent: _intro,
+                                curve: const Interval(0.22, 0.62,
+                                    curve: Curves.easeOutBack)),
+                            fade: _slice(0.22, 0.52),
+                            text: 'fellowship.',
                           ),
                           const SizedBox(height: 12),
                           _FadeSlideIn(
@@ -218,6 +223,42 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One line of the welcome headline: rises from below with a soft
+/// overshoot (easeOutBack) while fading in — clipped to its own height so
+/// each line appears to emerge from an invisible baseline.
+class _WelcomeLine extends StatelessWidget {
+  final Animation<double> progress;
+  final Animation<double> fade;
+  final String text;
+  const _WelcomeLine(
+      {required this.progress, required this.fade, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([progress, fade]),
+        builder: (context, _) => Opacity(
+          opacity: fade.value.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, 46 * (1 - progress.value)),
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: RCColors.blue,
+                fontSize: 38,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+                letterSpacing: -.5,
+              ),
+            ),
+          ),
         ),
       ),
     );

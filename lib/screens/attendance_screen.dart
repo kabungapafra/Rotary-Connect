@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../api_client.dart';
 import '../app_state.dart';
-import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
@@ -8,15 +8,10 @@ class AttendanceScreen extends StatelessWidget {
   final AppState state;
   const AttendanceScreen({super.key, required this.state});
 
-  static const _statusColor = {
-    'Present': RCColors.green,
-    'Made up': RCColors.amber,
-    'Absent': RCColors.red,
-  };
-
   @override
   Widget build(BuildContext context) {
     final mine = state.attView == 'mine';
+    final s = state.summary;
     return Stack(
       children: [
         ListView(
@@ -86,15 +81,19 @@ class AttendanceScreen extends StatelessWidget {
                   ),
                   if (mine) ...[
                     const SizedBox(height: 14),
-                    const Row(
+                    Row(
                       children: [
-                        _HeaderStat(value: '92%', label: 'This quarter'),
-                        SizedBox(width: 20),
-                        _HeaderStat(value: '7', label: 'Week streak'),
-                        SizedBox(width: 20),
                         _HeaderStat(
-                            value: '33',
-                            label: 'Meetings this year',
+                            value: s == null ? '—' : '${s.attendancePercent}%',
+                            label: 'Attendance'),
+                        const SizedBox(width: 20),
+                        _HeaderStat(
+                            value: s == null ? '—' : '${s.checkInCount}',
+                            label: 'Check-ins'),
+                        const SizedBox(width: 20),
+                        _HeaderStat(
+                            value: s == null ? '—' : '${s.meetingsTotal}',
+                            label: 'Club meetings',
                             valueColor: RCColors.gold),
                       ],
                     ),
@@ -201,58 +200,84 @@ class _HeaderStat extends StatelessWidget {
   }
 }
 
+/// The member's own per-meeting history, derived from their real check-ins.
 class _MyRecord extends StatelessWidget {
   final AppState state;
   const _MyRecord({required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final meetings = state.clubMeetings;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const RCSectionHeader(title: 'Certificates'),
-          const SizedBox(height: 10),
-          for (var i = 0; i < certs.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            _CertRow(
-                cert: certs[i],
-                onTap: () =>
-                    state.openCert(CertInfo(certs[i].title, certs[i].body))),
-          ],
-          const SizedBox(height: 20),
           const RCSectionHeader(title: 'History'),
           const SizedBox(height: 10),
-          RCCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var i = 0; i < history.length; i++)
-                  _HistoryRow(
-                      entry: history[i], isLast: i == history.length - 1),
-              ],
+          if (meetings.isEmpty)
+            const RCCard(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'No meetings held yet — your record starts with your first check-in.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: RCColors.textMuted),
+              ),
+            )
+          else
+            RCCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var i = 0; i < meetings.length; i++)
+                    _HistoryRow(
+                        meeting: meetings[i],
+                        isLast: i == meetings.length - 1),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
+/// The club-wide register: pick a past meeting, see who checked in.
 class _ClubRegister extends StatelessWidget {
   final AppState state;
   const _ClubRegister({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final sel = state.selMeeting;
+    final meetings = state.clubMeetings;
+    if (meetings.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: RCCard(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No meetings held yet — the register fills in as members check in.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: RCColors.textMuted),
+          ),
+        ),
+      );
+    }
+
+    final selIndex = state.selectedMeeting.clamp(0, meetings.length - 1);
+    final sel = meetings[selIndex];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Past fellowships & events',
+          const Text('Past meetings',
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -262,11 +287,11 @@ class _ClubRegister extends StatelessWidget {
             height: 58,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: registerMeetings.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemCount: meetings.length,
+              separatorBuilder: (_, sep) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
-                final m = registerMeetings[i];
-                final active = i == state.selectedMeeting;
+                final m = meetings[i];
+                final active = i == selIndex;
                 return Material(
                   color: active ? RCColors.blue : Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -280,7 +305,7 @@ class _ClubRegister extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(m.short,
+                          Text(m.name,
                               style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w800,
@@ -331,111 +356,32 @@ class _ClubRegister extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                               color: RCColors.textDark)),
                     ),
-                    Text('${sel.date} 2026',
+                    Text(sel.date,
                         style: const TextStyle(
                             fontSize: 11, color: RCColors.textMuted)),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _RegChip(
-                        label: 'Members · ${sel.members}',
-                        active: state.registerTab == 'members',
-                        onTap: () => state.pickRegisterTab('members')),
-                    const SizedBox(width: 6),
-                    _RegChip(
-                        label: 'Guests · ${sel.guests}',
-                        active: state.registerTab == 'guests',
-                        onTap: () => state.pickRegisterTab('guests')),
-                    const SizedBox(width: 6),
-                    _RegChip(
-                        label: 'Clubs · ${sel.clubs}',
-                        active: state.registerTab == 'clubs',
-                        onTap: () => state.pickRegisterTab('clubs')),
-                  ],
-                ),
+                const SizedBox(height: 10),
+                Text('Members checked in · ${sel.checkinCount}',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: RCColors.blue)),
                 const SizedBox(height: 4),
-                if (state.registerTab == 'members')
-                  for (var i = 0; i < todayMembers.length; i++)
+                if (sel.attendees.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('No check-ins recorded for this meeting.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12, color: RCColors.textMuted)),
+                  )
+                else
+                  for (var i = 0; i < sel.attendees.length; i++)
                     _RegRow(
-                      isLast: i == todayMembers.length - 1,
-                      leading: RCAvatar(
-                          initials: todayMembers[i].initials,
-                          color: RCColors.avatarColor(i),
-                          size: 36),
-                      title: todayMembers[i].name,
-                      sub: todayMembers[i].role,
-                      trailing: Text(todayMembers[i].time,
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: RCColors.green)),
-                    ),
-                if (state.registerTab == 'guests')
-                  for (var i = 0; i < todayGuests.length; i++)
-                    _RegRow(
-                      isLast: i == todayGuests.length - 1,
-                      leading: RCAvatar(
-                          initials: todayGuests[i].initials,
-                          color: todayGuests[i].type == 'Visiting Rotarian'
-                              ? RCColors.amber
-                              : const Color(0xFF3A6EA5),
-                          size: 36),
-                      title: todayGuests[i].name,
-                      sub: todayGuests[i].sub,
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: todayGuests[i].type == 'Visiting Rotarian'
-                              ? RCColors.amberBg
-                              : RCColors.chipBg,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(todayGuests[i].type,
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color:
-                                    todayGuests[i].type == 'Visiting Rotarian'
-                                        ? RCColors.amber
-                                        : RCColors.blue)),
-                      ),
-                    ),
-                if (state.registerTab == 'clubs')
-                  for (var i = 0; i < todayClubs.length; i++)
-                    _RegRow(
-                      isLast: i == todayClubs.length - 1,
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                            color: RCColors.chipBg,
-                            borderRadius: BorderRadius.circular(10)),
-                        alignment: Alignment.center,
-                        child: Text(todayClubs[i].abbr,
-                            style: const TextStyle(
-                                color: RCColors.blue,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11)),
-                      ),
-                      title: todayClubs[i].name,
-                      sub: todayClubs[i].sub,
-                      trailing: todayClubs[i].isClubOfDay
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                  color: RCColors.amberBg,
-                                  borderRadius: BorderRadius.circular(999)),
-                              child: const Text('CLUB OF THE DAY',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: RCColors.amber)),
-                            )
-                          : null,
+                      isLast: i == sel.attendees.length - 1,
+                      attendee: sel.attendees[i],
+                      index: i,
                     ),
               ],
             ),
@@ -460,53 +406,12 @@ class _ClubRegister extends StatelessWidget {
   }
 }
 
-class _RegChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _RegChip(
-      {required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: active ? RCColors.blue : RCColors.chipBg,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: active ? Colors.white : const Color(0xFF5A6A85),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _RegRow extends StatelessWidget {
-  final Widget leading;
-  final String title;
-  final String sub;
-  final Widget? trailing;
+  final MeetingAttendee attendee;
+  final int index;
   final bool isLast;
-  const _RegRow({
-    required this.leading,
-    required this.title,
-    required this.sub,
-    this.trailing,
-    required this.isLast,
-  });
+  const _RegRow(
+      {required this.attendee, required this.index, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
@@ -519,71 +424,37 @@ class _RegRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          leading,
+          RCAvatar(
+              initials: attendee.name
+                  .split(RegExp(r'\s+'))
+                  .where((w) => w.isNotEmpty)
+                  .take(2)
+                  .map((w) => w[0])
+                  .join()
+                  .toUpperCase(),
+              color: RCColors.avatarColor(index),
+              size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
+                Text(attendee.name,
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: RCColors.textDark)),
-                Text(sub,
+                Text(attendee.role,
                     style: const TextStyle(
                         fontSize: 11, color: RCColors.textMuted)),
               ],
             ),
           ),
-          if (trailing != null) trailing!,
-        ],
-      ),
-    );
-  }
-}
-
-class _CertRow extends StatelessWidget {
-  final Cert cert;
-  final VoidCallback onTap;
-  const _CertRow({required this.cert, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return RCCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-                color: RCColors.gold, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: const Text('★',
-                style: TextStyle(color: Colors.white, fontSize: 17)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(cert.title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: RCColors.textDark)),
-                Text(cert.sub,
-                    style: const TextStyle(
-                        fontSize: 11, color: RCColors.textMuted)),
-              ],
-            ),
-          ),
-          const Text('View',
-              style: TextStyle(
-                  fontSize: 12,
+          Text(attendee.time,
+              style: const TextStyle(
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: RCColors.blue)),
+                  color: RCColors.green)),
         ],
       ),
     );
@@ -591,13 +462,14 @@ class _CertRow extends StatelessWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  final HistoryEntry entry;
+  final ClubMeeting meeting;
   final bool isLast;
-  const _HistoryRow({required this.entry, required this.isLast});
+  const _HistoryRow({required this.meeting, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
-    final color = AttendanceScreen._statusColor[entry.status]!;
+    final color = meeting.attended ? RCColors.green : RCColors.red;
+    final status = meeting.attended ? 'Present' : 'Absent';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
@@ -616,12 +488,12 @@ class _HistoryRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(entry.name,
+                Text(meeting.name,
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: RCColors.textDark)),
-                Text(entry.date,
+                Text(meeting.date,
                     style: const TextStyle(
                         fontSize: 11, color: RCColors.textMuted)),
               ],
@@ -632,7 +504,7 @@ class _HistoryRow extends StatelessWidget {
             decoration: BoxDecoration(
                 color: color.withValues(alpha: .09),
                 borderRadius: BorderRadius.circular(999)),
-            child: Text(entry.status,
+            child: Text(status,
                 style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w700, color: color)),
           ),

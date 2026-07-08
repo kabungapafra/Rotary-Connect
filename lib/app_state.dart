@@ -115,14 +115,16 @@ class AppState extends ChangeNotifier {
   int todayCheckedInCount = 0;
   List<TodayCheckedInMember> todayCheckedIn = [];
 
-  // events
-  final List<EventItem> events = initialEvents();
+  // events — real club data, loaded from the backend after login
+  final List<EventItem> events = [];
+  bool eventsLoaded = false;
+  bool eventsLoading = false;
   String? selectedDay;
   EventItem? eventEditor; // a working copy while the editor sheet is open
   bool editorIsNew = false;
   String calendarView = 'week'; // week | month
-  int calendarYear = 2026;
-  int calendarMonth = 7; // 1-12, the month shown in the Month grid
+  int calendarYear = DateTime.now().year;
+  int calendarMonth = DateTime.now().month; // 1-12, shown in the Month grid
   // The exact date tapped in the Month grid — kept separate from
   // [selectedDay] (a day-of-week name) so tapping one day only highlights
   // that single cell, not every occurrence of that weekday in the month.
@@ -143,6 +145,88 @@ class AppState extends ChangeNotifier {
   bool clubMembersLoaded = false;
   bool clubMembersLoading = false;
   String? clubMembersError;
+
+  // ── real club data loaders ─────────────────────────────────────────
+  MemberSummary? summary;
+  final List<ClubMeeting> clubMeetings = [];
+  bool meetingsLoaded = false;
+
+  Future<void> loadSummary() async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      final s = await _api.fetchMySummary(token);
+      _update(() => summary = s);
+    } on ApiException {
+      // Home falls back to zeros; a retry happens on next navigation.
+    }
+  }
+
+  Future<void> loadEvents() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => eventsLoading = true);
+    try {
+      final list = await _api.fetchEvents(token);
+      _update(() {
+        events
+          ..clear()
+          ..addAll([
+            for (final e in list)
+              EventItem(id: e.id, dow: e.dow, name: e.name, meta: e.meta),
+          ]);
+        eventsLoaded = true;
+        eventsLoading = false;
+      });
+    } on ApiException {
+      _update(() => eventsLoading = false);
+    }
+  }
+
+  Future<void> loadProjects() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => projectsLoading = true);
+    try {
+      final list = await _api.fetchProjects(token);
+      _update(() {
+        projects
+          ..clear()
+          ..addAll([
+            for (final p in list)
+              Project(
+                id: p.id,
+                name: p.name,
+                icon: p.name.isEmpty ? 'P' : p.name[0].toUpperCase(),
+                area: p.area,
+                pct: p.pct,
+                desc: p.desc,
+                deadline: p.deadline,
+              ),
+          ]);
+        projectsLoaded = true;
+        projectsLoading = false;
+      });
+    } on ApiException {
+      _update(() => projectsLoading = false);
+    }
+  }
+
+  Future<void> loadMeetings() async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      final list = await _api.fetchMeetings(token);
+      _update(() {
+        clubMeetings
+          ..clear()
+          ..addAll(list);
+        meetingsLoaded = true;
+      });
+    } on ApiException {
+      // Attendance shows an empty history; retried on next navigation.
+    }
+  }
 
   Future<void> loadClubMembers() async {
     final token = authToken;
@@ -170,8 +254,10 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // projects
-  final List<Project> projects = initialProjects();
+  // projects — real club data, loaded from the backend after login
+  final List<Project> projects = [];
+  bool projectsLoaded = false;
+  bool projectsLoading = false;
   Project? projectEditor; // a working copy while the editor sheet is open
   bool projectEditorIsNew = false;
 
@@ -200,17 +286,35 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  void goHome() => go('home');
+  void goHome() {
+    go('home');
+    if (authToken != null) loadSummary();
+  }
+
   void goScan() => go('scan');
-  void goAttendance() => go('attendance');
-  void goEvents() => go('events');
+
+  void goAttendance() {
+    go('attendance');
+    if (authToken != null) {
+      loadMeetings();
+      loadSummary();
+    }
+  }
+
+  void goEvents() {
+    go('events');
+    if (authToken != null && !eventsLoaded && !eventsLoading) loadEvents();
+  }
   void goMembers() {
     go('members');
     if (authToken != null && !clubMembersLoaded && !clubMembersLoading) {
       loadClubMembers();
     }
   }
-  void goProjects() => go('projects');
+  void goProjects() {
+    go('projects');
+    if (authToken != null && !projectsLoaded && !projectsLoading) loadProjects();
+  }
   void goToday() {
     go('today');
     loadToday();
@@ -320,6 +424,10 @@ class AppState extends ChangeNotifier {
         loginPin = '';
       });
       unawaited(loadClubMembers());
+      unawaited(loadSummary());
+      unawaited(loadEvents());
+      unawaited(loadProjects());
+      unawaited(loadMeetings());
     } on ApiException catch (e) {
       _update(() {
         loginError = true;
@@ -373,6 +481,8 @@ class AppState extends ChangeNotifier {
         checkInLoading = false;
         scanStep = 'success';
       });
+      unawaited(loadSummary());
+      unawaited(loadMeetings());
     } on ApiException catch (e) {
       _update(() {
         checkInLoading = false;
@@ -444,7 +554,7 @@ class AppState extends ChangeNotifier {
   /// Logged in → the real club roster from the backend; otherwise the
   /// static design list (pre-login preview only).
   List<Member> get allMembers =>
-      authToken != null ? clubMembers : [...members, ...extraMembers];
+      authToken != null ? clubMembers : const [];
 
   void openAddMember() => _update(() => memberEditor = MemberDraft());
   void closeMemberEditor() => _update(() => memberEditor = null);
@@ -560,37 +670,41 @@ class AppState extends ChangeNotifier {
 
   bool get canDeleteProject => projectEditor != null && !projectEditorIsNew;
 
-  void deleteProject() => _update(() {
-        projects.removeWhere((p) => p.id == projectEditor?.id);
-        projectEditor = null;
-      });
-
-  void saveProject() {
+  Future<void> deleteProject() async {
     final p = projectEditor;
-    if (p == null || p.name.trim().isEmpty) return;
-    _update(() {
-      p.name = p.name.trim();
-      if (p.area.trim().isEmpty) p.area = 'Club project';
-      if (p.desc.trim().isEmpty) p.desc = 'New club project.';
-      if (p.deadline.trim().isEmpty) {
-        p.deadline = p.pct >= 100 ? 'Completed' : 'Not set';
-      }
-      if (projectEditorIsNew) {
-        projects.add(Project(
-            id: DateTime.now().millisecondsSinceEpoch,
-            name: p.name,
-            icon: p.icon,
-            area: p.area,
-            pct: p.pct,
-            desc: p.desc,
-            deadline: p.deadline,
-            photo: p.photo));
-      } else {
-        final i = projects.indexWhere((pr) => pr.id == p.id);
-        if (i != -1) projects[i] = p;
-      }
-      projectEditor = null;
-    });
+    final token = authToken;
+    if (p == null || token == null) return;
+    try {
+      await _api.deleteProject(token, p.id);
+    } on ApiException {
+      // fall through — list reload below reflects the server's truth
+    }
+    _update(() => projectEditor = null);
+    await loadProjects();
+  }
+
+  Future<void> saveProject() async {
+    final p = projectEditor;
+    final token = authToken;
+    if (p == null || p.name.trim().isEmpty || token == null) return;
+    final area = p.area.trim().isEmpty ? 'Club project' : p.area.trim();
+    final desc = p.desc.trim().isEmpty ? 'New club project.' : p.desc.trim();
+    final deadline = p.deadline.trim().isEmpty
+        ? (p.pct >= 100 ? 'Completed' : 'Not set')
+        : p.deadline.trim();
+    try {
+      await _api.saveProject(token,
+          id: projectEditorIsNew ? null : p.id,
+          name: p.name.trim(),
+          area: area,
+          pct: p.pct,
+          desc: desc,
+          deadline: deadline);
+      _update(() => projectEditor = null);
+      await loadProjects();
+    } on ApiException {
+      _update(() => projectEditor = null);
+    }
   }
 
   // ── treasury ───────────────────────────────────────────────────────────
@@ -613,8 +727,43 @@ class AppState extends ChangeNotifier {
     if (d != null) {
       return '${dayNames[weekOrder[d.weekday - 1]]} ${d.day} ${_monthName(d.month)}';
     }
-    if (selectedDay == null) return 'This week · 6 – 12 July';
-    return '${dayNames[selectedDay]} ${dayNums[selectedDay]} July';
+    if (selectedDay == null) {
+      final now = DateTime.now();
+      final monday = now.subtract(Duration(days: now.weekday - 1));
+      final sunday = monday.add(const Duration(days: 6));
+      final range = monday.month == sunday.month
+          ? '${monday.day} – ${sunday.day} ${_monthName(sunday.month)}'
+          : '${monday.day} ${_monthName(monday.month)} – ${sunday.day} ${_monthName(sunday.month)}';
+      return 'This week · $range';
+    }
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final idx = weekOrder.indexOf(selectedDay!);
+    final date = monday.add(Duration(days: idx < 0 ? 0 : idx));
+    return '${dayNames[selectedDay]} ${date.day} ${_monthName(date.month)}';
+  }
+
+  static const _weekdayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  /// Real "Wednesday 8 July · Service Above Self" line for the home header.
+  String get todayLine {
+    final now = DateTime.now();
+    return '${_weekdayNames[now.weekday - 1]} ${now.day} '
+        '${_monthNames[now.month - 1]} · Service Above Self';
+  }
+
+  /// Real "TODAY · 8 Jul" badge for the meeting card.
+  String get todayBadge {
+    final now = DateTime.now();
+    return 'TODAY · ${now.day} ${_monthNames[now.month - 1].substring(0, 3)}';
   }
 
   static const _monthNames = [
@@ -701,29 +850,35 @@ class AppState extends ChangeNotifier {
 
   bool get canDeleteEvent => eventEditor != null && !editorIsNew;
 
-  void saveEvent() {
+  Future<void> saveEvent() async {
     final cur = eventEditor;
-    if (cur == null || cur.name.trim().isEmpty) return;
-    _update(() {
-      if (editorIsNew) {
-        events.add(EventItem(
-            id: DateTime.now().millisecondsSinceEpoch,
-            dow: cur.dow,
-            name: cur.name,
-            meta: cur.meta,
-            photo: cur.photo));
-      } else {
-        final i = events.indexWhere((e) => e.id == cur.id);
-        if (i != -1) events[i] = cur;
-      }
-      eventEditor = null;
-    });
+    final token = authToken;
+    if (cur == null || cur.name.trim().isEmpty || token == null) return;
+    try {
+      await _api.saveEvent(token,
+          id: editorIsNew ? null : cur.id,
+          dow: cur.dow,
+          name: cur.name.trim(),
+          meta: cur.meta.trim());
+      _update(() => eventEditor = null);
+      await loadEvents();
+    } on ApiException {
+      _update(() => eventEditor = null);
+    }
   }
 
-  void deleteEvent() => _update(() {
-        events.removeWhere((e) => e.id == eventEditor?.id);
-        eventEditor = null;
-      });
+  Future<void> deleteEvent() async {
+    final cur = eventEditor;
+    final token = authToken;
+    if (cur == null || token == null) return;
+    try {
+      await _api.deleteEvent(token, cur.id);
+    } on ApiException {
+      // fall through — list reload below reflects the server's truth
+    }
+    _update(() => eventEditor = null);
+    await loadEvents();
+  }
 
   void closeEditor() => _update(() => eventEditor = null);
 
@@ -761,10 +916,11 @@ class AppState extends ChangeNotifier {
   void pickRegisterTab(String v) => _update(() => registerTab = v);
   void pickMeeting(int i) => _update(() => selectedMeeting = i);
 
-  RegisterMeeting get selMeeting => registerMeetings[selectedMeeting];
-
-  String get reportName =>
-      'attendance-${selMeeting.date.toLowerCase().split(' ').join('-')}.pdf';
+  String get reportName {
+    if (clubMeetings.isEmpty) return 'attendance-report.pdf';
+    final sel = clubMeetings[selectedMeeting.clamp(0, clubMeetings.length - 1)];
+    return 'attendance-${sel.date.toLowerCase().split(' ').join('-')}.pdf';
+  }
 
   void downloadReport() {
     _reportTimer?.cancel();
@@ -776,7 +932,7 @@ class AppState extends ChangeNotifier {
 
   // ── gallery ────────────────────────────────────────────────────────────
   void openUpload() =>
-      _update(() => uploadSheet = UploadSheet('Community Health Camp'));
+      _update(() => uploadSheet = UploadSheet('Club album'));
   void closeUpload() => _update(() => uploadSheet = null);
   void pickUploadAlbum(String album) =>
       _update(() => uploadSheet?.album = album);
