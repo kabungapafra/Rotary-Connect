@@ -95,9 +95,25 @@ class AppState extends ChangeNotifier {
   String currentMemberRole = '';
 
   // Branding for the logged-in member's club, provided by the backend at
-  // login. Defaults keep the pre-login splash exactly as designed.
+  // login. Until then the app brands itself as "Rotary Connect".
   String clubName = 'Rotary Club of Mbalwa';
   String? clubLogo; // data URL uploaded by the system admin
+  bool clubBrandingKnown = false; // true once a login has identified the club
+
+  /// Second line of the splash wordmark: "Connect" until the member's club
+  /// is known, then e.g. "Club of Mbalwa" (the club name minus "Rotary",
+  /// which the wordmark's first line already says).
+  String get wordmarkClubLine {
+    if (!clubBrandingKnown) return 'Connect';
+    final n = clubName.trim();
+    if (n.toLowerCase().startsWith('rotary ')) return n.substring(7).trim();
+    return n;
+  }
+
+  /// Splash subtitle, generic until the club is known.
+  String get splashSubtitle => clubBrandingKnown
+      ? 'Check in, follow projects, and stay connected with the $clubName.'
+      : 'Check in, follow projects, and stay connected with your Rotary club.';
 
   /// Only the Club President can add and manage members.
   bool get isPresident => currentMemberRole == 'Club President';
@@ -416,6 +432,7 @@ class AppState extends ChangeNotifier {
         currentMemberRole = result.member.role;
         clubName = result.clubName;
         clubLogo = result.clubLogo;
+        clubBrandingKnown = true;
         clubMembers = [];
         clubMembersLoaded = false;
         tab = 'home';

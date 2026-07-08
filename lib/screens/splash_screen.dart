@@ -101,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Spacer(flex: 2),
-                          _AnimatedWordmark(spin: _wheelSpin),
+                          _AnimatedWordmark(spin: _wheelSpin, state: state),
                           const SizedBox(height: 24),
                           // The gold dash grows out from the left as the
                           // welcome text arrives, then keeps breathing.
@@ -135,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen>
                           _FadeSlideIn(
                             progress: _slice(0.30, 0.70),
                             child: Text(
-                              'Check in, follow projects, and stay connected with the ${state.clubName}.',
+                              state.splashSubtitle,
                               style: const TextStyle(
                                 color: RCColors.textMuted,
                                 fontSize: 14.5,
@@ -319,13 +319,14 @@ class _GrowingDash extends StatelessWidget {
   }
 }
 
-/// The real logo, split into two images so the wheel can spin: the words are
-/// the untouched pixels cropped from rotary_mbalwa_logo.png, and the wheel is
-/// the same artwork with the ® masked out so it doesn't orbit while rotating.
-/// Sizes keep the original logo's proportions (wheel ≈ 1.21× the words' height).
+/// The wordmark next to the spinning wheel. The words are rendered as text
+/// (same blue, same two-line layout as the original artwork) so the second
+/// line can be dynamic: "Connect" until a login identifies the member's
+/// club, then that club's name — e.g. "Club of Mbalwa".
 class _AnimatedWordmark extends StatelessWidget {
   final Animation<double> spin;
-  const _AnimatedWordmark({required this.spin});
+  final AppState state;
+  const _AnimatedWordmark({required this.spin, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +334,39 @@ class _AnimatedWordmark extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Image.asset('assets/images/rotary_mbalwa_words.png', height: 46),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 230),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Rotary',
+                style: TextStyle(
+                  color: RCColors.blue,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                  letterSpacing: -.5,
+                ),
+              ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  state.wordmarkClubLine,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: RCColors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.15,
+                    letterSpacing: .2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(width: 8),
         RotationTransition(
           turns: spin,
