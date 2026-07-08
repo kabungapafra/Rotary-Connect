@@ -49,6 +49,12 @@ class MemberDraft {
 class AppState extends ChangeNotifier {
   final ApiClient _api = ApiClient();
 
+  AppState() {
+    // Wake the free-tier backend while the user is still on the splash
+    // screen, so login doesn't hit a cold start.
+    _api.warmUp();
+  }
+
   String tab = 'splash';
   String scanMode = 'member'; // member | guest
   String scanStep = 'idle'; // idle | success | guestForm | guestDone

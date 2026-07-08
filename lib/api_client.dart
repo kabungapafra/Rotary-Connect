@@ -7,6 +7,10 @@ import 'package:http/http.dart' as http;
 
 const String apiBaseUrl = 'https://rotary-connect-backend.onrender.com';
 
+// Long enough to ride out Render's free-tier cold start (~30-60s after the
+// service has been idle), which is far longer than a normal request.
+const Duration _requestTimeout = Duration(seconds: 75);
+
 class ApiException implements Exception {
   final String message;
   ApiException(this.message);
@@ -69,6 +73,12 @@ class TodaySummary {
 }
 
 class ApiClient {
+  /// Fire-and-forget ping that wakes a sleeping free-tier backend while the
+  /// user is still on the splash/login screens.
+  void warmUp() {
+    http.get(Uri.parse('$apiBaseUrl/health')).timeout(_requestTimeout).ignore();
+  }
+
   Future<LoginResult> login(String identifier, String pin) async {
     final res = await _post('/auth/login', {'identifier': identifier, 'pin': pin});
     final member = res['member'] as Map<String, dynamic>;
@@ -87,7 +97,7 @@ class ApiClient {
     try {
       res = await http
           .get(Uri.parse('$apiBaseUrl/club/members'), headers: headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -171,7 +181,7 @@ class ApiClient {
       res = await http
           .post(Uri.parse('$apiBaseUrl$path'),
               headers: headers, body: body == null ? null : jsonEncode(body))
-          .timeout(const Duration(seconds: 10));
+          .timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -181,7 +191,7 @@ class ApiClient {
   Future<Map<String, dynamic>> _get(String path) async {
     final http.Response res;
     try {
-      res = await http.get(Uri.parse('$apiBaseUrl$path')).timeout(const Duration(seconds: 10));
+      res = await http.get(Uri.parse('$apiBaseUrl$path')).timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
