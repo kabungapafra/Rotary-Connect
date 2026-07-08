@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../widgets/club_logo.dart';
 
 class LoginScreen extends StatelessWidget {
   final AppState state;
@@ -75,8 +76,7 @@ class LoginScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 22),
-                            Image.asset('assets/images/rotary_mbalwa_logo.png',
-                                height: 44),
+                            ClubLogoImage(state: state, height: 44),
                             const SizedBox(height: 22),
                             const Text(
                               'Member login',
@@ -116,9 +116,9 @@ class LoginScreen extends StatelessWidget {
                             ),
                             if (state.loginError) ...[
                               const SizedBox(height: 12),
-                              const Text(
-                                'Enter your member number and PIN to continue.',
-                                style: TextStyle(
+                              Text(
+                                state.loginErrorMessage,
+                                style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: RCColors.red),
@@ -149,7 +149,7 @@ class LoginScreen extends StatelessWidget {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: state.submitLogin,
+                        onPressed: state.loginLoading ? null : state.submitLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: RCColors.blue,
                           foregroundColor: Colors.white,
@@ -158,8 +158,8 @@ class LoginScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14)),
                           elevation: 0,
                         ),
-                        child: const Text('Log in',
-                            style: TextStyle(
+                        child: Text(state.loginLoading ? 'Signing in…' : 'Log in',
+                            style: const TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 15)),
                       ),
                     ),

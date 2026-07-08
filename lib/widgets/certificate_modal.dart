@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import 'club_logo.dart';
 
 /// Certificate overlay. Note: in the source design the "Download PDF"
 /// button has no handler wired to it — reproduced as a no-op here too.
@@ -37,8 +38,7 @@ class CertificateModal extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset('assets/images/rotary_mbalwa_logo.png',
-                            height: 34),
+                        ClubLogoImage(state: state, height: 34),
                         const SizedBox(height: 10),
                         const Text('CERTIFICATE',
                             style: TextStyle(

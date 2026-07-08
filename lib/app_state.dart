@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'api_client.dart';
 import 'data.dart';
 
 class PhotoInfo {
@@ -38,12 +39,16 @@ class MemberDraft {
   String phone = '';
   String dob = '';
   bool isBoard = false;
+  String? error; // validation / save error shown inside the sheet
+  bool saving = false;
 }
 
 /// Single shared app state, mirroring the design's one-component `state`
 /// object and `tab`-based navigation (no push/pop stack — going "back" just
 /// sets `tab` to a fixed target screen, exactly as authored).
 class AppState extends ChangeNotifier {
+  final ApiClient _api = ApiClient();
+
   String tab = 'splash';
   String scanMode = 'member'; // member | guest
   String scanStep = 'idle'; // idle | success | guestForm | guestDone
@@ -61,16 +66,48 @@ class AppState extends ChangeNotifier {
   final List<int> paidIds = [];
   String search = '';
 
-  // The design's "viewAs" preview knob defaults to "Treasurer" —
-  // Rtn. Peter Okello, the club Treasurer.
-  static const String greeting = 'Hello, Rtn. Peter';
-  static const String roleBadge = 'TREASURER';
+  // Greeting and role badge reflect the logged-in member; the design's
+  // "Rtn. Peter / TREASURER" preview values remain only as the pre-login
+  // fallback so nothing renders empty.
+  String get greeting => currentMemberName.trim().isEmpty
+      ? 'Hello, Rtn. Peter'
+      : 'Hello, Rtn. ${currentMemberName.trim().split(RegExp(r'\s+')).first}';
+  String get roleBadge => currentMemberRole.trim().isEmpty
+      ? 'TREASURER'
+      : currentMemberRole.trim().toUpperCase();
   static const bool isTreasurer = true;
 
   // login
   String loginId = '';
   String loginPin = '';
   bool loginError = false;
+  String loginErrorMessage = 'Enter your member number and PIN to continue.';
+  bool loginLoading = false;
+
+  String? authToken;
+  String currentMemberName = '';
+  String currentMemberRole = '';
+
+  // Branding for the logged-in member's club, provided by the backend at
+  // login. Defaults keep the pre-login splash exactly as designed.
+  String clubName = 'Rotary Club of Mbalwa';
+  String? clubLogo; // data URL uploaded by the system admin
+
+  /// Only the Club President can add and manage members.
+  bool get isPresident => currentMemberRole == 'Club President';
+
+  // check-in (member scan)
+  bool checkInLoading = false;
+  String? checkInError;
+  String checkInMeetingName = '';
+  DateTime? checkInAt;
+  bool checkInAlready = false;
+
+  // today
+  bool todayLoading = false;
+  String todayMeetingName = 'Weekly Fellowship Meeting';
+  int todayCheckedInCount = 0;
+  List<TodayCheckedInMember> todayCheckedIn = [];
 
   // events
   final List<EventItem> events = initialEvents();
@@ -78,6 +115,12 @@ class AppState extends ChangeNotifier {
   EventItem? eventEditor; // a working copy while the editor sheet is open
   bool editorIsNew = false;
   String calendarView = 'week'; // week | month
+  int calendarYear = 2026;
+  int calendarMonth = 7; // 1-12, the month shown in the Month grid
+  // The exact date tapped in the Month grid — kept separate from
+  // [selectedDay] (a day-of-week name) so tapping one day only highlights
+  // that single cell, not every occurrence of that weekday in the month.
+  DateTime? selectedMonthDate;
   EventItem? eventQR;
   bool qrCopied = false;
   Timer? _qrCopyTimer;
@@ -87,6 +130,39 @@ class AppState extends ChangeNotifier {
   final List<Member> extraMembers = [];
   MemberDraft? memberEditor;
   Member? memberProfile;
+
+  // Real club roster, fetched from the backend once logged in. The static
+  // design list remains only as the pre-login/demo fallback.
+  List<Member> clubMembers = [];
+  bool clubMembersLoaded = false;
+  bool clubMembersLoading = false;
+  String? clubMembersError;
+
+  Future<void> loadClubMembers() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() {
+      clubMembersLoading = true;
+      clubMembersError = null;
+    });
+    try {
+      final list = await _api.fetchClubMembers(token);
+      _update(() {
+        clubMembers = [
+          for (final m in list)
+            Member(m.name, m.role, m.isBoard,
+                email: m.email, phone: m.phone, dob: m.dob),
+        ];
+        clubMembersLoaded = true;
+        clubMembersLoading = false;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        clubMembersLoading = false;
+        clubMembersError = e.message;
+      });
+    }
+  }
 
   // projects
   final List<Project> projects = initialProjects();
@@ -122,9 +198,34 @@ class AppState extends ChangeNotifier {
   void goScan() => go('scan');
   void goAttendance() => go('attendance');
   void goEvents() => go('events');
-  void goMembers() => go('members');
+  void goMembers() {
+    go('members');
+    if (authToken != null && !clubMembersLoaded && !clubMembersLoading) {
+      loadClubMembers();
+    }
+  }
   void goProjects() => go('projects');
-  void goToday() => go('today');
+  void goToday() {
+    go('today');
+    loadToday();
+  }
+
+  Future<void> loadToday() async {
+    _update(() => todayLoading = true);
+    try {
+      final summary = await _api.fetchToday();
+      _update(() {
+        todayMeetingName = summary.meetingName;
+        todayCheckedInCount = summary.memberCount;
+        todayCheckedIn = summary.members;
+        todayLoading = false;
+      });
+    } on ApiException {
+      // Keep whatever was last loaded (or the static fallback) rather than
+      // blanking the screen on a transient network error.
+      _update(() => todayLoading = false);
+    }
+  }
   void goGallery() => go('gallery');
   void goTreasury() => go('treasury');
   void goSplash() => go('splash');
@@ -185,16 +286,41 @@ class AppState extends ChangeNotifier {
         loginError = false;
       });
 
-  void submitLogin() {
+  Future<void> submitLogin() async {
     if (loginId.trim().isEmpty || loginPin.trim().isEmpty) {
-      _update(() => loginError = true);
+      _update(() {
+        loginError = true;
+        loginErrorMessage = 'Enter your member number and PIN to continue.';
+      });
       return;
     }
     _update(() {
-      tab = 'home';
+      loginLoading = true;
       loginError = false;
-      loginPin = '';
     });
+    try {
+      final result = await _api.login(loginId.trim(), loginPin.trim());
+      _update(() {
+        authToken = result.token;
+        currentMemberName = result.member.name;
+        currentMemberRole = result.member.role;
+        clubName = result.clubName;
+        clubLogo = result.clubLogo;
+        clubMembers = [];
+        clubMembersLoaded = false;
+        tab = 'home';
+        loginError = false;
+        loginLoading = false;
+        loginPin = '';
+      });
+      unawaited(loadClubMembers());
+    } on ApiException catch (e) {
+      _update(() {
+        loginError = true;
+        loginErrorMessage = e.message;
+        loginLoading = false;
+      });
+    }
   }
 
   void enterGuest() => _update(() {
@@ -214,9 +340,40 @@ class AppState extends ChangeNotifier {
         scanStep = 'idle';
       });
 
-  void simulateScan() => _update(() {
-        scanStep = scanMode == 'member' ? 'success' : 'guestForm';
+  Future<void> simulateScan() async {
+    if (scanMode == 'guest') {
+      _update(() => scanStep = 'guestForm');
+      return;
+    }
+    await _checkInMember();
+  }
+
+  Future<void> _checkInMember() async {
+    final token = authToken;
+    if (token == null) {
+      _update(() => checkInError = 'Please log in again to check in.');
+      return;
+    }
+    _update(() {
+      checkInLoading = true;
+      checkInError = null;
+    });
+    try {
+      final result = await _api.checkIn(token);
+      _update(() {
+        checkInMeetingName = result.meetingName;
+        checkInAt = result.checkedInAt;
+        checkInAlready = result.alreadyCheckedIn;
+        checkInLoading = false;
+        scanStep = 'success';
       });
+    } on ApiException catch (e) {
+      _update(() {
+        checkInLoading = false;
+        checkInError = e.message;
+      });
+    }
+  }
 
   void resetScan() => _update(() {
         scanStep = 'idle';
@@ -225,7 +382,17 @@ class AppState extends ChangeNotifier {
         guestHost = '';
         guestClub = '';
         guestFormError = false;
+        checkInError = null;
       });
+
+  String get checkInTimeLabel {
+    final t = checkInAt?.toLocal();
+    if (t == null) return '';
+    final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final minute = t.minute.toString().padLeft(2, '0');
+    final ampm = t.hour >= 12 ? 'PM' : 'AM';
+    return '${t.day} ${_monthNames[t.month - 1].substring(0, 3)} ${t.year}, $hour12:$minute $ampm';
+  }
 
   void setGuestName(String v) => _update(() {
         guestName = v;
@@ -268,20 +435,71 @@ class AppState extends ChangeNotifier {
   void setSearch(String v) => _update(() => search = v);
   void setMemberFilter(String v) => _update(() => memberFilter = v);
 
-  List<Member> get allMembers => [...members, ...extraMembers];
+  /// Logged in → the real club roster from the backend; otherwise the
+  /// static design list (pre-login preview only).
+  List<Member> get allMembers =>
+      authToken != null ? clubMembers : [...members, ...extraMembers];
 
   void openAddMember() => _update(() => memberEditor = MemberDraft());
   void closeMemberEditor() => _update(() => memberEditor = null);
-  void setMemberName(String v) => _update(() => memberEditor?.name = v);
+  void setMemberName(String v) => _update(() {
+        memberEditor?.name = v;
+        memberEditor?.error = null;
+      });
   void setMemberRole(String v) => _update(() => memberEditor?.role = v);
   void setMemberEmail(String v) => _update(() => memberEditor?.email = v);
-  void setMemberPhone(String v) => _update(() => memberEditor?.phone = v);
+  void setMemberPhone(String v) => _update(() {
+        memberEditor?.phone = v;
+        memberEditor?.error = null;
+      });
   void setMemberIsBoard(bool v) => _update(() => memberEditor?.isBoard = v);
   void setMemberDob(String v) => _update(() => memberEditor?.dob = v);
 
-  void saveMember() {
+  /// Saves the new member. When the logged-in user is the Club President,
+  /// the member is persisted through the backend (which generates their
+  /// member number and one-time PIN, returned here for the president to
+  /// hand over); the local list is updated either way so the UI matches.
+  Future<AddedClubMember?> saveMember() async {
     final m = memberEditor;
-    if (m == null || m.name.trim().isEmpty) return;
+    if (m == null) return null;
+    if (m.name.trim().isEmpty) {
+      _update(() => m.error = 'Enter the member\'s name.');
+      return null;
+    }
+
+    AddedClubMember? added;
+    final token = authToken;
+    if (token != null && isPresident) {
+      if (m.phone.trim().isEmpty) {
+        _update(() => m.error = 'Phone number is required.');
+        return null;
+      }
+      _update(() {
+        m.saving = true;
+        m.error = null;
+      });
+      try {
+        added = await _api.addClubMember(
+          token,
+          name: m.name.trim(),
+          role: m.role.trim().isEmpty ? 'Member' : m.role.trim(),
+          email: m.email.trim(),
+          phone: m.phone.trim(),
+          dob: m.dob.trim(),
+          isBoard: m.isBoard,
+        );
+      } on ApiException catch (e) {
+        _update(() {
+          m.saving = false;
+          m.error = e.message;
+        });
+        return null;
+      }
+      _update(() => memberEditor = null);
+      await loadClubMembers(); // roster now includes the new member
+      return added;
+    }
+
     _update(() {
       extraMembers.add(Member(
         m.name.trim(),
@@ -293,6 +511,7 @@ class AppState extends ChangeNotifier {
       ));
       memberEditor = null;
     });
+    return added;
   }
 
   void openMemberProfile(Member m) => _update(() => memberProfile = m);
@@ -383,17 +602,78 @@ class AppState extends ChangeNotifier {
     return list;
   }
 
-  String get eventsSectionLabel => selectedDay == null
-      ? 'This week · 6 – 12 July'
-      : '${dayNames[selectedDay]} ${dayNums[selectedDay]} July';
+  String get eventsSectionLabel {
+    final d = selectedMonthDate;
+    if (d != null) {
+      return '${dayNames[weekOrder[d.weekday - 1]]} ${d.day} ${_monthName(d.month)}';
+    }
+    if (selectedDay == null) return 'This week · 6 – 12 July';
+    return '${dayNames[selectedDay]} ${dayNums[selectedDay]} July';
+  }
 
-  void pickDay(String dow) =>
-      _update(() => selectedDay = selectedDay == dow ? null : dow);
+  static const _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  String _monthName(int m) => _monthNames[m - 1];
+
+  void pickDay(String dow) => _update(() {
+        selectedDay = selectedDay == dow ? null : dow;
+        selectedMonthDate = null;
+      });
 
   bool dayHasEvents(String dow) => events.any((e) => e.dow == dow);
 
   void pickCalendarWeek() => _update(() => calendarView = 'week');
   void pickCalendarMonth() => _update(() => calendarView = 'month');
+
+  /// Tapping a Month-grid cell selects that exact date only (highlighting
+  /// every same-weekday cell was the bug) while still filtering the event
+  /// list by weekday, since events are only tracked by day-of-week.
+  void pickMonthDate(DateTime date, String dow) => _update(() {
+        final same = selectedMonthDate != null &&
+            selectedMonthDate!.year == date.year &&
+            selectedMonthDate!.month == date.month &&
+            selectedMonthDate!.day == date.day;
+        selectedMonthDate = same ? null : date;
+        selectedDay = same ? null : dow;
+      });
+
+  void goPrevMonth() => _update(() {
+        var m = calendarMonth - 1;
+        var y = calendarYear;
+        if (m < 1) {
+          m = 12;
+          y--;
+        }
+        calendarMonth = m;
+        calendarYear = y;
+        selectedMonthDate = null;
+        selectedDay = null;
+      });
+
+  void goNextMonth() => _update(() {
+        var m = calendarMonth + 1;
+        var y = calendarYear;
+        if (m > 12) {
+          m = 1;
+          y++;
+        }
+        calendarMonth = m;
+        calendarYear = y;
+        selectedMonthDate = null;
+        selectedDay = null;
+      });
 
   void openAddEvent() => _update(() {
         eventEditor =

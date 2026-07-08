@@ -238,7 +238,8 @@ class _ScanIdleState extends State<_ScanIdle>
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: widget.state.simulateScan,
+              onPressed:
+                  widget.state.checkInLoading ? null : widget.state.simulateScan,
               style: ElevatedButton.styleFrom(
                 backgroundColor: RCColors.gold,
                 foregroundColor: RCColors.blue,
@@ -248,9 +249,20 @@ class _ScanIdleState extends State<_ScanIdle>
                     borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
-              child: const Text('Simulate scan',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              child: Text(
+                  widget.state.checkInLoading ? 'Checking in…' : 'Simulate scan',
+                  style:
+                      const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
             ),
+            if (widget.state.checkInError != null) ...[
+              const SizedBox(height: 12),
+              Text(widget.state.checkInError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Color(0xFFFF9D9D),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ],
           ],
         ),
       ),
@@ -339,16 +351,16 @@ class _ScanSuccess extends StatelessWidget {
                   style: TextStyle(fontSize: 40, color: Colors.white)),
             ),
             const SizedBox(height: 16),
-            const Text('Attendance recorded',
+            Text(state.checkInAlready ? 'Already checked in' : 'Attendance recorded',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                     color: Colors.white,
                     fontSize: 19,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            const Text('Weekly Fellowship Meeting · 8 Jul 2026, 6:02 PM',
+            Text('${state.checkInMeetingName} · ${state.checkInTimeLabel}',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 13)),
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 8),
             const Text('Week streak now 8 — keep it up!',
                 textAlign: TextAlign.center,

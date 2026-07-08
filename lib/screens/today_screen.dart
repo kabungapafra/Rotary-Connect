@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../api_client.dart';
 import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
@@ -93,32 +94,45 @@ class TodayScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Row(
+              Row(
                 children: [
-                  RCStatBox(value: '8', label: 'Members in'),
-                  SizedBox(width: 10),
                   RCStatBox(
+                      value: '${state.todayCheckedInCount}',
+                      label: 'Members in'),
+                  const SizedBox(width: 10),
+                  const RCStatBox(
                       value: '4', label: 'Guests', valueColor: RCColors.gold),
-                  SizedBox(width: 10),
-                  RCStatBox(value: '3', label: 'Clubs visiting'),
+                  const SizedBox(width: 10),
+                  const RCStatBox(value: '3', label: 'Clubs visiting'),
                 ],
               ),
               const SizedBox(height: 20),
               const RCSectionHeader(title: 'Members checked in'),
               const SizedBox(height: 10),
-              RCCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < todayMembers.length; i++)
-                      _CheckedInRow(
-                        member: todayMembers[i],
-                        color: RCColors.avatarColor(i),
-                        isLast: i == todayMembers.length - 1,
-                      ),
-                  ],
+              if (state.todayCheckedIn.isEmpty)
+                RCCard(
+                  child: Text(
+                    state.todayLoading
+                        ? 'Loading…'
+                        : 'No members checked in yet.',
+                    style: const TextStyle(
+                        fontSize: 12.5, color: RCColors.textMuted),
+                  ),
+                )
+              else
+                RCCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < state.todayCheckedIn.length; i++)
+                        _CheckedInRow(
+                          member: state.todayCheckedIn[i],
+                          color: RCColors.avatarColor(i),
+                          isLast: i == state.todayCheckedIn.length - 1,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 20),
               const RCSectionHeader(title: 'Guests & visiting Rotarians'),
               const SizedBox(height: 10),
@@ -149,11 +163,22 @@ class TodayScreen extends StatelessWidget {
 }
 
 class _CheckedInRow extends StatelessWidget {
-  final TodayMember member;
+  final TodayCheckedInMember member;
   final Color color;
   final bool isLast;
   const _CheckedInRow(
       {required this.member, required this.color, required this.isLast});
+
+  String get _initials =>
+      member.name.split(' ').where((w) => w.isNotEmpty).map((w) => w[0]).join();
+
+  String get _timeLabel {
+    final t = member.checkedInAt.toLocal();
+    final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final minute = t.minute.toString().padLeft(2, '0');
+    final ampm = t.hour >= 12 ? 'PM' : 'AM';
+    return '$hour12:$minute $ampm';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +191,7 @@ class _CheckedInRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RCAvatar(initials: member.initials, color: color, size: 36),
+          RCAvatar(initials: _initials, color: color, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -183,7 +208,7 @@ class _CheckedInRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(member.time,
+          Text(_timeLabel,
               style: const TextStyle(
                   fontSize: 11,
                   color: RCColors.green,

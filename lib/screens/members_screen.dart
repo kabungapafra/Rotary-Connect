@@ -49,23 +49,25 @@ class MembersScreen extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.w800)),
-                      ElevatedButton(
-                        onPressed: state.openAddMember,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: RCColors.gold,
-                          foregroundColor: RCColors.blue,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      // Only the Club President can add and manage members.
+                      if (state.isPresident)
+                        ElevatedButton(
+                          onPressed: state.openAddMember,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: RCColors.gold,
+                            foregroundColor: RCColors.blue,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('＋ Add',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 12)),
                         ),
-                        child: const Text('＋ Add',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 12)),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -132,29 +134,64 @@ class MembersScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (showBoard) ...[
-                    _SectionLabel('BOARD & OFFICERS · ${board.length}'),
-                    const SizedBox(height: 8),
-                    _MemberList(entries: board, showBadge: true, state: state),
-                  ],
-                  if (showBoard && showGen) const SizedBox(height: 16),
-                  if (showGen) ...[
-                    _SectionLabel('MEMBERS · ${gen.length}'),
-                    const SizedBox(height: 8),
-                    _MemberList(entries: gen, showBadge: false, state: state),
-                  ],
-                  if (visibleCount == 0)
-                    const RCCard(
-                      padding: EdgeInsets.all(24),
-                      child: Text(
-                        'No members match your search',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: RCColors.textMuted),
+                  if (state.clubMembersLoading && !state.clubMembersLoaded)
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              color: RCColors.blue, strokeWidth: 2.5)),
+                    )
+                  else if (state.clubMembersError != null &&
+                      !state.clubMembersLoaded)
+                    RCCard(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          Text(
+                            state.clubMembersError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: RCColors.red),
+                          ),
+                          const SizedBox(height: 10),
+                          TextButton(
+                            onPressed: state.loadClubMembers,
+                            child: const Text('Retry',
+                                style:
+                                    TextStyle(fontWeight: FontWeight.w800)),
+                          ),
+                        ],
                       ),
-                    ),
+                    )
+                  else ...[
+                    if (showBoard) ...[
+                      _SectionLabel('BOARD & OFFICERS · ${board.length}'),
+                      const SizedBox(height: 8),
+                      _MemberList(
+                          entries: board, showBadge: true, state: state),
+                    ],
+                    if (showBoard && showGen) const SizedBox(height: 16),
+                    if (showGen) ...[
+                      _SectionLabel('MEMBERS · ${gen.length}'),
+                      const SizedBox(height: 8),
+                      _MemberList(
+                          entries: gen, showBadge: false, state: state),
+                    ],
+                    if (visibleCount == 0)
+                      const RCCard(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No members match your search',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: RCColors.textMuted),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -479,9 +516,33 @@ class _MemberEditorSheet extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (ed.error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(ed.error!,
+                          style: const TextStyle(
+                              color: RCColors.red,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600)),
+                    ],
                     const SizedBox(height: 18),
                     ElevatedButton(
-                      onPressed: state.saveMember,
+                      onPressed: ed.saving
+                          ? null
+                          : () async {
+                              final added = await state.saveMember();
+                              if (added != null && context.mounted) {
+                                // One-time credentials for the new member —
+                                // the president hands these over.
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    duration: const Duration(seconds: 8),
+                                    content: Text(
+                                        '${added.name} added — member no. '
+                                        '${added.memberNumber}, PIN ${added.pin}'),
+                                  ),
+                                );
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: RCColors.blue,
                         foregroundColor: Colors.white,
@@ -490,9 +551,15 @@ class _MemberEditorSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('Add member',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14)),
+                      child: ed.saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Add member',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ],
                 ),

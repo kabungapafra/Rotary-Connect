@@ -224,17 +224,35 @@ class _CalTab extends StatelessWidget {
   }
 }
 
-/// July 2026 month grid — the app's fixed "today" is Wed 8 July 2026,
-/// matching the date used throughout the rest of the app.
+const List<String> _monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/// Month grid for whichever year/month is currently selected in [state] —
+/// the app's fixed "today" is Wed 8 July 2026, matching the date used
+/// throughout the rest of the app.
 class _MonthGrid extends StatelessWidget {
   final AppState state;
   const _MonthGrid({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final firstWeekday = DateTime(2026, 7, 1).weekday; // 1=Mon..7=Sun
+    final year = state.calendarYear;
+    final month = state.calendarMonth;
+    final firstWeekday = DateTime(year, month, 1).weekday; // 1=Mon..7=Sun
     final leadBlanks = (firstWeekday - 1) % 7;
-    final daysInMonth = DateTime(2026, 8, 0).day;
+    final daysInMonth = DateTime(year, month + 1, 0).day;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -244,12 +262,19 @@ class _MonthGrid extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text('July 2026',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _MonthNavButton(icon: '‹', onTap: state.goPrevMonth),
+              Text('${_monthNames[month - 1]} $year',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800)),
+              _MonthNavButton(icon: '›', onTap: state.goNextMonth),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -275,8 +300,8 @@ class _MonthGrid extends StatelessWidget {
               for (var i = 0; i < leadBlanks; i++) const SizedBox.shrink(),
               for (var day = 1; day <= daysInMonth; day++)
                 _MonthCell(
-                    day: day,
-                    dow: weekOrder[DateTime(2026, 7, day).weekday - 1],
+                    date: DateTime(year, month, day),
+                    dow: weekOrder[DateTime(year, month, day).weekday - 1],
                     state: state),
             ],
           ),
@@ -286,16 +311,46 @@ class _MonthGrid extends StatelessWidget {
   }
 }
 
-class _MonthCell extends StatelessWidget {
-  final int day;
-  final String dow;
-  final AppState state;
-  const _MonthCell({required this.day, required this.dow, required this.state});
+class _MonthNavButton extends StatelessWidget {
+  final String icon;
+  final VoidCallback onTap;
+  const _MonthNavButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final selected = state.selectedDay == dow;
-    final isToday = day == 8;
+    return Material(
+      color: Colors.white.withValues(alpha: .12),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 26,
+          height: 26,
+          child: Center(
+              child: Text(icon,
+                  style: const TextStyle(color: Colors.white, fontSize: 14))),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthCell extends StatelessWidget {
+  final DateTime date;
+  final String dow;
+  final AppState state;
+  const _MonthCell(
+      {required this.date, required this.dow, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = state.selectedMonthDate;
+    final selected = sel != null &&
+        sel.year == date.year &&
+        sel.month == date.month &&
+        sel.day == date.day;
+    final isToday = date.year == 2026 && date.month == 7 && date.day == 8;
     final hasEvents = state.dayHasEvents(dow);
     return Material(
       color: selected
@@ -306,11 +361,11 @@ class _MonthCell extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => state.pickDay(dow),
+        onTap: () => state.pickMonthDate(date, dow),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('$day',
+            Text('${date.day}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,

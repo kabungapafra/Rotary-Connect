@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets/club_logo.dart';
 import '../widgets/common.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -196,8 +197,7 @@ class _Header extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10)),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Image.asset('assets/images/rotary_mbalwa_logo.png',
-                    height: 28),
+                child: ClubLogoImage(state: state, height: 28),
               ),
               Container(
                 padding:
@@ -207,8 +207,8 @@ class _Header extends StatelessWidget {
                   border: Border.all(color: Colors.white.withValues(alpha: .3)),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text(AppState.roleBadge,
-                    style: TextStyle(
+                child: Text(state.roleBadge,
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
@@ -217,8 +217,8 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(AppState.greeting,
-              style: TextStyle(
+          Text(state.greeting,
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
