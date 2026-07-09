@@ -198,7 +198,7 @@ class _CameraFeedState extends State<_CameraFeed> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Camera unavailable — use Simulate scan below',
+                  'Camera unavailable — check your camera permission and try again',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: RCColors.scanMuted),
                 ),
@@ -316,29 +316,18 @@ class _ScanIdleState extends State<_ScanIdle>
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            PressableScale(
-              child: ElevatedButton(
-                onPressed: widget.state.checkInLoading
-                    ? null
-                    : widget.state.simulateScan,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: RCColors.gold,
-                  foregroundColor: RCColors.blue,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                child: Text(
-                    widget.state.checkInLoading
-                        ? 'Checking in…'
-                        : 'Simulate scan',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 14)),
+            if (widget.state.checkInLoading) ...[
+              const SizedBox(height: 24),
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.5, color: RCColors.gold),
               ),
-            ),
+              const SizedBox(height: 10),
+              const Text('Checking in…',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+            ],
             if (widget.state.checkInError != null) ...[
               const SizedBox(height: 12),
               Text(widget.state.checkInError!,

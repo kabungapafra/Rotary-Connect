@@ -158,6 +158,11 @@ class AppState extends ChangeNotifier {
       e.message.contains('credentials');
 
   String tab = 'splash';
+  // True only when the scan screen was reached via the splash screen's
+  // "I'm visiting as a Guest" button — including for an already-logged-in
+  // member, who still has a real session (so the generic "no session ->
+  // back to splash" rule in goBack() wouldn't otherwise catch this case).
+  bool _scanFromSplash = false;
   String scanMode = 'member'; // member | guest
   String scanStep = 'idle'; // idle | success | guestForm | guestDone
 
@@ -508,7 +513,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void goScan() => go('scan');
+  void goScan() {
+    // Entered from Home's "Check in" — swiping back from here belongs to
+    // goHome(), not the splash guest-entry case below.
+    _scanFromSplash = false;
+    go('scan');
+  }
 
   void goAttendance() {
     go('attendance');
@@ -594,9 +604,11 @@ class AppState extends ChangeNotifier {
       closeMemberProfile();
     } else if (tab == 'login') {
       goSplash();
-    } else if (tab == 'scan' && authToken == null) {
-      // An unauthenticated visitor (QR check-in) has no home screen to
-      // return to — send them back to the splash they started from.
+    } else if (tab == 'scan' && (authToken == null || _scanFromSplash)) {
+      // A walk-in visitor (no session) or a logged-in member who chose
+      // "I'm visiting as a Guest" both started this from the splash
+      // screen's guest button — back should undo that choice, not drop
+      // a still-logged-in member onto their own dashboard.
       goSplash();
     } else if (tab != 'home' && tab != 'splash') {
       goHome();
@@ -677,6 +689,7 @@ class AppState extends ChangeNotifier {
         tab = 'scan';
         scanMode = 'guest';
         scanStep = 'idle';
+        _scanFromSplash = true;
       });
 
   // ── scan ───────────────────────────────────────────────────────────────
