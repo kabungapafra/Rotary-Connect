@@ -3,6 +3,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/pressable.dart';
 
 class MembersScreen extends StatelessWidget {
   final AppState state;
@@ -51,22 +52,24 @@ class MembersScreen extends StatelessWidget {
                               fontWeight: FontWeight.w800)),
                       // Only the Club President can add and manage members.
                       if (state.isPresident)
-                        ElevatedButton(
-                          onPressed: state.openAddMember,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: RCColors.gold,
-                            foregroundColor: RCColors.blue,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            elevation: 0,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        PressableScale(
+                          child: ElevatedButton(
+                            onPressed: state.openAddMember,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: RCColors.gold,
+                              foregroundColor: RCColors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('＋ Add',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 12)),
                           ),
-                          child: const Text('＋ Add',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 12)),
                         ),
                     ],
                   ),
@@ -525,41 +528,43 @@ class _MemberEditorSheet extends StatelessWidget {
                               fontWeight: FontWeight.w600)),
                     ],
                     const SizedBox(height: 18),
-                    ElevatedButton(
-                      onPressed: ed.saving
-                          ? null
-                          : () async {
-                              final added = await state.saveMember();
-                              if (added != null && context.mounted) {
-                                // One-time credentials for the new member —
-                                // the president hands these over.
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    duration: const Duration(seconds: 8),
-                                    content: Text(
-                                        '${added.name} added — member no. '
-                                        '${added.memberNumber}, PIN ${added.pin}'),
-                                  ),
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: RCColors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(13),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+                    PressableScale(
+                      child: ElevatedButton(
+                        onPressed: ed.saving
+                            ? null
+                            : () async {
+                                final added = await state.saveMember();
+                                if (added != null && context.mounted) {
+                                  // One-time credentials for the new member —
+                                  // the president hands these over.
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      duration: const Duration(seconds: 8),
+                                      content: Text(
+                                          '${added.name} added — member no. '
+                                          '${added.memberNumber}, PIN ${added.pin}'),
+                                    ),
+                                  );
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: ed.saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('Add member',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 14)),
                       ),
-                      child: ed.saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Add member',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ],
                 ),

@@ -79,7 +79,10 @@ class AppState extends ChangeNotifier {
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
       clubBrandingKnown = true;
-      tab = 'home';
+      // Stay on the splash screen — its welcome animation plays every
+      // launch regardless of login state. Only the login FORM is skipped
+      // for a returning member; splash_screen.dart advances straight to
+      // Home on its own once the animation settles.
     });
     unawaited(loadClubMembers());
     unawaited(loadSummary());
@@ -482,6 +485,10 @@ class AppState extends ChangeNotifier {
     } else if (memberProfile != null) {
       closeMemberProfile();
     } else if (tab == 'login') {
+      goSplash();
+    } else if (tab == 'scan' && authToken == null) {
+      // An unauthenticated visitor (QR check-in) has no home screen to
+      // return to — send them back to the splash they started from.
       goSplash();
     } else if (tab != 'home' && tab != 'splash') {
       goHome();

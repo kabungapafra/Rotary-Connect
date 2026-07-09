@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets/pressable.dart';
 
 class ScanScreen extends StatelessWidget {
   final AppState state;
@@ -220,18 +221,20 @@ class _ScanTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: active ? RCColors.gold : RCColors.scanCard,
-        foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
-        side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+    return PressableScale(
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: active ? RCColors.gold : RCColors.scanCard,
+          foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
+          side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        child: Text(label,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
       ),
-      child: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
     );
   }
 }
@@ -294,22 +297,27 @@ class _ScanIdleState extends State<_ScanIdle>
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed:
-                  widget.state.checkInLoading ? null : widget.state.simulateScan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: RCColors.gold,
-                foregroundColor: RCColors.blue,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
+            PressableScale(
+              child: ElevatedButton(
+                onPressed: widget.state.checkInLoading
+                    ? null
+                    : widget.state.simulateScan,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: RCColors.gold,
+                  foregroundColor: RCColors.blue,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Text(
+                    widget.state.checkInLoading
+                        ? 'Checking in…'
+                        : 'Simulate scan',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 14)),
               ),
-              child: Text(
-                  widget.state.checkInLoading ? 'Checking in…' : 'Simulate scan',
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
             ),
             if (widget.state.checkInError != null) ...[
               const SizedBox(height: 12),
@@ -428,38 +436,42 @@ class _ScanSuccess extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: state.goToday,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: RCColors.gold,
-                  foregroundColor: RCColors.blue,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+              child: PressableScale(
+                child: ElevatedButton(
+                  onPressed: state.goToday,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RCColors.gold,
+                    foregroundColor: RCColors.blue,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text("See who's here today",
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
-                child: const Text("See who's here today",
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
               ),
             ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
-                onPressed: state.goAttendance,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: .3)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              child: PressableScale(
+                child: OutlinedButton(
+                  onPressed: state.goAttendance,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: .3)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 11),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('View my attendance',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
-                child: const Text('View my attendance',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ),
             const SizedBox(height: 10),
@@ -561,20 +573,22 @@ class _GuestForm extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFFFF9D9D), fontSize: 12)),
           ],
           const SizedBox(height: 6),
-          ElevatedButton(
-            onPressed: state.guestSubmitting ? null : state.submitGuest,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: RCColors.gold,
-              foregroundColor: RCColors.blue,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              elevation: 0,
+          PressableScale(
+            child: ElevatedButton(
+              onPressed: state.guestSubmitting ? null : state.submitGuest,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: RCColors.gold,
+                foregroundColor: RCColors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: Text(
+                  state.guestSubmitting ? 'Registering…' : 'Register & check in',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 14)),
             ),
-            child: Text(
-                state.guestSubmitting ? 'Registering…' : 'Register & check in',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 14)),
           ),
         ],
       ),
@@ -636,20 +650,22 @@ class _GuestTypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: active ? RCColors.gold : RCColors.scanCard,
-        foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
-        side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        shape: const StadiumBorder(),
-        elevation: 0,
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    return PressableScale(
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: active ? RCColors.gold : RCColors.scanCard,
+          foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
+          side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          shape: const StadiumBorder(),
+          elevation: 0,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(label,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
       ),
-      child: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
     );
   }
 }
@@ -697,38 +713,42 @@ class _GuestDone extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: state.goToday,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: RCColors.gold,
-                  foregroundColor: RCColors.blue,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+              child: PressableScale(
+                child: ElevatedButton(
+                  onPressed: state.goToday,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RCColors.gold,
+                    foregroundColor: RCColors.blue,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text("See who's here today",
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
-                child: const Text("See who's here today",
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
               ),
             ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
-                onPressed: state.resetScan,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: .3)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              child: PressableScale(
+                child: OutlinedButton(
+                  onPressed: state.resetScan,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: .3)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 11),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Register another guest',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
-                child: const Text('Register another guest',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ),
           ],

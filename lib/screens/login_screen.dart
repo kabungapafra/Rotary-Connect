@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../widgets/pressable.dart';
 import '../widgets/wordmark.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -52,19 +53,21 @@ class LoginScreen extends StatelessWidget {
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Material(
-                        color: RCColors.scaffoldBg,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
+                      child: PressableScale(
+                        child: Material(
+                          color: RCColors.scaffoldBg,
                           borderRadius: BorderRadius.circular(12),
-                          onTap: state.goSplash,
-                          child: const SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: Center(
-                              child: Text('‹',
-                                  style: TextStyle(
-                                      color: RCColors.blue, fontSize: 16)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: state.goSplash,
+                            child: const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Center(
+                                child: Text('‹',
+                                    style: TextStyle(
+                                        color: RCColors.blue, fontSize: 16)),
+                              ),
                             ),
                           ),
                         ),
@@ -137,30 +140,32 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                     // box-shadow: 0 8px 20px rgba(23,69,143,.28)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: RCColors.blue.withValues(alpha: .28),
-                            offset: const Offset(0, 8),
-                            blurRadius: 20,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: state.loginLoading ? null : state.submitLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: RCColors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.all(17),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
+                    PressableScale(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: RCColors.blue.withValues(alpha: .28),
+                              offset: const Offset(0, 8),
+                              blurRadius: 20,
+                            ),
+                          ],
                         ),
-                        child: Text(state.loginLoading ? 'Signing in…' : 'Log in',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 15)),
+                        child: ElevatedButton(
+                          onPressed: state.loginLoading ? null : state.submitLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: RCColors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.all(17),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                          child: Text(state.loginLoading ? 'Signing in…' : 'Log in',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 15)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),

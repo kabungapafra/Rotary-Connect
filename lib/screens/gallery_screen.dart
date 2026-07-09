@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/pressable.dart';
 
 class GalleryScreen extends StatelessWidget {
   final AppState state;
@@ -54,22 +55,24 @@ class GalleryScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: state.openUpload,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: RCColors.gold,
-                      foregroundColor: RCColors.blue,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  PressableScale(
+                    child: ElevatedButton(
+                      onPressed: state.openUpload,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: RCColors.gold,
+                        foregroundColor: RCColors.blue,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('＋ Upload',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 12.5)),
                     ),
-                    child: const Text('＋ Upload',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 12.5)),
                   ),
                 ],
               ),
@@ -333,19 +336,21 @@ class _UploadSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    ElevatedButton(
-                      onPressed: state.saveUpload,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: RCColors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(13),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+                    PressableScale(
+                      child: ElevatedButton(
+                        onPressed: state.saveUpload,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Add to gallery',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14)),
                       ),
-                      child: const Text('Add to gallery',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ],
                 ),

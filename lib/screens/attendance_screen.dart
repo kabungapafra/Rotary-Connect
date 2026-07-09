@@ -3,6 +3,7 @@ import '../api_client.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/pressable.dart';
 
 class AttendanceScreen extends StatelessWidget {
   final AppState state;
@@ -387,18 +388,21 @@ class _ClubRegister extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: state.downloadReport,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: RCColors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.all(14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
+          PressableScale(
+            child: ElevatedButton(
+              onPressed: state.downloadReport,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: RCColors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.all(14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Text('⬇ Download attendance report (PDF)',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
             ),
-            child: const Text('⬇ Download attendance report (PDF)',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
           ),
         ],
       ),

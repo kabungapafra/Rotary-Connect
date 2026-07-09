@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/pressable.dart';
 
 class ProjectsScreen extends StatelessWidget {
   final AppState state;
@@ -46,22 +47,24 @@ class ProjectsScreen extends StatelessWidget {
                             fontSize: 20,
                             fontWeight: FontWeight.w800)),
                   ),
-                  ElevatedButton(
-                    onPressed: state.openAddProject,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: RCColors.gold,
-                      foregroundColor: RCColors.blue,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 13, vertical: 9),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  PressableScale(
+                    child: ElevatedButton(
+                      onPressed: state.openAddProject,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: RCColors.gold,
+                        foregroundColor: RCColors.blue,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 13, vertical: 9),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('＋ Add',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 12.5)),
                     ),
-                    child: const Text('＋ Add',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 12.5)),
                   ),
                 ],
               ),
@@ -305,38 +308,42 @@ class _ProjectEditorSheet extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
-                              onPressed: _pickPhoto,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: RCColors.blue,
-                                side: const BorderSide(
-                                    color: Color(0xFFD4DBE8), width: 1.5),
-                                padding: const EdgeInsets.all(9),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
+                            child: PressableScale(
+                              child: OutlinedButton(
+                                onPressed: _pickPhoto,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: RCColors.blue,
+                                  side: const BorderSide(
+                                      color: Color(0xFFD4DBE8), width: 1.5),
+                                  padding: const EdgeInsets.all(9),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: const Text('Change photo',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700)),
                               ),
-                              child: const Text('Change photo',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700)),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: state.removeProjectPhoto,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFDECEA),
-                                foregroundColor: RCColors.red,
-                                padding: const EdgeInsets.all(9),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                                elevation: 0,
+                            child: PressableScale(
+                              child: ElevatedButton(
+                                onPressed: state.removeProjectPhoto,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFDECEA),
+                                  foregroundColor: RCColors.red,
+                                  padding: const EdgeInsets.all(9),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                                child: const Text('Remove',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700)),
                               ),
-                              child: const Text('Remove',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700)),
                             ),
                           ),
                         ],
@@ -389,37 +396,41 @@ class _ProjectEditorSheet extends StatelessWidget {
                     Row(
                       children: [
                         if (state.canDeleteProject) ...[
-                          ElevatedButton(
-                            onPressed: state.deleteProject,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFDECEA),
-                              foregroundColor: RCColors.red,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 13),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
+                          PressableScale(
+                            child: ElevatedButton(
+                              onPressed: state.deleteProject,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFDECEA),
+                                foregroundColor: RCColors.red,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 18, vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: const Text('Delete',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w800, fontSize: 13)),
                             ),
-                            child: const Text('Delete',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 13)),
                           ),
                           const SizedBox(width: 10),
                         ],
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: state.saveProject,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: RCColors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.all(13),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
+                          child: PressableScale(
+                            child: ElevatedButton(
+                              onPressed: state.saveProject,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: RCColors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.all(13),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: Text(isNew ? 'Add project' : 'Save changes',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800, fontSize: 14)),
                             ),
-                            child: Text(isNew ? 'Add project' : 'Save changes',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 14)),
                           ),
                         ),
                       ],

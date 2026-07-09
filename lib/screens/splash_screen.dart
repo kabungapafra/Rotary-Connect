@@ -40,6 +40,20 @@ class _SplashScreenState extends State<SplashScreen>
         if (mounted) _intro.forward();
       });
     });
+    // A returning, already-logged-in member still sees the full welcome
+    // animation on every launch — they just never see the login form
+    // again. Once the animation settles, move on to Home automatically.
+    _intro.addStatusListener(_onIntroStatusChanged);
+  }
+
+  void _onIntroStatusChanged(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    if (widget.state.authToken == null) return;
+    Future.delayed(const Duration(milliseconds: 550), () {
+      if (mounted && widget.state.authToken != null) {
+        widget.state.goHome();
+      }
+    });
   }
 
   Animation<double> _slice(double begin, double end) => CurvedAnimation(
@@ -47,6 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _intro.removeStatusListener(_onIntroStatusChanged);
     _wheelSpin.dispose();
     _intro.dispose();
     _pulse.dispose();

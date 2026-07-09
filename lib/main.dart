@@ -38,6 +38,11 @@ class RotaryMbalwaApp extends StatefulWidget {
 
 class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
   final AppState state = AppState();
+  // Tracks the tab shown in the previous build so leaving the splash
+  // screen specifically can get its own, more deliberate transition —
+  // the app's one grand-entrance moment — instead of the quick, subtle
+  // cross-fade used for ordinary in-app navigation.
+  String _previousTab = 'splash';
 
   @override
   void initState() {
@@ -101,27 +106,54 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
               Column(
                 children: [
                   // Screen-to-screen transition: quick cross-fade with a
-                  // subtle upward slide on every tab change.
+                  // subtle upward slide on every tab change — except
+                  // leaving the splash screen, which gets a slower,
+                  // more deliberate fade + rise + gentle scale-in.
                   Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween(
-                            begin: const Offset(0, .015),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
+                    child: Builder(builder: (context) {
+                      final leavingSplash =
+                          _previousTab == 'splash' && state.tab != 'splash';
+                      _previousTab = state.tab;
+                      return AnimatedSwitcher(
+                        duration: Duration(
+                            milliseconds: leavingSplash ? 460 : 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) => leavingSplash
+                            ? FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0, .06),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOutCubic)),
+                                  child: ScaleTransition(
+                                    scale: Tween(begin: .96, end: 1.0).animate(
+                                        CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeOutCubic)),
+                                    child: child,
+                                  ),
+                                ),
+                              )
+                            : FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0, .015),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                        child: KeyedSubtree(
+                          key: ValueKey(state.tab),
+                          child: _screenFor(state.tab),
                         ),
-                      ),
-                      child: KeyedSubtree(
-                        key: ValueKey(state.tab),
-                        child: _screenFor(state.tab),
-                      ),
-                    ),
+                      );
+                    }),
                   ),
                   // Hidden on splash/login/scan and whenever a bottom sheet
                   // (event/project/member editor, gallery upload) is open.

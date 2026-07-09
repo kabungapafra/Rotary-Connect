@@ -3,6 +3,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/club_logo.dart';
 import '../widgets/common.dart';
+import '../widgets/pressable.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppState state;
@@ -312,37 +313,41 @@ class _Header extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: state.goScan,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: RCColors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.all(12),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
+                      child: PressableScale(
+                        child: ElevatedButton(
+                          onPressed: state.goScan,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: RCColors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.all(12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Check in',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13)),
                         ),
-                        child: const Text('Check in',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 13)),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: state.goToday,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: RCColors.blue,
-                          side: BorderSide(
-                              color: RCColors.blue.withValues(alpha: .35),
-                              width: 1.5),
-                          padding: const EdgeInsets.all(12),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                      child: PressableScale(
+                        child: OutlinedButton(
+                          onPressed: state.goToday,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: RCColors.blue,
+                            side: BorderSide(
+                                color: RCColors.blue.withValues(alpha: .35),
+                                width: 1.5),
+                            padding: const EdgeInsets.all(12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Who's here ›",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13)),
                         ),
-                        child: const Text("Who's here ›",
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 13)),
                       ),
                     ),
                   ],
