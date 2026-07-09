@@ -383,6 +383,9 @@ class ApiClient {
     ];
   }
 
+  Future<void> deleteGalleryPhoto(String token, int photoId) =>
+      _delete('/club/gallery/$photoId', token);
+
   // ── event registration ──────────────────────────────────────────────
   Future<EventRegistration> fetchEventRegistration(String token, int eventId) async {
     final res = await _getAuthed('/club/events/$eventId/registration', token);

@@ -11,7 +11,10 @@ class PhotoInfo {
   final String activity;
   final String date;
   final Uint8List? src;
-  const PhotoInfo(this.label, this.activity, this.date, {this.src});
+  // Backend gallery photo id — set only when this photo came from the
+  // club gallery, which is what lets the viewer offer to delete it.
+  final int? id;
+  const PhotoInfo(this.label, this.activity, this.date, {this.src, this.id});
 }
 
 class CertInfo {
@@ -1351,6 +1354,27 @@ class AppState extends ChangeNotifier {
     _downloadToastTimer = Timer(const Duration(seconds: 2), () {
       _update(() => downloadToast = null);
     });
+  }
+
+  /// Removes the currently-open photo from the club gallery (backend +
+  /// local list) and closes the viewer.
+  Future<void> deletePhoto() async {
+    final id = photo?.id;
+    final token = authToken;
+    if (id == null || token == null) return;
+    try {
+      await _api.deleteGalleryPhoto(token, id);
+      _update(() {
+        galleryUploads.removeWhere((g) => g.id == id);
+        photo = null;
+      });
+    } on ApiException {
+      _downloadToastTimer?.cancel();
+      _update(() => downloadToast = 'Could not delete photo');
+      _downloadToastTimer = Timer(const Duration(seconds: 2), () {
+        _update(() => downloadToast = null);
+      });
+    }
   }
 
   @override

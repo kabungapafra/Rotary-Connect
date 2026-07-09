@@ -49,24 +49,51 @@ class PhotoViewerOverlay extends StatelessWidget {
                   style: const TextStyle(color: Colors.white70, fontSize: 12)),
               if (photo.src != null) ...[
                 const SizedBox(height: 14),
-                PressableScale(
-                  child: Material(
-                    color: Colors.white.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: state.downloadPhoto,
-                      child: const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                        child: Text('⬇ Download',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PressableScale(
+                      child: Material(
+                        color: Colors.white.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: state.downloadPhoto,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 11),
+                            child: Text('⬇ Download',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800)),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    if (photo.id != null) ...[
+                      const SizedBox(width: 10),
+                      PressableScale(
+                        child: Material(
+                          color: const Color(0xFFB3261E).withValues(alpha: .22),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: state.deletePhoto,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 11),
+                              child: Text('Delete',
+                                  style: TextStyle(
+                                      color: Color(0xFFFF8A80),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (state.downloadToast != null) ...[
                   const SizedBox(height: 10),
