@@ -226,8 +226,8 @@ class _Header extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10)),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: ClubLogoImage(state: state, height: 44),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: ClubLogoImage(state: state, height: 60),
               ),
               Container(
                 padding:
