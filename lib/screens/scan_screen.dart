@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../app_state.dart';
@@ -115,14 +117,44 @@ class _CameraFeed extends StatefulWidget {
 class _CameraFeedState extends State<_CameraFeed> {
   final MobileScannerController _camera = MobileScannerController();
   bool _handled = false;
+  String? _invalidMessage;
+
+  /// Every printed club QR encodes {"t":"rc_club","id":<club id>} — the
+  /// dashboard generates it (see admin_dashboard's ClubQrCode widget), so
+  /// any other QR (a random poster, a different app's code) is rejected
+  /// rather than silently treated as valid.
+  int? _decodeClubId(String raw) {
+    try {
+      final data = jsonDecode(raw);
+      if (data is Map && data['t'] == 'rc_club' && data['id'] is int) {
+        return data['id'] as int;
+      }
+    } catch (_) {
+      // Not JSON, or not our shape — fall through to null.
+    }
+    return null;
+  }
 
   void _onDetect(BarcodeCapture capture) {
-    // A real QR read completes check-in the same way "Simulate scan" does —
-    // there's no backend to validate the club's code against, so any
-    // successfully decoded QR is treated as a valid scan.
     if (_handled || capture.barcodes.isEmpty) return;
+    final raw = capture.barcodes.first.rawValue;
+    if (widget.state.scanMode == 'member') {
+      // A member checking in at their own club's meeting doesn't need the
+      // QR to carry anything — their club comes from their login.
+      _handled = true;
+      widget.state.simulateScan();
+      return;
+    }
+    final clubId = raw == null ? null : _decodeClubId(raw);
+    if (clubId == null) {
+      setState(() => _invalidMessage = "That's not a Rotary Connect club QR code");
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _invalidMessage = null);
+      });
+      return;
+    }
     _handled = true;
-    widget.state.simulateScan();
+    widget.state.handleClubQrScanned(clubId);
   }
 
   @override
@@ -135,20 +167,45 @@ class _CameraFeedState extends State<_CameraFeed> {
   Widget build(BuildContext context) {
     return Container(
       color: RCColors.scanBg,
-      child: MobileScanner(
-        controller: _camera,
-        fit: BoxFit.cover,
-        onDetect: _onDetect,
-        errorBuilder: (context, error) => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Camera unavailable — use Simulate scan below',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: RCColors.scanMuted),
+      child: Stack(
+        children: [
+          MobileScanner(
+            controller: _camera,
+            fit: BoxFit.cover,
+            onDetect: _onDetect,
+            errorBuilder: (context, error) => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Camera unavailable — use Simulate scan below',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: RCColors.scanMuted),
+                ),
+              ),
             ),
           ),
-        ),
+          if (_invalidMessage != null)
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 140,
+              child: IgnorePointer(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: .75),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _invalidMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -425,21 +482,23 @@ class _GuestForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A logged-in member here isn't a walk-in guest of this device's own
-    // club — they're a Rotarian checking into a DIFFERENT club's meeting,
-    // so the form asks which club instead of a home-club/guest-type combo.
-    final visitingElsewhere = state.authToken != null;
+    // club — they're a Rotarian checking into a DIFFERENT club's meeting.
+    final memberVisiting = state.authToken != null;
+    // A real scanned QR already identifies the club — only the "Simulate
+    // scan" fallback (no camera/printed QR to test with) needs it typed.
+    final needsClubNameInput = state.scannedClubId == null && memberVisiting;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(visitingElsewhere ? 'Visiting another club' : 'Guest registration',
+          Text(memberVisiting ? 'Visiting another club' : 'Guest registration',
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          if (visitingElsewhere) ...[
+          if (needsClubNameInput) ...[
             _ScanInput(
               hint: 'Which club are you visiting?',
               value: state.guestClub,
@@ -457,7 +516,7 @@ class _GuestForm extends StatelessWidget {
               hint: 'Phone number',
               value: state.guestPhone,
               onChanged: state.setGuestPhone),
-          if (!visitingElsewhere) ...[
+          if (!memberVisiting) ...[
             const SizedBox(height: 12),
             _ScanInput(
                 hint: 'Guest of (member name)',
@@ -491,7 +550,7 @@ class _GuestForm extends StatelessWidget {
           if (state.guestFormError) ...[
             const SizedBox(height: 12),
             Text(
-                visitingElsewhere
+                needsClubNameInput
                     ? 'Please enter which club you\'re visiting, your name, and phone number.'
                     : "Please enter the guest's name and phone number.",
                 style: const TextStyle(color: Color(0xFFFF9D9D), fontSize: 12)),

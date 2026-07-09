@@ -61,12 +61,20 @@ class AppState extends ChangeNotifier {
 
   Future<void> _restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
+    // Visitor identity is independent of any member session — a phone
+    // that's never had a member log in can still have scanned QR codes
+    // as a walk-in visitor before, and should still be remembered.
+    _update(() {
+      visitorName = prefs.getString('visitor_name');
+      visitorPhone = prefs.getString('visitor_phone');
+    });
     final token = prefs.getString('auth_token');
     if (token == null) return;
     _update(() {
       authToken = token;
       currentMemberName = prefs.getString('member_name') ?? '';
       currentMemberRole = prefs.getString('member_role') ?? '';
+      currentMemberPhone = prefs.getString('member_phone') ?? '';
       clubId = prefs.getInt('club_id');
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
@@ -87,6 +95,7 @@ class AppState extends ChangeNotifier {
     await prefs.setString('auth_token', token);
     await prefs.setString('member_name', currentMemberName);
     await prefs.setString('member_role', currentMemberRole);
+    await prefs.setString('member_phone', currentMemberPhone);
     final id = clubId;
     if (id != null) await prefs.setInt('club_id', id);
     await prefs.setString('club_name', clubName);
@@ -107,12 +116,26 @@ class AppState extends ChangeNotifier {
     await prefs.remove('auth_token');
     await prefs.remove('member_name');
     await prefs.remove('member_role');
+    await prefs.remove('member_phone');
     _update(() {
       authToken = null;
       currentMemberName = '';
       currentMemberRole = '';
+      currentMemberPhone = '';
       tab = 'splash';
     });
+  }
+
+  /// Remembered once a walk-in visitor has checked in anywhere, so a QR
+  /// scan at any club (the same one again, or a different one) never asks
+  /// them to re-enter their details.
+  String? visitorName;
+  String? visitorPhone;
+
+  Future<void> _persistVisitorIdentity(String name, String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('visitor_name', name);
+    await prefs.setString('visitor_phone', phone);
   }
 
   bool _isAuthFailure(ApiException e) =>
@@ -156,6 +179,7 @@ class AppState extends ChangeNotifier {
   String? authToken;
   String currentMemberName = '';
   String currentMemberRole = '';
+  String currentMemberPhone = '';
 
   // Branding for the logged-in member's club, provided by the backend at
   // login. Until then the app brands itself as "Rotary Connect". clubId
@@ -499,6 +523,7 @@ class AppState extends ChangeNotifier {
         authToken = result.token;
         currentMemberName = result.member.name;
         currentMemberRole = result.member.role;
+        currentMemberPhone = result.member.phone;
         clubId = result.clubId;
         clubName = result.clubName;
         clubLogo = result.clubLogo;
@@ -558,6 +583,43 @@ class AppState extends ChangeNotifier {
     await _checkInMember();
   }
 
+  /// club_id decoded from a real, printed club QR code (scanned via the
+  /// camera). Distinct from "Simulate scan"/typed-club-name — a real scan
+  /// always identifies the exact club, so nobody needs to type it.
+  int? scannedClubId;
+
+  /// Called when the camera decodes a real Rotary Connect club QR while in
+  /// Guest mode. Anyone — a first-time visitor or an already-logged-in
+  /// member checking into a club that isn't their own — can use this with
+  /// no account and no login: a known identity (member session, or a
+  /// visitor who's checked in anywhere before) skips the form entirely.
+  Future<void> handleClubQrScanned(int clubId) async {
+    if (scanMode != 'guest' || scanStep != 'idle') return;
+    _update(() => scannedClubId = clubId);
+
+    final knownName = authToken != null ? currentMemberName : visitorName;
+    final knownPhone = authToken != null ? currentMemberPhone : visitorPhone;
+    if (knownName != null &&
+        knownName.trim().isNotEmpty &&
+        knownPhone != null &&
+        knownPhone.trim().isNotEmpty) {
+      await _submitVisitorCheckIn(
+        clubId: clubId,
+        name: knownName,
+        phone: knownPhone,
+        hostName: '',
+        guestType: guestType,
+      );
+      return;
+    }
+    // First time this device has ever checked in as a visitor — collect
+    // name and phone once; every scan after this is silent.
+    _update(() {
+      if (authToken != null) guestName = currentMemberName;
+      scanStep = 'guestForm';
+    });
+  }
+
   Future<void> _checkInMember() async {
     final token = authToken;
     if (token == null) {
@@ -596,6 +658,7 @@ class AppState extends ChangeNotifier {
         guestFormError = false;
         guestSubmitError = null;
         guestVisitedClubName = null;
+        scannedClubId = null;
         checkInError = null;
       });
 
@@ -634,32 +697,66 @@ class AppState extends ChangeNotifier {
       _update(() => guestFormError = true);
       return;
     }
-    // A logged-in member here means "visiting a club that isn't mine" —
-    // this device's own clubId doesn't apply, so the club has to be named.
-    final visitingElsewhere = authToken != null;
+    // A real scanned QR always identifies the exact club — nothing else
+    // to resolve. Otherwise (the "Simulate scan" fallback, used when
+    // there's no camera/printed QR to test with): a logged-in member
+    // has to type which club they're visiting, since this device's own
+    // clubId is their own club, not the one in front of them.
+    final scanned = scannedClubId;
+    final visitingElsewhere = scanned == null && authToken != null;
     if (visitingElsewhere && guestClub.trim().isEmpty) {
       _update(() => guestFormError = true);
       return;
     }
-    final id = visitingElsewhere ? null : clubId;
-    if (!visitingElsewhere && id == null) {
+    final id = scanned ?? (visitingElsewhere ? null : clubId);
+    if (id == null && !visitingElsewhere) {
       _update(() => guestSubmitError =
           "This device isn't linked to a club yet — ask a member to log in first.");
       return;
     }
+    await _submitVisitorCheckIn(
+      clubId: id,
+      clubName: id == null && visitingElsewhere ? guestClub.trim() : null,
+      name: guestName.trim(),
+      phone: guestPhone.trim(),
+      hostName: guestHost.trim(),
+      guestType: guestType,
+    );
+  }
+
+  /// Shared by the manual guest form and the silent auto-check-in that
+  /// fires when a QR scan resolves to an already-known identity.
+  Future<void> _submitVisitorCheckIn({
+    int? clubId,
+    String? clubName,
+    required String name,
+    required String phone,
+    required String hostName,
+    required String guestType,
+  }) async {
     _update(() {
       guestSubmitting = true;
       guestSubmitError = null;
     });
     try {
       final visitedClub = await _api.guestCheckIn(
-        clubId: id,
-        clubName: visitingElsewhere ? guestClub.trim() : null,
-        name: guestName.trim(),
-        phone: guestPhone.trim(),
-        hostName: guestHost.trim(),
+        clubId: clubId,
+        clubName: clubName,
+        name: name,
+        phone: phone,
+        hostName: hostName,
         guestType: guestType,
       );
+      // A logged-in member's identity always comes from their account —
+      // only remember a *visitor* identity for devices with no member
+      // session, so it isn't mixed up with the real member's own details.
+      if (authToken == null) {
+        unawaited(_persistVisitorIdentity(name, phone));
+        _update(() {
+          visitorName = name;
+          visitorPhone = phone;
+        });
+      }
       _update(() {
         guestSubmitting = false;
         guestVisitedClubName = visitedClub;

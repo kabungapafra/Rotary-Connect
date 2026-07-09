@@ -21,7 +21,8 @@ class ApiException implements Exception {
 class LoggedInMember {
   final String name;
   final String role;
-  const LoggedInMember(this.name, this.role);
+  final String phone;
+  const LoggedInMember(this.name, this.role, this.phone);
 }
 
 class LoginResult {
@@ -132,7 +133,8 @@ class ApiClient {
     final member = res['member'] as Map<String, dynamic>;
     return LoginResult(
       res['access_token'] as String,
-      LoggedInMember(member['name'] as String, member['role'] as String),
+      LoggedInMember(member['name'] as String, member['role'] as String,
+          member['phone'] as String? ?? ''),
       res['club_id'] as int,
       res['club_name'] as String? ?? 'Rotary Club of Mbalwa',
       res['club_logo'] as String?,
