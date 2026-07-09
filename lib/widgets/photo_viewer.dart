@@ -23,8 +23,8 @@ class PhotoViewerOverlay extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 height: 340,
-                child: photo.src != null
-                    ? Image.memory(photo.src!, fit: BoxFit.contain)
+                child: photo.imageUrl != null
+                    ? Image.network(photo.imageUrl!, fit: BoxFit.contain)
                     : Container(
                         decoration: BoxDecoration(
                             color: const Color(0xFF1C2740),
@@ -47,7 +47,7 @@ class PhotoViewerOverlay extends StatelessWidget {
               const SizedBox(height: 2),
               Text(photo.date,
                   style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              if (photo.src != null) ...[
+              if (photo.imageUrl != null) ...[
                 const SizedBox(height: 14),
                 Row(
                   mainAxisSize: MainAxisSize.min,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
@@ -10,11 +11,14 @@ class PhotoInfo {
   final String label;
   final String activity;
   final String date;
-  final Uint8List? src;
+  // Public R2 URL — gallery photos are fetched over the network, not held
+  // as local bytes.
+  final String? imageUrl;
   // Backend gallery photo id — set only when this photo came from the
   // club gallery, which is what lets the viewer offer to delete it.
   final int? id;
-  const PhotoInfo(this.label, this.activity, this.date, {this.src, this.id});
+  const PhotoInfo(this.label, this.activity, this.date,
+      {this.imageUrl, this.id});
 }
 
 class CertInfo {
@@ -24,14 +28,12 @@ class CertInfo {
 }
 
 /// A photo in a gallery album, fetched from the backend. `image` is the
-/// data URL Postgres actually stores; `src` decodes it on demand for
-/// display, same idiom as the admin dashboard's ClubAvatar.
+/// public R2 URL the app displays directly with Image.network.
 class GalleryUpload {
   final int id;
   final String album;
   final String image;
   const GalleryUpload(this.id, this.album, this.image);
-  Uint8List get src => base64Decode(image.split(',').last);
 }
 
 /// State of the gallery "Upload photos" bottom sheet while it is open.
@@ -1339,11 +1341,13 @@ class AppState extends ChangeNotifier {
   /// Saves the currently-open full-screen photo to the device's own photo
   /// gallery (separate from the club's in-app gallery).
   Future<void> downloadPhoto() async {
-    final bytes = photo?.src;
-    if (bytes == null) return;
+    final url = photo?.imageUrl;
+    if (url == null) return;
     String message;
     try {
-      await Gal.putImageBytes(bytes,
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      if (res.statusCode >= 400) throw ApiException('Download failed');
+      await Gal.putImageBytes(res.bodyBytes,
           name: 'rotary_connect_${DateTime.now().millisecondsSinceEpoch}');
       message = 'Saved to your photos';
     } catch (_) {

@@ -167,10 +167,11 @@ class _Album extends StatelessWidget {
             for (final up in uploads)
               GestureDetector(
                 onTap: () =>
-                    state.openPhoto(PhotoInfo('', name, '', src: up.src, id: up.id)),
+                    state.openPhoto(
+                    PhotoInfo('', name, '', imageUrl: up.image, id: up.id)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(up.src, height: 100, fit: BoxFit.cover),
+                  child: Image.network(up.image, height: 100, fit: BoxFit.cover),
                 ),
               ),
           ],
