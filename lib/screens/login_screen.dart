@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../theme.dart';
-import '../widgets/club_logo.dart';
+import '../widgets/wordmark.dart';
 
 class LoginScreen extends StatelessWidget {
   final AppState state;
@@ -76,7 +76,7 @@ class LoginScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 22),
-                            ClubLogoImage(state: state, height: 44),
+                            Wordmark(state: state, scale: 0.8),
                             const SizedBox(height: 22),
                             const Text(
                               'Member login',

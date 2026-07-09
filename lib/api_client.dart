@@ -27,9 +27,11 @@ class LoggedInMember {
 class LoginResult {
   final String token;
   final LoggedInMember member;
+  final int clubId;
   final String clubName;
   final String? clubLogo; // data URL uploaded by the system admin
-  const LoginResult(this.token, this.member, this.clubName, this.clubLogo);
+  const LoginResult(
+      this.token, this.member, this.clubId, this.clubName, this.clubLogo);
 }
 
 class AddedClubMember {
@@ -131,9 +133,34 @@ class ApiClient {
     return LoginResult(
       res['access_token'] as String,
       LoggedInMember(member['name'] as String, member['role'] as String),
+      res['club_id'] as int,
       res['club_name'] as String? ?? 'Rotary Club of Mbalwa',
       res['club_logo'] as String?,
     );
+  }
+
+  /// Unauthenticated endpoint: a walk-in guest registers themselves, or a
+  /// logged-in member checks in as a visitor at a club that isn't their
+  /// own. Exactly one of [clubId] (this device's own club — the front-desk
+  /// case) or [clubName] (a member naming the club they're visiting) is
+  /// given. Returns the resolved club's name for display.
+  Future<String> guestCheckIn({
+    int? clubId,
+    String? clubName,
+    required String name,
+    required String phone,
+    required String hostName,
+    required String guestType,
+  }) async {
+    final res = await _post('/checkin/guest', {
+      if (clubId != null) 'club_id': clubId,
+      if (clubName != null) 'club_name': clubName,
+      'name': name,
+      'phone': phone,
+      'host_name': hostName,
+      'guest_type': guestType,
+    });
+    return res['club_name'] as String;
   }
 
   /// The logged-in member's club roster.

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
+import '../widgets/wordmark.dart';
 
 class SplashScreen extends StatefulWidget {
   final AppState state;
@@ -101,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Spacer(flex: 2),
-                          _AnimatedWordmark(spin: _wheelSpin, state: state),
+                          Wordmark(state: state, spin: _wheelSpin),
                           const SizedBox(height: 24),
                           // The gold dash grows out from the left as the
                           // welcome text arrives, then keeps breathing.
@@ -315,64 +316,6 @@ class _GrowingDash extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The wordmark next to the spinning wheel. The words are rendered as text
-/// (same blue, same two-line layout as the original artwork) so the second
-/// line can be dynamic: "Connect" until a login identifies the member's
-/// club, then that club's name — e.g. "Club of Mbalwa".
-class _AnimatedWordmark extends StatelessWidget {
-  final Animation<double> spin;
-  final AppState state;
-  const _AnimatedWordmark({required this.spin, required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 230),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                'Rotary',
-                style: TextStyle(
-                  color: RCColors.blue,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  height: 1.0,
-                  letterSpacing: -.5,
-                ),
-              ),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  state.wordmarkClubLine,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: RCColors.blue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    height: 1.15,
-                    letterSpacing: .2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        RotationTransition(
-          turns: spin,
-          child: Image.asset('assets/images/rotary_wheel_spin.png', height: 55),
-        ),
-      ],
     );
   }
 }

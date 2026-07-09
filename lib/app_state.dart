@@ -67,6 +67,7 @@ class AppState extends ChangeNotifier {
       authToken = token;
       currentMemberName = prefs.getString('member_name') ?? '';
       currentMemberRole = prefs.getString('member_role') ?? '';
+      clubId = prefs.getInt('club_id');
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
       clubBrandingKnown = true;
@@ -86,6 +87,8 @@ class AppState extends ChangeNotifier {
     await prefs.setString('auth_token', token);
     await prefs.setString('member_name', currentMemberName);
     await prefs.setString('member_role', currentMemberRole);
+    final id = clubId;
+    if (id != null) await prefs.setInt('club_id', id);
     await prefs.setString('club_name', clubName);
     final logo = clubLogo;
     if (logo != null) {
@@ -95,21 +98,19 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Called when the server rejects the stored token (e.g. the member was
-  /// removed): wipe the session and return to the splash screen.
+  /// Called when the server rejects the stored token (e.g. this member was
+  /// removed): wipe just their session. Club branding (name/logo/id) is
+  /// kept — this device still belongs to that club, it just needs someone
+  /// to log in again.
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('member_name');
     await prefs.remove('member_role');
-    await prefs.remove('club_name');
-    await prefs.remove('club_logo');
     _update(() {
       authToken = null;
       currentMemberName = '';
       currentMemberRole = '';
-      clubBrandingKnown = false;
-      clubLogo = null;
       tab = 'splash';
     });
   }
@@ -157,7 +158,11 @@ class AppState extends ChangeNotifier {
   String currentMemberRole = '';
 
   // Branding for the logged-in member's club, provided by the backend at
-  // login. Until then the app brands itself as "Rotary Connect".
+  // login. Until then the app brands itself as "Rotary Connect". clubId
+  // also lets an unauthenticated guest check-in on this device name the
+  // right club, and survives a single member's session being revoked
+  // (the device is still "this club's device" even if that member isn't).
+  int? clubId;
   String clubName = 'Rotary Club of Mbalwa';
   String? clubLogo; // data URL uploaded by the system admin
   bool clubBrandingKnown = false; // true once a login has identified the club
@@ -494,6 +499,7 @@ class AppState extends ChangeNotifier {
         authToken = result.token;
         currentMemberName = result.member.name;
         currentMemberRole = result.member.role;
+        clubId = result.clubId;
         clubName = result.clubName;
         clubLogo = result.clubLogo;
         clubBrandingKnown = true;
@@ -538,7 +544,15 @@ class AppState extends ChangeNotifier {
 
   Future<void> simulateScan() async {
     if (scanMode == 'guest') {
-      _update(() => scanStep = 'guestForm');
+      _update(() {
+        // A logged-in member using this isn't a walk-in guest — they're
+        // registering themselves as a visitor at a club that isn't their
+        // own, so their name is already known.
+        if (authToken != null && guestName.trim().isEmpty) {
+          guestName = currentMemberName;
+        }
+        scanStep = 'guestForm';
+      });
       return;
     }
     await _checkInMember();
@@ -580,6 +594,8 @@ class AppState extends ChangeNotifier {
         guestHost = '';
         guestClub = '';
         guestFormError = false;
+        guestSubmitError = null;
+        guestVisitedClubName = null;
         checkInError = null;
       });
 
@@ -597,17 +613,64 @@ class AppState extends ChangeNotifier {
         guestFormError = false;
       });
 
-  void setGuestPhone(String v) => _update(() => guestPhone = v);
+  void setGuestPhone(String v) => _update(() {
+        guestPhone = v;
+        guestFormError = false;
+      });
   void setGuestHost(String v) => _update(() => guestHost = v);
   void setGuestClub(String v) => _update(() => guestClub = v);
   void setGuestType(String v) => _update(() => guestType = v);
 
-  void submitGuest() {
-    if (guestName.trim().isEmpty) {
+  bool guestSubmitting = false;
+  String? guestSubmitError;
+
+  /// Set once a guest/visitor check-in succeeds, so the confirmation
+  /// screen can name the actual club — which for a logged-in member
+  /// visiting elsewhere isn't the same as [clubName].
+  String? guestVisitedClubName;
+
+  Future<void> submitGuest() async {
+    if (guestName.trim().isEmpty || guestPhone.trim().isEmpty) {
       _update(() => guestFormError = true);
       return;
     }
-    _update(() => scanStep = 'guestDone');
+    // A logged-in member here means "visiting a club that isn't mine" —
+    // this device's own clubId doesn't apply, so the club has to be named.
+    final visitingElsewhere = authToken != null;
+    if (visitingElsewhere && guestClub.trim().isEmpty) {
+      _update(() => guestFormError = true);
+      return;
+    }
+    final id = visitingElsewhere ? null : clubId;
+    if (!visitingElsewhere && id == null) {
+      _update(() => guestSubmitError =
+          "This device isn't linked to a club yet — ask a member to log in first.");
+      return;
+    }
+    _update(() {
+      guestSubmitting = true;
+      guestSubmitError = null;
+    });
+    try {
+      final visitedClub = await _api.guestCheckIn(
+        clubId: id,
+        clubName: visitingElsewhere ? guestClub.trim() : null,
+        name: guestName.trim(),
+        phone: guestPhone.trim(),
+        hostName: guestHost.trim(),
+        guestType: guestType,
+      );
+      _update(() {
+        guestSubmitting = false;
+        guestVisitedClubName = visitedClub;
+        scanStep = 'guestDone';
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        guestSubmitting = false;
+        guestSubmitError = e.message;
+      });
+    }
   }
 
   bool get isVisitingRotarian => guestType == 'Visiting Rotarian';
@@ -618,9 +681,15 @@ class AppState extends ChangeNotifier {
   String get guestClubShown => isVisitingRotarian && guestClub.trim().isNotEmpty
       ? ' from ${guestClub.trim()}'
       : '';
-  String get guestStreakLine => isVisitingRotarian
-      ? 'Make-up attendance noted for your home club'
-      : 'Your 3rd visit this year — 2 more to qualify for membership!';
+  String get guestStreakLine => 'A thank-you text is on its way to your phone.';
+
+  /// The second confirmation line — different wording for a member
+  /// checking into a club that isn't their own vs. a walk-in guest.
+  String get guestConfirmationLine {
+    final visited = guestVisitedClubName;
+    if (visited != null) return 'Checked in as a visitor at $visited';
+    return 'Registered as $guestTypeShown$guestClubShown · attendance recorded';
+  }
 
   // ── overlays ───────────────────────────────────────────────────────────
   void openPhoto(PhotoInfo p) => _update(() => photo = p);

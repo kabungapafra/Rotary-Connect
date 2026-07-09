@@ -424,17 +424,30 @@ class _GuestForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A logged-in member here isn't a walk-in guest of this device's own
+    // club — they're a Rotarian checking into a DIFFERENT club's meeting,
+    // so the form asks which club instead of a home-club/guest-type combo.
+    final visitingElsewhere = state.authToken != null;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Guest registration',
-              style: TextStyle(
+          Text(visitingElsewhere ? 'Visiting another club' : 'Guest registration',
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
+          if (visitingElsewhere) ...[
+            _ScanInput(
+              hint: 'Which club are you visiting?',
+              value: state.guestClub,
+              onChanged: state.setGuestClub,
+              accent: true,
+            ),
+            const SizedBox(height: 12),
+          ],
           _ScanInput(
               hint: 'Full name',
               value: state.guestName,
@@ -444,43 +457,53 @@ class _GuestForm extends StatelessWidget {
               hint: 'Phone number',
               value: state.guestPhone,
               onChanged: state.setGuestPhone),
-          const SizedBox(height: 12),
-          _ScanInput(
-              hint: 'Guest of (member name)',
-              value: state.guestHost,
-              onChanged: state.setGuestHost),
-          const SizedBox(height: 4),
-          const Text('Guest type',
-              style: TextStyle(color: Colors.white70, fontSize: 12)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final t in guestTypes)
-                _GuestTypeChip(
-                    label: t,
-                    active: state.guestType == t,
-                    onTap: () => state.setGuestType(t)),
-            ],
-          ),
-          if (state.isVisitingRotarian) ...[
+          if (!visitingElsewhere) ...[
             const SizedBox(height: 12),
             _ScanInput(
-              hint: 'Home club (e.g. Rotary Club of Naalya)',
-              value: state.guestClub,
-              onChanged: state.setGuestClub,
-              accent: true,
+                hint: 'Guest of (member name)',
+                value: state.guestHost,
+                onChanged: state.setGuestHost),
+            const SizedBox(height: 4),
+            const Text('Guest type',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final t in guestTypes)
+                  _GuestTypeChip(
+                      label: t,
+                      active: state.guestType == t,
+                      onTap: () => state.setGuestType(t)),
+              ],
             ),
+            if (state.isVisitingRotarian) ...[
+              const SizedBox(height: 12),
+              _ScanInput(
+                hint: 'Home club (e.g. Rotary Club of Naalya)',
+                value: state.guestClub,
+                onChanged: state.setGuestClub,
+                accent: true,
+              ),
+            ],
           ],
           if (state.guestFormError) ...[
             const SizedBox(height: 12),
-            const Text("Please enter the guest's full name.",
-                style: TextStyle(color: Color(0xFFFF9D9D), fontSize: 12)),
+            Text(
+                visitingElsewhere
+                    ? 'Please enter which club you\'re visiting, your name, and phone number.'
+                    : "Please enter the guest's name and phone number.",
+                style: const TextStyle(color: Color(0xFFFF9D9D), fontSize: 12)),
+          ],
+          if (state.guestSubmitError != null) ...[
+            const SizedBox(height: 12),
+            Text(state.guestSubmitError!,
+                style: const TextStyle(color: Color(0xFFFF9D9D), fontSize: 12)),
           ],
           const SizedBox(height: 6),
           ElevatedButton(
-            onPressed: state.submitGuest,
+            onPressed: state.guestSubmitting ? null : state.submitGuest,
             style: ElevatedButton.styleFrom(
               backgroundColor: RCColors.gold,
               foregroundColor: RCColors.blue,
@@ -489,8 +512,10 @@ class _GuestForm extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
-            child: const Text('Register & check in',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            child: Text(
+                state.guestSubmitting ? 'Registering…' : 'Register & check in',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 14)),
           ),
         ],
       ),
@@ -600,7 +625,7 @@ class _GuestDone extends StatelessWidget {
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
             Text(
-                'Registered as ${state.guestTypeShown}${state.guestClubShown} · attendance recorded',
+                state.guestConfirmationLine,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 8),
