@@ -62,6 +62,29 @@ class ClubEvent {
   const ClubEvent(this.id, this.dow, this.name, this.meta);
 }
 
+class GalleryPhotoInfo {
+  final int id;
+  final String album;
+  final String image; // "data:image/jpeg;base64,..."
+  const GalleryPhotoInfo(this.id, this.album, this.image);
+}
+
+class EventRegistration {
+  final String link;
+  final String qrImage; // "data:image/png;base64,..."
+  const EventRegistration(this.link, this.qrImage);
+}
+
+class NextMeeting {
+  final int eventId;
+  final String name;
+  final String venue;
+  final String timeLabel;
+  final String dateIso;
+  const NextMeeting(
+      this.eventId, this.name, this.venue, this.timeLabel, this.dateIso);
+}
+
 class ClubProject {
   final int id;
   final String name;
@@ -318,6 +341,74 @@ class ApiClient {
       res['already_checked_in'] as bool,
       DateTime.parse(res['checked_in_at'] as String),
       res['meeting_name'] as String,
+    );
+  }
+
+  // ── gallery ──────────────────────────────────────────────────────────
+  Future<List<GalleryPhotoInfo>> fetchGalleryPhotos(String token) async {
+    final list = await _getList('/club/gallery', token);
+    return [
+      for (final p in list.cast<Map<String, dynamic>>())
+        GalleryPhotoInfo(
+            p['id'] as int, p['album'] as String, p['image'] as String),
+    ];
+  }
+
+  Future<List<GalleryPhotoInfo>> uploadGalleryPhotos(
+      String token, String album, List<String> imageDataUrls) async {
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+    final body = jsonEncode([
+      for (final image in imageDataUrls) {'album': album, 'image': image},
+    ]);
+    final http.Response res;
+    try {
+      res = await http
+          .post(Uri.parse('$apiBaseUrl/club/gallery'), headers: headers, body: body)
+          .timeout(_requestTimeout);
+    } catch (_) {
+      throw ApiException('Could not reach the server. Check your connection.');
+    }
+    if (res.statusCode >= 400) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(data['detail'] as String? ?? 'Something went wrong.');
+    }
+    final list = jsonDecode(res.body) as List<dynamic>;
+    return [
+      for (final p in list.cast<Map<String, dynamic>>())
+        GalleryPhotoInfo(
+            p['id'] as int, p['album'] as String, p['image'] as String),
+    ];
+  }
+
+  // ── event registration ──────────────────────────────────────────────
+  Future<EventRegistration> fetchEventRegistration(String token, int eventId) async {
+    final res = await _getAuthed('/club/events/$eventId/registration', token);
+    return EventRegistration(res['link'] as String, res['qr_image'] as String);
+  }
+
+  // ── next meeting ─────────────────────────────────────────────────────
+  /// Null when the club has no events scheduled yet (backend returns 404).
+  Future<NextMeeting?> fetchNextMeeting(String token) async {
+    final http.Response res;
+    try {
+      res = await http
+          .get(Uri.parse('$apiBaseUrl/club/events/next'),
+              headers: {'Authorization': 'Bearer $token'})
+          .timeout(_requestTimeout);
+    } catch (_) {
+      throw ApiException('Could not reach the server. Check your connection.');
+    }
+    if (res.statusCode == 404) return null;
+    final data = _decode(res);
+    return NextMeeting(
+      data['event_id'] as int,
+      data['name'] as String,
+      data['venue'] as String,
+      data['time_label'] as String,
+      data['date_iso'] as String,
     );
   }
 

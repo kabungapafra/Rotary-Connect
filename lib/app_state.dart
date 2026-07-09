@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:gal/gal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
@@ -18,17 +20,23 @@ class CertInfo {
   const CertInfo(this.title, this.body);
 }
 
-/// A photo uploaded into a gallery album from the Upload sheet.
+/// A photo in a gallery album, fetched from the backend. `image` is the
+/// data URL Postgres actually stores; `src` decodes it on demand for
+/// display, same idiom as the admin dashboard's ClubAvatar.
 class GalleryUpload {
+  final int id;
   final String album;
-  final Uint8List src;
-  const GalleryUpload(this.album, this.src);
+  final String image;
+  const GalleryUpload(this.id, this.album, this.image);
+  Uint8List get src => base64Decode(image.split(',').last);
 }
 
 /// State of the gallery "Upload photos" bottom sheet while it is open.
 class UploadSheet {
   String album;
   final List<Uint8List> srcs = [];
+  bool saving = false;
+  String? error;
   UploadSheet(this.album);
 }
 
@@ -240,6 +248,10 @@ class AppState extends ChangeNotifier {
   // that single cell, not every occurrence of that weekday in the month.
   DateTime? selectedMonthDate;
   EventItem? eventQR;
+  // Backend-generated registration link + QR image for the open event.
+  EventRegistration? eventRegistration;
+  bool eventRegistrationLoading = false;
+  String? eventRegistrationError;
   bool qrCopied = false;
   Timer? _qrCopyTimer;
 
@@ -261,6 +273,13 @@ class AppState extends ChangeNotifier {
   final List<ClubMeeting> clubMeetings = [];
   bool meetingsLoaded = false;
 
+  // Home screen's "Next meeting" card — the real soonest upcoming
+  // fellowship (date/time/venue), computed by the backend from the club's
+  // events. Null once loaded means the club has none scheduled yet.
+  NextMeeting? nextMeeting;
+  bool nextMeetingLoaded = false;
+  bool nextMeetingLoading = false;
+
   Future<void> loadSummary() async {
     final token = authToken;
     if (token == null) return;
@@ -272,6 +291,40 @@ class AppState extends ChangeNotifier {
       // is invalid) — sign out. Other errors: retry on next navigation.
       if (_isAuthFailure(e)) unawaited(_clearSession());
     }
+  }
+
+  Future<void> loadNextMeeting() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => nextMeetingLoading = true);
+    try {
+      final nm = await _api.fetchNextMeeting(token);
+      _update(() {
+        nextMeeting = nm;
+        nextMeetingLoaded = true;
+        nextMeetingLoading = false;
+      });
+    } on ApiException {
+      _update(() => nextMeetingLoading = false);
+    }
+  }
+
+  /// "TODAY · 8 JUL" / "TOMORROW · 9 JUL" / "WED · 15 JUL" for the Next
+  /// meeting card, computed from the real date the backend returned —
+  /// never assumes the next fellowship is today.
+  String get nextMeetingBadge {
+    final nm = nextMeeting;
+    if (nm == null) return '';
+    final date = DateTime.parse(nm.dateIso);
+    final today = DateTime.now();
+    final diffDays = DateTime(date.year, date.month, date.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    final monthShort = _monthNames[date.month - 1].substring(0, 3).toUpperCase();
+    if (diffDays == 0) return 'TODAY · ${date.day} $monthShort';
+    if (diffDays == 1) return 'TOMORROW · ${date.day} $monthShort';
+    final weekdayShort = _weekdayNames[date.weekday - 1].substring(0, 3).toUpperCase();
+    return '$weekdayShort · ${date.day} $monthShort';
   }
 
   Future<void> loadEvents() async {
@@ -292,6 +345,26 @@ class AppState extends ChangeNotifier {
       });
     } on ApiException {
       _update(() => eventsLoading = false);
+    }
+  }
+
+  Future<void> loadGallery() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => galleryLoading = true);
+    try {
+      final list = await _api.fetchGalleryPhotos(token);
+      _update(() {
+        galleryUploads
+          ..clear()
+          ..addAll([
+            for (final p in list) GalleryUpload(p.id, p.album, p.image),
+          ]);
+        galleryLoaded = true;
+        galleryLoading = false;
+      });
+    } on ApiException {
+      _update(() => galleryLoading = false);
     }
   }
 
@@ -380,9 +453,13 @@ class AppState extends ChangeNotifier {
   bool reportToast = false;
   Timer? _reportTimer;
 
-  // gallery
+  // gallery — real club data, loaded from the backend after login
   UploadSheet? uploadSheet;
   final List<GalleryUpload> galleryUploads = [];
+  bool galleryLoaded = false;
+  bool galleryLoading = false;
+  String? downloadToast;
+  Timer? _downloadToastTimer;
 
   void _update(VoidCallback fn) {
     fn();
@@ -400,7 +477,11 @@ class AppState extends ChangeNotifier {
 
   void goHome() {
     go('home');
-    if (authToken != null) loadSummary();
+    if (authToken != null) {
+      loadSummary();
+      if (!galleryLoaded && !galleryLoading) loadGallery();
+      if (!nextMeetingLoaded && !nextMeetingLoading) loadNextMeeting();
+    }
   }
 
   void goScan() => go('scan');
@@ -448,7 +529,10 @@ class AppState extends ChangeNotifier {
       _update(() => todayLoading = false);
     }
   }
-  void goGallery() => go('gallery');
+  void goGallery() {
+    go('gallery');
+    if (authToken != null && !galleryLoaded && !galleryLoading) loadGallery();
+  }
   void goTreasury() => go('treasury');
   void goSplash() => go('splash');
 
@@ -1146,22 +1230,39 @@ class AppState extends ChangeNotifier {
   void closeEditor() => _update(() => eventEditor = null);
 
   // ── event registration QR ─────────────────────────────────────────────
-  void openQR(EventItem e) => _update(() => eventQR = e);
-  void closeQR() => _update(() => eventQR = null);
-
-  String _slug(String name) => name
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-      .replaceAll(RegExp(r'(^-|-$)'), '');
-
-  String get qrLink {
-    final e = eventQR;
-    if (e == null) return '';
-    return 'https://mbalwarotary.org/rsvp/${_slug(e.name)}-${e.id}';
+  // The link and QR image are both generated by the backend
+  // (GET /club/events/{id}/registration) — this just displays whatever it
+  // returns, never fabricates either one itself.
+  void openQR(EventItem e) {
+    _update(() {
+      eventQR = e;
+      eventRegistration = null;
+      eventRegistrationError = null;
+      eventRegistrationLoading = true;
+    });
+    final token = authToken;
+    if (token == null) return;
+    _api.fetchEventRegistration(token, e.id).then((reg) {
+      if (eventQR?.id != e.id) return; // sheet closed/changed while in flight
+      _update(() {
+        eventRegistration = reg;
+        eventRegistrationLoading = false;
+      });
+    }).catchError((error) {
+      if (eventQR?.id != e.id) return;
+      _update(() {
+        eventRegistrationError =
+            error is ApiException ? error.message : 'Could not load the QR code.';
+        eventRegistrationLoading = false;
+      });
+    });
   }
 
-  String qrImageUrl(int size) =>
-      'https://api.qrserver.com/v1/create-qr-code/?size=${size}x$size&margin=8&color=17458F&data=${Uri.encodeComponent(qrLink)}';
+  void closeQR() => _update(() {
+        eventQR = null;
+        eventRegistration = null;
+        eventRegistrationError = null;
+      });
 
   void copyQRLink() {
     // Caller (widget) performs the actual Clipboard.setData; this just
@@ -1202,22 +1303,61 @@ class AppState extends ChangeNotifier {
   void addUploadPhotos(List<Uint8List> photos) =>
       _update(() => uploadSheet?.srcs.addAll(photos));
 
-  void saveUpload() {
+  Future<void> saveUpload() async {
     final u = uploadSheet;
-    if (u == null || u.srcs.isEmpty) return;
+    final token = authToken;
+    if (u == null || u.srcs.isEmpty || token == null) return;
     _update(() {
-      galleryUploads.addAll(u.srcs.map((src) => GalleryUpload(u.album, src)));
-      uploadSheet = null;
+      u.saving = true;
+      u.error = null;
     });
+    try {
+      final dataUrls = [
+        for (final src in u.srcs) 'data:image/jpeg;base64,${base64Encode(src)}',
+      ];
+      final uploaded = await _api.uploadGalleryPhotos(token, u.album, dataUrls);
+      _update(() {
+        galleryUploads.insertAll(0, [
+          for (final p in uploaded) GalleryUpload(p.id, p.album, p.image),
+        ]);
+        uploadSheet = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        u.saving = false;
+        u.error = e.message;
+      });
+    }
   }
 
   List<GalleryUpload> uploadsFor(String album) =>
       galleryUploads.where((g) => g.album == album).toList();
 
+  /// Saves the currently-open full-screen photo to the device's own photo
+  /// gallery (separate from the club's in-app gallery).
+  Future<void> downloadPhoto() async {
+    final bytes = photo?.src;
+    if (bytes == null) return;
+    String message;
+    try {
+      await Gal.putImageBytes(bytes,
+          name: 'rotary_connect_${DateTime.now().millisecondsSinceEpoch}');
+      message = 'Saved to your photos';
+    } catch (_) {
+      message = 'Could not save photo';
+    }
+    _downloadToastTimer?.cancel();
+    _update(() => downloadToast = message);
+    _downloadToastTimer = Timer(const Duration(seconds: 2), () {
+      _update(() => downloadToast = null);
+    });
+  }
+
   @override
   void dispose() {
     _reportTimer?.cancel();
     _qrCopyTimer?.cancel();
+    _downloadToastTimer?.cancel();
     super.dispose();
   }
 }

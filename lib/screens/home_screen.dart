@@ -283,29 +283,39 @@ class _Header extends StatelessWidget {
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.5)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: RCColors.blue.withValues(alpha: .12),
-                        borderRadius: BorderRadius.circular(999),
+                    if (state.nextMeeting != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: RCColors.blue.withValues(alpha: .12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(state.nextMeetingBadge,
+                            style: const TextStyle(
+                                color: RCColors.blue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800)),
                       ),
-                      child: Text(state.todayBadge,
-                          style: const TextStyle(
-                              color: RCColors.blue,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800)),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 11),
-                Text(state.summary?.todayMeetingName ?? 'Weekly Fellowship Meeting',
+                Text(
+                    state.nextMeeting?.name ??
+                        (state.nextMeetingLoading
+                            ? 'Loading…'
+                            : 'No fellowship scheduled yet'),
                     style: const TextStyle(
                         color: RCColors.blue,
                         fontSize: 17,
                         fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
-                Text(state.clubName,
+                Text(
+                    state.nextMeeting == null
+                        ? state.clubName
+                        : [state.nextMeeting!.timeLabel, state.nextMeeting!.venue]
+                            .where((s) => s.isNotEmpty)
+                            .join(' · '),
                     style: TextStyle(
                         color: RCColors.blue.withValues(alpha: .85),
                         fontSize: 12.5)),

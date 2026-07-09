@@ -86,6 +86,16 @@ class GalleryScreen extends StatelessWidget {
                 for (final up in state.galleryUploads) {
                   if (!albumNames.contains(up.album)) albumNames.add(up.album);
                 }
+                if (albumNames.isEmpty && state.galleryLoading) {
+                  return const RCCard(
+                    padding: EdgeInsets.all(28),
+                    child: Center(
+                        child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5))),
+                  );
+                }
                 if (albumNames.isEmpty) {
                   return const RCCard(
                     padding: EdgeInsets.all(28),
@@ -335,10 +345,17 @@ class _UploadSheet extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (sheet.error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(sheet.error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 12, color: RCColors.red)),
+                    ],
                     const SizedBox(height: 14),
                     PressableScale(
                       child: ElevatedButton(
-                        onPressed: state.saveUpload,
+                        onPressed: sheet.saving ? null : state.saveUpload,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: RCColors.blue,
                           foregroundColor: Colors.white,
@@ -347,9 +364,15 @@ class _UploadSheet extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
-                        child: const Text('Add to gallery',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 14)),
+                        child: sheet.saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.2, color: Colors.white))
+                            : const Text('Add to gallery',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 14)),
                       ),
                     ),
                   ],

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -787,8 +788,13 @@ class _QRSheet extends StatelessWidget {
   final AppState state;
   const _QRSheet({required this.state});
 
-  Future<void> _exportPdf(EventItem event, String link) async {
+  // Embeds the backend's own QR PNG (decoded from its data URL) rather
+  // than rendering a second, separate QR locally — one source of truth
+  // for the image, matching what's shown on screen.
+  Future<void> _exportPdf(
+      EventItem event, String clubName, String link, Uint8List qrPngBytes) async {
     final doc = pw.Document();
+    final qrImage = pw.MemoryImage(qrPngBytes);
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a5,
@@ -803,7 +809,7 @@ class _QRSheet extends StatelessWidget {
                   color: PdfColor.fromInt(0xFF17458F),
                   borderRadius: pw.BorderRadius.all(pw.Radius.circular(999)),
                 ),
-                child: pw.Text('ROTARY CLUB OF MBALWA',
+                child: pw.Text(clubName.toUpperCase(),
                     style: const pw.TextStyle(
                         color: PdfColors.white,
                         fontWeight: pw.FontWeight.bold,
@@ -818,12 +824,7 @@ class _QRSheet extends StatelessWidget {
                   style: const pw.TextStyle(
                       fontSize: 12, color: PdfColors.grey700)),
               pw.SizedBox(height: 24),
-              pw.BarcodeWidget(
-                barcode: pw.Barcode.qrCode(),
-                data: link,
-                width: 200,
-                height: 200,
-              ),
+              pw.Image(qrImage, width: 200, height: 200),
               pw.SizedBox(height: 20),
               pw.Text(link,
                   style: const pw.TextStyle(
@@ -843,7 +844,8 @@ class _QRSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final event = state.eventQR!;
-    final link = state.qrLink;
+    final registration = state.eventRegistration;
+    final link = registration?.link ?? '';
     return Positioned.fill(
       child: Stack(
         children: [
@@ -917,20 +919,32 @@ class _QRSheet extends StatelessWidget {
                     const SizedBox(height: 14),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        state.qrImageUrl(240),
+                      child: SizedBox(
                         width: 200,
                         height: 200,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 200,
-                          height: 200,
-                          color: RCColors.chipBg,
-                          alignment: Alignment.center,
-                          child: const Text('QR code needs internet',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 11, color: RCColors.textMuted)),
-                        ),
+                        child: registration != null
+                            ? Image.memory(
+                                base64Decode(
+                                    registration.qrImage.split(',').last),
+                                fit: BoxFit.contain)
+                            : Container(
+                                color: RCColors.chipBg,
+                                alignment: Alignment.center,
+                                child: state.eventRegistrationError != null
+                                    ? const Text(
+                                        'Could not load the QR code',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: RCColors.textMuted),
+                                      )
+                                    : const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.5),
+                                      ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -954,10 +968,13 @@ class _QRSheet extends StatelessWidget {
                         Expanded(
                           child: PressableScale(
                             child: OutlinedButton(
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: link));
-                                state.copyQRLink();
-                              },
+                              onPressed: registration == null
+                                  ? null
+                                  : () {
+                                      Clipboard.setData(
+                                          ClipboardData(text: link));
+                                      state.copyQRLink();
+                                    },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: RCColors.blue,
                                 side: const BorderSide(
@@ -997,7 +1014,14 @@ class _QRSheet extends StatelessWidget {
                     const SizedBox(height: 10),
                     PressableScale(
                       child: OutlinedButton(
-                        onPressed: () => _exportPdf(event, link),
+                        onPressed: registration == null
+                            ? null
+                            : () => _exportPdf(
+                                event,
+                                state.clubName,
+                                link,
+                                base64Decode(
+                                    registration.qrImage.split(',').last)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: RCColors.blue,
                           backgroundColor: const Color(0xFFF7F9FC),
