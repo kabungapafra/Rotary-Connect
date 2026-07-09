@@ -49,8 +49,10 @@ class Wordmark extends StatelessWidget {
                   maxLines: 1,
                   style: TextStyle(
                     color: RCColors.blue,
-                    fontSize: 16 * scale,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 17 * scale,
+                    // The official lockup sets the club name in a regular
+                    // weight — only "Rotary" is bold.
+                    fontWeight: FontWeight.w400,
                     height: 1.3,
                     letterSpacing: .2,
                   ),
