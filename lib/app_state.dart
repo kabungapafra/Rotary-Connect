@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
 
@@ -53,7 +54,68 @@ class AppState extends ChangeNotifier {
     // Wake the free-tier backend while the user is still on the splash
     // screen, so login doesn't hit a cold start.
     _api.warmUp();
+    // Members sign in once: restore the saved session (cleared only by
+    // reinstalling the app or by the server rejecting the token).
+    _restoreSession();
   }
+
+  Future<void> _restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null) return;
+    _update(() {
+      authToken = token;
+      currentMemberName = prefs.getString('member_name') ?? '';
+      currentMemberRole = prefs.getString('member_role') ?? '';
+      clubName = prefs.getString('club_name') ?? clubName;
+      clubLogo = prefs.getString('club_logo');
+      clubBrandingKnown = true;
+      tab = 'home';
+    });
+    unawaited(loadClubMembers());
+    unawaited(loadSummary());
+    unawaited(loadEvents());
+    unawaited(loadProjects());
+    unawaited(loadMeetings());
+  }
+
+  Future<void> _persistSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = authToken;
+    if (token == null) return;
+    await prefs.setString('auth_token', token);
+    await prefs.setString('member_name', currentMemberName);
+    await prefs.setString('member_role', currentMemberRole);
+    await prefs.setString('club_name', clubName);
+    final logo = clubLogo;
+    if (logo != null) {
+      await prefs.setString('club_logo', logo);
+    } else {
+      await prefs.remove('club_logo');
+    }
+  }
+
+  /// Called when the server rejects the stored token (e.g. the member was
+  /// removed): wipe the session and return to the splash screen.
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('member_name');
+    await prefs.remove('member_role');
+    await prefs.remove('club_name');
+    await prefs.remove('club_logo');
+    _update(() {
+      authToken = null;
+      currentMemberName = '';
+      currentMemberRole = '';
+      clubBrandingKnown = false;
+      clubLogo = null;
+      tab = 'splash';
+    });
+  }
+
+  bool _isAuthFailure(ApiException e) =>
+      e.message.contains('credentials');
 
   String tab = 'splash';
   String scanMode = 'member'; // member | guest
@@ -173,8 +235,10 @@ class AppState extends ChangeNotifier {
     try {
       final s = await _api.fetchMySummary(token);
       _update(() => summary = s);
-    } on ApiException {
-      // Home falls back to zeros; a retry happens on next navigation.
+    } on ApiException catch (e) {
+      // A rejected token means the member no longer exists (or the session
+      // is invalid) — sign out. Other errors: retry on next navigation.
+      if (_isAuthFailure(e)) unawaited(_clearSession());
     }
   }
 
@@ -440,6 +504,7 @@ class AppState extends ChangeNotifier {
         loginLoading = false;
         loginPin = '';
       });
+      unawaited(_persistSession());
       unawaited(loadClubMembers());
       unawaited(loadSummary());
       unawaited(loadEvents());
