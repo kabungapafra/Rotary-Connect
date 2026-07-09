@@ -222,17 +222,25 @@ class _Header extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                // Original card footprint (28px logo + 6px vertical padding
-                // either side) held fixed — the logo below is now bigger
-                // than that and deliberately overflows it, rather than
-                // growing the white box around it.
-                height: 40,
+                // Original card footprint held fixed — the logo inside is
+                // bigger than the card and deliberately spills past it.
+                // OverflowBox is what permits that (a plain child gets
+                // clamped to the parent's height), but it must be given
+                // BOUNDED constraints — hence the SizedBox — or it blows
+                // up the whole header row's layout.
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                alignment: Alignment.center,
                 decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10)),
-                child: ClubLogoImage(state: state, height: 60),
+                child: SizedBox(
+                  width: 96,
+                  height: 40,
+                  child: OverflowBox(
+                    maxWidth: 140,
+                    maxHeight: 64,
+                    child: ClubLogoImage(state: state, height: 64),
+                  ),
+                ),
               ),
               Container(
                 padding:

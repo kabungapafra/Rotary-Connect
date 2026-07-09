@@ -115,10 +115,34 @@ class _CameraFeed extends StatefulWidget {
   State<_CameraFeed> createState() => _CameraFeedState();
 }
 
-class _CameraFeedState extends State<_CameraFeed> {
+class _CameraFeedState extends State<_CameraFeed>
+    with WidgetsBindingObserver {
   final MobileScannerController _camera = MobileScannerController();
   bool _handled = false;
   String? _invalidMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  // The camera is released whenever the app goes to the background (or the
+  // OS takes it for another app) and does NOT come back by itself — without
+  // this, returning to the scan screen shows the "camera unavailable"
+  // error state until the app is killed and reopened.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _camera.start();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+        _camera.stop();
+      default:
+        break;
+    }
+  }
 
   /// Every printed club QR encodes {"t":"rc_club","id":<club id>} — the
   /// dashboard generates it (see admin_dashboard's ClubQrCode widget), so
@@ -160,6 +184,7 @@ class _CameraFeedState extends State<_CameraFeed> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _camera.dispose();
     super.dispose();
   }
@@ -194,13 +219,36 @@ class _CameraFeedState extends State<_CameraFeed> {
                 ],
               ),
             ),
-            errorBuilder: (context, error) => const Center(
+            errorBuilder: (context, error) => Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Camera unavailable — check your camera permission and try again',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: RCColors.scanMuted),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Camera unavailable — check your camera permission',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 12, color: RCColors.scanMuted),
+                    ),
+                    const SizedBox(height: 14),
+                    PressableScale(
+                      child: OutlinedButton(
+                        onPressed: () => _camera.start(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white54),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Try again',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 13)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
