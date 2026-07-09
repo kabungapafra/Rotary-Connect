@@ -497,6 +497,14 @@ class AppState extends ChangeNotifier {
 
   // ── login ──────────────────────────────────────────────────────────────
   void enterMember() => _update(() {
+        // Login credentials are asked for only once: with a live session
+        // "Continue as Member" goes straight to the dashboard, skipping
+        // the login form. The splash itself never auto-advances.
+        if (authToken != null) {
+          tab = 'home';
+          loadSummary();
+          return;
+        }
         tab = 'login';
         scanMode = 'member';
         loginError = false;

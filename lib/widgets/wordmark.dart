@@ -25,10 +25,10 @@ class Wordmark extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: 230 * scale),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            // Left-align "Rotary" and the club line under it, per the
-            // reference logo — they must NOT be centered relative to
-            // each other, even though the club line is usually wider.
-            crossAxisAlignment: CrossAxisAlignment.start,
+            // Per the official logo lockup: the club line's last letter
+            // sits flush under the final "y" of "Rotary", so both lines
+            // share a RIGHT edge (the club line extends further left).
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 'Rotary',
