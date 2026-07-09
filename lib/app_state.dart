@@ -1189,12 +1189,14 @@ class AppState extends ChangeNotifier {
       });
 
   void openEditEvent(EventItem e) => _update(() {
-        eventEditor = e.copy();
+        eventEditor = EventItem.fromMeta(
+            id: e.id, dow: e.dow, name: e.name, meta: e.meta, photo: e.photo);
         editorIsNew = false;
       });
 
   void setEditorTitle(String v) => _update(() => eventEditor?.name = v);
-  void setEditorMeta(String v) => _update(() => eventEditor?.meta = v);
+  void setEditorTime(String v) => _update(() => eventEditor?.time = v);
+  void setEditorVenue(String v) => _update(() => eventEditor?.venue = v);
   void setEditorDay(String dow) => _update(() => eventEditor?.dow = dow);
   void setEditorPhoto(Uint8List bytes) =>
       _update(() => eventEditor?.photo = bytes);
@@ -1206,12 +1208,18 @@ class AppState extends ChangeNotifier {
     final cur = eventEditor;
     final token = authToken;
     if (cur == null || cur.name.trim().isEmpty || token == null) return;
+    // The backend (and every list/card display) still reads one "TIME ·
+    // VENUE" string — the editor just offers it as two fields and joins
+    // them back together here.
+    final meta = [cur.time.trim(), cur.venue.trim()]
+        .where((s) => s.isNotEmpty)
+        .join(' · ');
     try {
       await _api.saveEvent(token,
           id: editorIsNew ? null : cur.id,
           dow: cur.dow,
           name: cur.name.trim(),
-          meta: cur.meta.trim());
+          meta: meta);
       _update(() => eventEditor = null);
       await loadEvents();
     } on ApiException {

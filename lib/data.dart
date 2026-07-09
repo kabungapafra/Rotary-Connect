@@ -116,19 +116,48 @@ class EventItem {
   final int id;
   String dow;
   String name;
+  // `meta` is the single "6:00 PM · Gardens Hall" string the backend
+  // stores and every list/card display already reads. `time`/`venue` only
+  // exist on the *editor's* working copy, so the Add Event sheet can offer
+  // two separate fields — they're combined back into `meta` on save (see
+  // AppState.setEditorTime/setEditorVenue and saveEvent).
   String meta;
+  String time;
+  String venue;
   Uint8List? photo;
   EventItem(
       {required this.id,
       required this.dow,
       required this.name,
       required this.meta,
+      this.time = '',
+      this.venue = '',
       this.photo});
 
   String get num => dayNums[dow] ?? '';
 
-  EventItem copy() =>
-      EventItem(id: id, dow: dow, name: name, meta: meta, photo: photo);
+  /// Splits `meta` into (time, venue) for the editor fields — mirrors the
+  /// backend's parse_event_time/venue_from_meta so a re-opened event shows
+  /// the same split it was announced/reminded with.
+  factory EventItem.fromMeta(
+      {required int id,
+      required String dow,
+      required String name,
+      required String meta,
+      Uint8List? photo}) {
+    final parts = meta.split(RegExp(r'[-–—·,]'));
+    final looksLikeTime =
+        parts.isNotEmpty && RegExp(r'^\d{1,2}(:\d{2})?\s*([AaPp][Mm])?$').hasMatch(parts[0].trim());
+    final time = parts.length >= 2 && looksLikeTime ? parts[0].trim() : '';
+    final venue = parts.length >= 2 && looksLikeTime
+        ? parts.sublist(1).join(',').trim()
+        : meta.trim();
+    return EventItem(
+        id: id, dow: dow, name: name, meta: meta, time: time, venue: venue, photo: photo);
+  }
+
+  EventItem copy() => EventItem(
+      id: id, dow: dow, name: name, meta: meta, time: time, venue: venue, photo: photo);
 }
 
 const List<String> guestTypes = [
