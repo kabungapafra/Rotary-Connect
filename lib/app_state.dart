@@ -183,7 +183,10 @@ class AppState extends ChangeNotifier {
   String get roleBadge => currentMemberRole.trim().isEmpty
       ? 'TREASURER'
       : currentMemberRole.trim().toUpperCase();
-  static const bool isTreasurer = true;
+
+  /// Only a member actually registered with the Treasurer role sees the
+  /// Treasury workspace.
+  bool get isTreasurer => currentMemberRole.trim() == 'Treasurer';
 
   // login
   String loginId = '';
@@ -222,8 +225,24 @@ class AppState extends ChangeNotifier {
       ? 'Check in, follow projects, and stay connected with the $clubName.'
       : 'Check in, follow projects, and stay connected with your Rotary club.';
 
-  /// Only the Club President can add and manage members.
-  bool get isPresident => currentMemberRole == 'Club President';
+  /// Only the Club President can add/manage events, projects and members.
+  /// "President" is the role dropdown's label; "Club President" is the
+  /// legacy value existing president rows already carry — both count.
+  static const Set<String> _presidentRoles = {'Club President', 'President'};
+  bool get isPresident => _presidentRoles.contains(currentMemberRole.trim());
+
+  /// Generating an event's registration QR/link is limited to the club's
+  /// executive roles, not every member.
+  static const Set<String> _eventRegistrationRoles = {
+    'Club President',
+    'President',
+    'Sergeant-at-Arms',
+    'President-Elect',
+    'Secretary',
+    'Immediate Past President',
+  };
+  bool get canGenerateEventQr =>
+      _eventRegistrationRoles.contains(currentMemberRole.trim());
 
   // check-in (member scan)
   bool checkInLoading = false;

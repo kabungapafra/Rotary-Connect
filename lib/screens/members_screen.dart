@@ -472,10 +472,7 @@ class _MemberEditorSheet extends StatelessWidget {
                     const SizedBox(height: 14),
                     const _FieldLabel('ROLE'),
                     const SizedBox(height: 6),
-                    _EditorInput(
-                        hint: 'e.g. Member',
-                        value: ed.role,
-                        onChanged: state.setMemberRole),
+                    _RoleDropdown(value: ed.role, onChanged: state.setMemberRole),
                     const SizedBox(height: 14),
                     const _FieldLabel('EMAIL'),
                     const SizedBox(height: 6),
@@ -653,6 +650,42 @@ class _EditorInput extends StatelessWidget {
         enabledBorder: border(const Color(0xFFD4DBE8)),
         focusedBorder: border(RCColors.blue),
       ),
+    );
+  }
+}
+
+class _RoleDropdown extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _RoleDropdown({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        );
+    return DropdownButtonFormField<String>(
+      initialValue: value.isEmpty ? null : value,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down, color: RCColors.textMuted),
+      style: const TextStyle(color: RCColors.textDark, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: 'Select a position',
+        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: border(const Color(0xFFD4DBE8)),
+        enabledBorder: border(const Color(0xFFD4DBE8)),
+        focusedBorder: border(RCColors.blue),
+      ),
+      items: [
+        for (final position in clubPositions)
+          DropdownMenuItem(value: position, child: Text(position)),
+      ],
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
     );
   }
 }

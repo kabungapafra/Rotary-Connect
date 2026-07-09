@@ -48,25 +48,26 @@ class EventsScreen extends StatelessWidget {
                                   fontSize: 12)),
                         ],
                       ),
-                      PressableScale(
-                        child: ElevatedButton(
-                          onPressed: state.openAddEvent,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: RCColors.gold,
-                            foregroundColor: RCColors.blue,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      if (state.isPresident)
+                        PressableScale(
+                          child: ElevatedButton(
+                            onPressed: state.openAddEvent,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: RCColors.gold,
+                              foregroundColor: RCColors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('＋ Add event',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 12.5)),
                           ),
-                          child: const Text('＋ Add event',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 12.5)),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -143,6 +144,7 @@ class EventsScreen extends StatelessWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: RCColors.textMuted)),
+                          if (state.isPresident) ...[
                           const SizedBox(height: 10),
                           PressableScale(
                             child: ElevatedButton(
@@ -164,6 +166,7 @@ class EventsScreen extends StatelessWidget {
                                       fontSize: 12.5)),
                             ),
                           ),
+                          ],
                         ],
                       ),
                     )
@@ -508,25 +511,26 @@ class _EventCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PressableScale(
-                    child: OutlinedButton(
-                      onPressed: () => state.openQR(event),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: RCColors.blue,
-                        side: const BorderSide(
-                            color: Color(0xFFD4DBE8), width: 1.5),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  if (state.canGenerateEventQr)
+                    PressableScale(
+                      child: OutlinedButton(
+                        onPressed: () => state.openQR(event),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: RCColors.blue,
+                          side: const BorderSide(
+                              color: Color(0xFFD4DBE8), width: 1.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('▦ Register',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 11)),
                       ),
-                      child: const Text('▦ Register',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 11)),
                     ),
-                  ),
                 ],
               ),
             ),

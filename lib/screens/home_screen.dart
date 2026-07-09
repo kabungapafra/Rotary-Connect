@@ -22,7 +22,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               _StatsCard(state: state),
               const SizedBox(height: 20),
-              if (AppState.isTreasurer) ...[
+              if (state.isTreasurer) ...[
                 _TreasuryCard(state: state),
                 const SizedBox(height: 20),
               ],

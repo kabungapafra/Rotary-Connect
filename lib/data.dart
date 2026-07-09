@@ -5,6 +5,33 @@ library;
 
 import 'dart:typed_data';
 
+/// The club's standard positions, offered as a dropdown on Add Member
+/// instead of free text — keeps role strings consistent with the ones
+/// permission checks compare against (AppState.isPresident,
+/// canGenerateEventQr, isTreasurer).
+const List<String> clubPositions = [
+  'Member',
+  'President',
+  'President-Elect',
+  'Immediate Past President',
+  'Secretary',
+  'Treasurer',
+  'Sergeant-at-Arms',
+  'Club Trainer',
+  'Club Administration Chair',
+  'Membership Chair',
+  'Public Image Chair',
+  'Rotary Foundation Chair',
+  'Service Projects Chair',
+  'Youth Service Chair',
+  'Vocational Service Chair',
+  'International Service Chair',
+  'Board Director',
+  'Committee Member',
+  'Auditor',
+  'Legal Advisor',
+];
+
 class Member {
   final String name;
   final String role;

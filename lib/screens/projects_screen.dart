@@ -47,25 +47,26 @@ class ProjectsScreen extends StatelessWidget {
                             fontSize: 20,
                             fontWeight: FontWeight.w800)),
                   ),
-                  PressableScale(
-                    child: ElevatedButton(
-                      onPressed: state.openAddProject,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: RCColors.gold,
-                        foregroundColor: RCColors.blue,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 13, vertical: 9),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  if (state.isPresident)
+                    PressableScale(
+                      child: ElevatedButton(
+                        onPressed: state.openAddProject,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.gold,
+                          foregroundColor: RCColors.blue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 13, vertical: 9),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('＋ Add',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 12.5)),
                       ),
-                      child: const Text('＋ Add',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 12.5)),
                     ),
-                  ),
                 ],
               ),
             ),
