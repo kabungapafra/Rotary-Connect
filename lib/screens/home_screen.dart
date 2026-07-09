@@ -222,11 +222,16 @@ class _Header extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
+                // Original card footprint (28px logo + 6px vertical padding
+                // either side) held fixed — the logo below is now bigger
+                // than that and deliberately overflows it, rather than
+                // growing the white box around it.
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 child: ClubLogoImage(state: state, height: 60),
               ),
               Container(

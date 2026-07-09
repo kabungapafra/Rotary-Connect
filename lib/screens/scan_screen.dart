@@ -174,6 +174,26 @@ class _CameraFeedState extends State<_CameraFeed> {
             controller: _camera,
             fit: BoxFit.cover,
             onDetect: _onDetect,
+            // Camera hardware start-up is a few hundred ms on most phones —
+            // show a clear, branded "starting" state instead of a blank/
+            // black frame so the screen never looks broken while it warms
+            // up.
+            placeholderBuilder: (context) => const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: Colors.white70),
+                  ),
+                  SizedBox(height: 12),
+                  Text('Starting camera…',
+                      style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                ],
+              ),
+            ),
             errorBuilder: (context, error) => const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
