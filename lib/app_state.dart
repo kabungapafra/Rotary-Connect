@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
+import 'push_service.dart';
 import 'theme.dart';
 
 class PhotoInfo {
@@ -161,6 +163,7 @@ class AppState extends ChangeNotifier {
     unawaited(loadEvents());
     unawaited(loadProjects());
     unawaited(loadMeetings());
+    unawaited(_sendPushToken());
   }
 
   Future<void> _persistSession() async {
@@ -181,6 +184,43 @@ class AppState extends ChangeNotifier {
       await prefs.setString('club_logo', logo);
     } else {
       await prefs.remove('club_logo');
+    }
+  }
+
+  // Set by PushService as soon as FCM hands over a token, which can happen
+  // before login finishes (or before a restored session loads) — held here
+  // so _sendPushToken always has the latest one to register once a member
+  // is actually signed in.
+  String? _pendingPushToken;
+
+  void registerPushToken(String token) {
+    _pendingPushToken = token;
+    unawaited(_sendPushToken());
+  }
+
+  Future<void> _sendPushToken() async {
+    final authTok = authToken;
+    final pushTok = _pendingPushToken;
+    if (authTok == null || pushTok == null) return;
+    try {
+      await _api.registerDeviceToken(
+          authTok, pushTok, PushService.instance.platform);
+    } catch (_) {
+      // Best-effort — this device just won't get pushes until the next
+      // successful retry (relaunch, token refresh, or next login).
+    }
+  }
+
+  /// A tapped push notification either brought the app to the foreground
+  /// (onMessageOpenedApp) or launched it fresh from a killed state
+  /// (getInitialMessage) — either way, jump to the screen it's about.
+  void handlePushTap(RemoteMessage message) {
+    if (authToken == null) return;
+    switch (message.data['type']) {
+      case 'event':
+        goEvents();
+      case 'dues':
+        goTreasury();
     }
   }
 
@@ -1004,6 +1044,7 @@ class AppState extends ChangeNotifier {
       unawaited(loadEvents());
       unawaited(loadProjects());
       unawaited(loadMeetings());
+      unawaited(_sendPushToken());
       unawaited(loadActivePoll());
     } on ApiException catch (e) {
       _update(() {

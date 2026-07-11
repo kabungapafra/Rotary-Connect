@@ -1,6 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_state.dart';
+import 'firebase_options.dart';
+import 'push_service.dart';
 import 'theme.dart';
 import 'widgets/bottom_nav.dart';
 import 'widgets/photo_viewer.dart';
@@ -20,8 +24,10 @@ import 'screens/projects_screen.dart';
 import 'screens/members_screen.dart';
 import 'screens/club_suspended_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -51,6 +57,12 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
   void initState() {
     super.initState();
     state.addListener(_onStateChanged);
+    PushService.instance.onToken = state.registerPushToken;
+    PushService.instance.init();
+    FirebaseMessaging.onMessageOpenedApp.listen(state.handlePushTap);
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) state.handlePushTap(message);
+    });
   }
 
   void _onStateChanged() => setState(() {});

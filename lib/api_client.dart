@@ -360,6 +360,15 @@ class ApiClient {
     ];
   }
 
+  /// Registers (or re-registers) this device's FCM token against the
+  /// logged-in member, so the backend knows where to push notifications.
+  Future<void> registerDeviceToken(
+      String token, String deviceToken, String platform) async {
+    await _post('/push/register',
+        {'token': deviceToken, 'platform': platform},
+        token: token);
+  }
+
   /// Club President only: create a member of the president's club.
   /// Returns the generated member number and one-time PIN.
   Future<AddedClubMember> addClubMember(
