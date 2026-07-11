@@ -3,6 +3,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
 
 class MembersScreen extends StatelessWidget {
@@ -247,18 +248,7 @@ class _MemberProfileSheet extends StatelessWidget {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                              color: RCColors.blue, shape: BoxShape.circle),
-                          alignment: Alignment.center,
-                          child: Text(m.initials,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800)),
-                        ),
+                        RCAvatar(color: RCColors.blue, size: 56),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -494,7 +484,20 @@ class _MemberEditorSheet extends StatelessWidget {
                     _EditorInput(
                         hint: 'e.g. 14 Mar 1990',
                         value: ed.dob,
-                        onChanged: state.setMemberDob),
+                        onChanged: state.setMemberDob,
+                        readOnly: true,
+                        icon: Icons.calendar_today_outlined,
+                        onTap: () async {
+                          final picked = await pickRCDate(
+                            context,
+                            initialDate: tryParseDayMonYear(ed.dob) ??
+                                DateTime(DateTime.now().year - 30),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            state.setMemberDob(formatDateDayMonYear(picked));
+                          }
+                        }),
                     const SizedBox(height: 14),
                     const _FieldLabel('CATEGORY'),
                     const SizedBox(height: 6),
@@ -628,8 +631,16 @@ class _EditorInput extends StatelessWidget {
   final String hint;
   final String value;
   final ValueChanged<String> onChanged;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final IconData? icon;
   const _EditorInput(
-      {required this.hint, required this.value, required this.onChanged});
+      {required this.hint,
+      required this.value,
+      required this.onChanged,
+      this.readOnly = false,
+      this.onTap,
+      this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -641,10 +652,15 @@ class _EditorInput extends StatelessWidget {
       controller: TextEditingController(text: value)
         ..selection = TextSelection.collapsed(offset: value.length),
       onChanged: onChanged,
+      readOnly: readOnly,
+      onTap: onTap,
       style: const TextStyle(color: RCColors.textDark, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        suffixIcon: icon == null
+            ? null
+            : Icon(icon, size: 18, color: RCColors.blue),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: border(const Color(0xFFD4DBE8)),
@@ -782,9 +798,7 @@ class _MemberList extends StatelessWidget {
                 child: Row(
                   children: [
                     RCAvatar(
-                        initials: entries[i].value.initials,
-                        color: RCColors.avatarColor(entries[i].key),
-                        size: 40),
+                        color: RCColors.avatarColor(entries[i].key), size: 40),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

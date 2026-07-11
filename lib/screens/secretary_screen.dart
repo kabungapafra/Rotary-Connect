@@ -6,6 +6,7 @@ import '../api_client.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
 
 Future<void> _exportReportPdf(String clubName, ReportInfo report) async {
@@ -405,10 +406,13 @@ Widget _fieldLabel(String text) => Text(text,
         letterSpacing: 1,
         color: Color(0xFF8B96A8)));
 
-InputDecoration _fieldDecoration(String hint) => InputDecoration(
+InputDecoration _fieldDecoration(String hint, {IconData? icon}) =>
+    InputDecoration(
       isDense: true,
       hintText: hint,
       hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF8B96A8)),
+      suffixIcon:
+          icon == null ? null : Icon(icon, size: 18, color: RCColors.blue),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -499,18 +503,31 @@ class _MinuteEditorSheet extends StatelessWidget {
             decoration: _fieldDecoration('e.g. Weekly Fellowship Meeting'),
           ),
           const SizedBox(height: 12),
-          _fieldLabel('MEETING DATE (YYYY-MM-DD)'),
+          _fieldLabel('MEETING DATE'),
           const SizedBox(height: 6),
           TextField(
             controller: TextEditingController(text: draft.meetingDate)
               ..selection =
                   TextSelection.collapsed(offset: draft.meetingDate.length),
             onChanged: state.setMinuteDate,
+            readOnly: true,
+            onTap: () async {
+              final picked = await pickRCDate(
+                context,
+                initialDate:
+                    DateTime.tryParse(draft.meetingDate) ?? DateTime.now(),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) {
+                state.setMinuteDate(formatDateYmd(picked));
+              }
+            },
             style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
                 color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. 2026-07-08'),
+            decoration: _fieldDecoration('e.g. 2026-07-08',
+                icon: Icons.calendar_today_outlined),
           ),
           if (draft.error != null) ...[
             const SizedBox(height: 10),

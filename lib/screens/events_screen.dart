@@ -9,6 +9,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
 
 class EventsScreen extends StatelessWidget {
@@ -723,6 +724,16 @@ class _EditorSheet extends StatelessWidget {
                       hint: 'e.g. 6:00 PM',
                       value: ed.time,
                       onChanged: state.setEditorTime,
+                      readOnly: true,
+                      icon: Icons.access_time,
+                      onTap: () async {
+                        final picked = await pickRCTime(context,
+                            initialTime:
+                                tryParseTimeOfDay(ed.time) ?? TimeOfDay.now());
+                        if (picked != null) {
+                          state.setEditorTime(formatTimeOfDay(picked));
+                        }
+                      },
                     ),
                     const SizedBox(height: 14),
                     const _FieldLabel('VENUE'),
@@ -1100,8 +1111,16 @@ class _EditorInput extends StatelessWidget {
   final String hint;
   final String value;
   final ValueChanged<String> onChanged;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final IconData? icon;
   const _EditorInput(
-      {required this.hint, required this.value, required this.onChanged});
+      {required this.hint,
+      required this.value,
+      required this.onChanged,
+      this.readOnly = false,
+      this.onTap,
+      this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -1113,10 +1132,15 @@ class _EditorInput extends StatelessWidget {
       controller: TextEditingController(text: value)
         ..selection = TextSelection.collapsed(offset: value.length),
       onChanged: onChanged,
+      readOnly: readOnly,
+      onTap: onTap,
       style: const TextStyle(color: RCColors.textDark, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        suffixIcon: icon == null
+            ? null
+            : Icon(icon, size: 18, color: RCColors.blue),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: border(const Color(0xFFD4DBE8)),

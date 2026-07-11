@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
 
 class ProjectsScreen extends StatelessWidget {
@@ -387,6 +388,19 @@ class _ProjectEditorSheet extends StatelessWidget {
                       hint: 'e.g. Sep 2026',
                       value: ed.deadline,
                       onChanged: state.setProjectDeadline,
+                      readOnly: true,
+                      icon: Icons.calendar_today_outlined,
+                      onTap: () async {
+                        final picked = await pickRCDate(
+                          context,
+                          initialDate: tryParseMonthYear(ed.deadline) ??
+                              DateTime.now(),
+                          lastDate: DateTime(DateTime.now().year + 20),
+                        );
+                        if (picked != null) {
+                          state.setProjectDeadline(formatMonthYear(picked));
+                        }
+                      },
                     ),
                     const SizedBox(height: 14),
                     _FieldLabel(
@@ -477,11 +491,17 @@ class _EditorInput extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
   final int maxLines;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final IconData? icon;
   const _EditorInput(
       {required this.hint,
       required this.value,
       required this.onChanged,
-      this.maxLines = 1});
+      this.maxLines = 1,
+      this.readOnly = false,
+      this.onTap,
+      this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -494,10 +514,15 @@ class _EditorInput extends StatelessWidget {
         ..selection = TextSelection.collapsed(offset: value.length),
       onChanged: onChanged,
       maxLines: maxLines,
+      readOnly: readOnly,
+      onTap: onTap,
       style: const TextStyle(color: RCColors.textDark, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        suffixIcon: icon == null
+            ? null
+            : Icon(icon, size: 18, color: RCColors.blue),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: border(const Color(0xFFD4DBE8)),
