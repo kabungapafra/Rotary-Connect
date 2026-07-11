@@ -315,13 +315,6 @@ class _DuesRow extends StatelessWidget {
       required this.isLast,
       required this.onMarkPaid});
 
-  String get _initials => due.name
-      .split(RegExp(r'\s+'))
-      .where((w) => w.isNotEmpty)
-      .map((w) => w[0])
-      .join()
-      .toUpperCase();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -333,7 +326,7 @@ class _DuesRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RCAvatar(initials: _initials, color: color, size: 36),
+          RCAvatar(color: color, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

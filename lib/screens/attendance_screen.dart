@@ -427,16 +427,7 @@ class _RegRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RCAvatar(
-              initials: attendee.name
-                  .split(RegExp(r'\s+'))
-                  .where((w) => w.isNotEmpty)
-                  .take(2)
-                  .map((w) => w[0])
-                  .join()
-                  .toUpperCase(),
-              color: RCColors.avatarColor(index),
-              size: 36),
+          RCAvatar(color: RCColors.avatarColor(index), size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

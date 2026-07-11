@@ -32,13 +32,11 @@ class RCCard extends StatelessWidget {
   }
 }
 
-/// Circular initials avatar.
+/// Circular member avatar — the Rotary wheel mark on a brand-colored disc.
 class RCAvatar extends StatelessWidget {
-  final String initials;
   final Color color;
   final double size;
-  const RCAvatar(
-      {super.key, required this.initials, required this.color, this.size = 40});
+  const RCAvatar({super.key, required this.color, this.size = 40});
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +45,10 @@ class RCAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: size * 0.325),
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        child: Image.asset('assets/images/rotary_wheel_spin.png',
+            width: size * 0.62, height: size * 0.62),
       ),
     );
   }

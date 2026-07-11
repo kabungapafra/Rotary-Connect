@@ -45,13 +45,6 @@ class Member {
   const Member(this.name, this.role, this.isBoard,
       {this.email = '', this.phone = '', this.dob = ''});
 
-  String get initials => name
-      .split(' ')
-      .where((w) => w.isNotEmpty)
-      .map((w) => w[0])
-      .join()
-      .toUpperCase();
-
   /// "phone · email", omitting whichever is empty — shown under the role.
   String get contact => [phone, email].where((s) => s.isNotEmpty).join(' · ');
 }

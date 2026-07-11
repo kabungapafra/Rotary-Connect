@@ -128,9 +128,6 @@ class _CheckedInRow extends StatelessWidget {
   const _CheckedInRow(
       {required this.member, required this.color, required this.isLast});
 
-  String get _initials =>
-      member.name.split(' ').where((w) => w.isNotEmpty).map((w) => w[0]).join();
-
   String get _timeLabel {
     final t = member.checkedInAt.toLocal();
     final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
@@ -150,7 +147,7 @@ class _CheckedInRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RCAvatar(initials: _initials, color: color, size: 36),
+          RCAvatar(color: color, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -185,12 +182,6 @@ class _ApologyRow extends StatelessWidget {
   const _ApologyRow(
       {required this.apology, required this.color, required this.isLast});
 
-  String get _initials => apology.memberName
-      .split(' ')
-      .where((w) => w.isNotEmpty)
-      .map((w) => w[0])
-      .join();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -203,7 +194,7 @@ class _ApologyRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RCAvatar(initials: _initials, color: color, size: 36),
+          RCAvatar(color: color, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
