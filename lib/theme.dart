@@ -53,15 +53,17 @@ class RCColors {
   static const scanBorder = Color(0xFF2A3854);
   static const scanMuted = Color(0xFF8FA0C0);
 
-  static const avatarPalette = [
-    Color(0xFF17458F),
-    Color(0xFF2B5FB0),
-    Color(0xFF0C3C7C),
-    Color(0xFFB57708),
-    Color(0xFF3A6EA5),
-  ];
+  // Lighten/darken amounts (relative to [blue]) that give member avatars
+  // some visual variety while always staying on-brand — blue shades for
+  // Rotary, magenta shades for Rotaract, since both derive from [blue].
+  static const _avatarShades = [0.0, 0.22, -0.2, 0.4, 0.12];
 
-  static Color avatarColor(int i) => avatarPalette[i % avatarPalette.length];
+  static Color avatarColor(int i) {
+    final t = _avatarShades[i % _avatarShades.length];
+    return t >= 0
+        ? Color.lerp(blue, Colors.white, t)!
+        : Color.lerp(blue, Colors.black, -t)!;
+  }
 }
 
 ThemeData buildRCTheme() {
