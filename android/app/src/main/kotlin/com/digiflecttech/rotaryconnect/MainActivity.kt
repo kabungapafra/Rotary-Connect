@@ -1,4 +1,4 @@
-package com.example.rotary_connect
+package com.digiflecttech.rotaryconnect
 
 import io.flutter.embedding.android.FlutterActivity
 

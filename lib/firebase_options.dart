@@ -51,12 +51,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAiLRxmIq80F8oRXC23rHv-DM00ACFOaPo',
-    appId: '1:236502799564:android:0efd65bd5292fb99bb5e69',
+    appId: '1:236502799564:android:8edf57686601665abb5e69',
     messagingSenderId: '236502799564',
     projectId: 'rotary-connect-b14e7',
     storageBucket: 'rotary-connect-b14e7.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAsB8eSBEUnAtuNMf3Mc9CiHyeND-w6vFo',
     appId: '1:236502799564:ios:9d7b1ca8331d9631bb5e69',

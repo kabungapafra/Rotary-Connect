@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:236502799564:android:8edf57686601665abb5e69",
+        "android_client_info": {
+          "package_name": "com.digiflecttech.rotaryconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiLRxmIq80F8oRXC23rHv-DM00ACFOaPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:236502799564:android:0efd65bd5292fb99bb5e69",
         "android_client_info": {
           "package_name": "com.example.rotary_connect"
