@@ -205,6 +205,11 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  /// Explicit member-initiated sign-out — e.g. the "Log out" button on the
+  /// club-suspended screen, since a suspended member has nothing else to
+  /// do in the app until reinstated.
+  Future<void> logout() => _clearSession();
+
   /// Remembered once a walk-in visitor has checked in anywhere, so a QR
   /// scan at any club (the same one again, or a different one) never asks
   /// them to re-enter their details.
@@ -280,6 +285,10 @@ class AppState extends ChangeNotifier {
   String clubName = 'Rotary Club of Mbalwa';
   String? clubLogo; // data URL uploaded by the system admin
   String clubType = 'rotary'; // "rotary" | "rotaract", set by the system admin
+  // Not persisted like the branding fields above — always re-read from the
+  // backend (at login, and opportunistically whenever loadSummary() runs)
+  // so a club suspended mid-session is caught on the next such call.
+  String clubStatus = 'active'; // "active" | "suspended"
   bool clubBrandingKnown = false; // true once a login has identified the club
 
   /// Second line of the splash wordmark: "Connect" until the member's club
@@ -421,7 +430,11 @@ class AppState extends ChangeNotifier {
     if (token == null) return;
     try {
       final s = await _api.fetchMySummary(token);
-      _update(() => summary = s);
+      _update(() {
+        summary = s;
+        clubStatus = s.clubStatus;
+        if (clubStatus == 'suspended' && tab != 'suspended') tab = 'suspended';
+      });
     } on ApiException catch (e) {
       // A rejected token means the member no longer exists (or the session
       // is invalid) — sign out. Other errors: retry on next navigation.
@@ -886,7 +899,7 @@ class AppState extends ChangeNotifier {
       voteEditor != null ||
       minuteEditor != null ||
       milestoneEditor != null ||
-      (tab != 'home' && tab != 'splash');
+      (tab != 'home' && tab != 'splash' && tab != 'suspended');
 
   void goBack() {
     if (photo != null) {
@@ -925,7 +938,7 @@ class AppState extends ChangeNotifier {
       // screen's guest button — back should undo that choice, not drop
       // a still-logged-in member onto their own dashboard.
       goSplash();
-    } else if (tab != 'home' && tab != 'splash') {
+    } else if (tab != 'home' && tab != 'splash' && tab != 'suspended') {
       goHome();
     }
   }
@@ -981,10 +994,11 @@ class AppState extends ChangeNotifier {
         clubLogo = result.clubLogo;
         clubType = result.clubType;
         RCColors.setClubType(clubType);
+        clubStatus = result.clubStatus;
         clubBrandingKnown = true;
         clubMembers = [];
         clubMembersLoaded = false;
-        tab = 'home';
+        tab = clubStatus == 'suspended' ? 'suspended' : 'home';
         loginError = false;
         loginLoading = false;
         loginPin = '';

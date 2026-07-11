@@ -18,6 +18,7 @@ import 'screens/attendance_screen.dart';
 import 'screens/events_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/members_screen.dart';
+import 'screens/club_suspended_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +89,8 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
         return ProjectsScreen(state: state);
       case 'members':
         return MembersScreen(state: state);
+      case 'suspended':
+        return ClubSuspendedScreen(state: state);
       default:
         return HomeScreen(state: state);
     }
@@ -161,11 +164,13 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                       );
                     }),
                   ),
-                  // Hidden on splash/login/scan and whenever a bottom sheet
-                  // (event/project/member editor, gallery upload) is open.
+                  // Hidden on splash/login/scan/suspended and whenever a
+                  // bottom sheet (event/project/member editor, gallery
+                  // upload) is open.
                   if (state.tab != 'splash' &&
                       state.tab != 'login' &&
                       state.tab != 'scan' &&
+                      state.tab != 'suspended' &&
                       state.eventEditor == null &&
                       state.eventQR == null &&
                       state.projectEditor == null &&

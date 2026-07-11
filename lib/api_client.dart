@@ -33,8 +33,9 @@ class LoginResult {
   final String clubName;
   final String? clubLogo; // data URL uploaded by the system admin
   final String clubType; // "rotary" | "rotaract"
+  final String clubStatus; // "active" | "suspended"
   const LoginResult(this.token, this.member, this.clubId, this.clubName,
-      this.clubLogo, this.clubType);
+      this.clubLogo, this.clubType, this.clubStatus);
 }
 
 class AddedClubMember {
@@ -123,8 +124,14 @@ class MemberSummary {
   final int attendancePercent;
   final String todayMeetingName;
   final int memberCount;
-  const MemberSummary(this.checkInCount, this.meetingsTotal,
-      this.attendancePercent, this.todayMeetingName, this.memberCount);
+  final String clubStatus; // "active" | "suspended"
+  const MemberSummary(
+      this.checkInCount,
+      this.meetingsTotal,
+      this.attendancePercent,
+      this.todayMeetingName,
+      this.memberCount,
+      this.clubStatus);
 }
 
 class CheckInResult {
@@ -295,6 +302,7 @@ class ApiClient {
       res['club_name'] as String? ?? 'Rotary Club of Mbalwa',
       res['club_logo'] as String?,
       res['club_type'] as String? ?? 'rotary',
+      res['club_status'] as String? ?? 'active',
     );
   }
 
@@ -495,6 +503,7 @@ class ApiClient {
       res['attendance_percent'] as int,
       res['today_meeting_name'] as String,
       res['member_count'] as int,
+      res['club_status'] as String? ?? 'active',
     );
   }
 
