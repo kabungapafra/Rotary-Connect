@@ -12,13 +12,24 @@ class RCColors {
   static Color get blue =>
       _isRotaract ? const Color(0xFFD41367) : const Color(0xFF17458F);
   static const blueDark = Color(0xFF0C2F66);
-  static Color get gold => _isRotaract ? Colors.white : const Color(0xFFF7A81B);
+  // Gold's Rotaract color is the brand magenta, not white — nearly every
+  // gold usage sits on a white/light background (splash screen text, stat
+  // values, card borders), where white would be invisible. See
+  // [scanAccent] for the one family of usages (the dark scan screen) where
+  // a light accent is actually correct.
+  static Color get gold =>
+      _isRotaract ? const Color(0xFFD41367) : const Color(0xFFF7A81B);
+  // The scan screen's own dark background (scanBg/scanCard) is the
+  // exception to gold's rule above — an accent needs to stay light there
+  // for contrast, so Rotaract gets white instead of the magenta that would
+  // otherwise vanish the same way it once vanished on white pages.
+  static Color get scanAccent => _isRotaract ? Colors.white : gold;
   // A lighter tint of [blue], used for muted text/overlays on top of a blue
   // card — derived so it always matches whichever brand color is active.
   static Color get blueMuted => Color.lerp(blue, Colors.white, 0.55)!;
-  // The bottom-nav scan launcher is the one gold usage that doesn't turn
-  // white for a Rotaract club — it stays a solid brand accent, so it needs
-  // its own background/icon pair instead of following gold/blue directly.
+  // The bottom-nav scan launcher needs its icon to contrast against
+  // whichever color its background lands on (gold for Rotary, magenta for
+  // Rotaract) — a dedicated pair instead of a fixed icon color.
   static Color get scanLauncherBg => _isRotaract ? blue : gold;
   static Color get scanLauncherIcon => _isRotaract ? Colors.white : blue;
   static const scaffoldBg = Color(0xFFF4F6FA);

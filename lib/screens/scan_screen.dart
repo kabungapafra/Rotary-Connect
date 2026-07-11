@@ -292,9 +292,9 @@ class _ScanTab extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: active ? RCColors.gold : RCColors.scanCard,
+          backgroundColor: active ? RCColors.scanAccent : RCColors.scanCard,
           foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
-          side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
+          side: BorderSide(color: active ? RCColors.scanAccent : RCColors.scanBorder),
           padding: const EdgeInsets.symmetric(vertical: 10),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -352,9 +352,9 @@ class _ScanIdleState extends State<_ScanIdle>
                         child: Container(
                           height: 2,
                           decoration: BoxDecoration(
-                            color: RCColors.gold,
+                            color: RCColors.scanAccent,
                             boxShadow: [
-                              BoxShadow(color: RCColors.gold, blurRadius: 12)
+                              BoxShadow(color: RCColors.scanAccent, blurRadius: 12)
                             ],
                           ),
                         ),
@@ -370,7 +370,7 @@ class _ScanIdleState extends State<_ScanIdle>
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2.5, color: RCColors.gold),
+                    strokeWidth: 2.5, color: RCColors.scanAccent),
               ),
               const SizedBox(height: 10),
               const Text('Checking in…',
@@ -402,16 +402,16 @@ class _ScanIdleState extends State<_ScanIdle>
       return BoxDecoration(
         border: Border(
           top: top
-              ? BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.scanAccent, width: t)
               : BorderSide.none,
           bottom: bottom
-              ? BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.scanAccent, width: t)
               : BorderSide.none,
           left: left
-              ? BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.scanAccent, width: t)
               : BorderSide.none,
           right: right
-              ? BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.scanAccent, width: t)
               : BorderSide.none,
         ),
         borderRadius: BorderRadius.only(
@@ -490,7 +490,7 @@ class _ScanSuccess extends StatelessWidget {
             Text('Week streak now 8 — keep it up!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: RCColors.gold,
+                    color: RCColors.scanAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
@@ -500,7 +500,7 @@ class _ScanSuccess extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: state.goToday,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: RCColors.gold,
+                    backgroundColor: RCColors.scanAccent,
                     foregroundColor: RCColors.blue,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
@@ -637,7 +637,7 @@ class _GuestForm extends StatelessWidget {
             child: ElevatedButton(
               onPressed: state.guestSubmitting ? null : state.submitGuest,
               style: ElevatedButton.styleFrom(
-                backgroundColor: RCColors.gold,
+                backgroundColor: RCColors.scanAccent,
                 foregroundColor: RCColors.blue,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -686,17 +686,17 @@ class _ScanInput extends StatelessWidget {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              BorderSide(color: accent ? RCColors.gold : RCColors.scanBorder),
+              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              BorderSide(color: accent ? RCColors.gold : RCColors.scanBorder),
+              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              BorderSide(color: accent ? RCColors.gold : RCColors.scanBorder),
+              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
         ),
       ),
     );
@@ -716,9 +716,9 @@ class _GuestTypeChip extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: active ? RCColors.gold : RCColors.scanCard,
+          backgroundColor: active ? RCColors.scanAccent : RCColors.scanCard,
           foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
-          side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
+          side: BorderSide(color: active ? RCColors.scanAccent : RCColors.scanBorder),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           shape: const StadiumBorder(),
           elevation: 0,
@@ -768,7 +768,7 @@ class _GuestDone extends StatelessWidget {
             Text(state.guestStreakLine,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: RCColors.gold,
+                    color: RCColors.scanAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
@@ -778,7 +778,7 @@ class _GuestDone extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: state.goToday,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: RCColors.gold,
+                    backgroundColor: RCColors.scanAccent,
                     foregroundColor: RCColors.blue,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
