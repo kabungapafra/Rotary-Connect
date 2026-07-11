@@ -160,7 +160,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 Text(
                                   'SERVICE ABOVE SELF',
                                   style: TextStyle(
-                                    color: RCColors.gold,
+                                    color: RCColors.goldOnLight,
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 2,
@@ -311,7 +311,7 @@ class _GrowingDash extends StatelessWidget {
           width: width * progress.value,
           height: height,
           decoration: BoxDecoration(
-            color: RCColors.gold,
+            color: RCColors.goldOnLight,
             borderRadius: BorderRadius.circular(radius),
           ),
         ),

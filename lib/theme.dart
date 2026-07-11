@@ -12,18 +12,20 @@ class RCColors {
   static Color get blue =>
       _isRotaract ? const Color(0xFFD41367) : const Color(0xFF17458F);
   static const blueDark = Color(0xFF0C2F66);
-  // Gold's Rotaract color is the brand magenta, not white — nearly every
-  // gold usage sits on a white/light background (splash screen text, stat
-  // values, card borders), where white would be invisible. See
-  // [scanAccent] for the one family of usages (the dark scan screen) where
-  // a light accent is actually correct.
+  // Gold's Rotaract color is white — most gold usages are either a
+  // background sitting under blue (magenta) text/icons, or an accent on
+  // the dark scan screen, and white is what keeps those readable. See
+  // [goldOnLight] for the opposite case: a gold accent placed directly on
+  // a white/light surface, where white itself would vanish.
   static Color get gold =>
-      _isRotaract ? const Color(0xFFD41367) : const Color(0xFFF7A81B);
-  // The scan screen's own dark background (scanBg/scanCard) is the
-  // exception to gold's rule above — an accent needs to stay light there
-  // for contrast, so Rotaract gets white instead of the magenta that would
-  // otherwise vanish the same way it once vanished on white pages.
-  static Color get scanAccent => _isRotaract ? Colors.white : gold;
+      _isRotaract ? Colors.white : const Color(0xFFF7A81B);
+  static Color get scanAccent => gold;
+  // A handful of spots put a gold accent straight on a white/light
+  // surface with nothing blue underneath it (the splash screen's dash and
+  // "SERVICE ABOVE SELF" text, the certificate border) — white would be
+  // invisible there, so those use the brand magenta instead.
+  static Color get goldOnLight =>
+      _isRotaract ? const Color(0xFFD41367) : gold;
   // A lighter tint of [blue], used for muted text/overlays on top of a blue
   // card — derived so it always matches whichever brand color is active.
   static Color get blueMuted => Color.lerp(blue, Colors.white, 0.55)!;

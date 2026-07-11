@@ -89,7 +89,7 @@ class CertificateModal extends StatelessWidget {
                         padding: const EdgeInsets.all(6),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            border: Border.all(color: RCColors.gold, width: 1),
+                            border: Border.all(color: RCColors.goldOnLight, width: 1),
                             borderRadius: BorderRadius.circular(7),
                           ),
                         ),
