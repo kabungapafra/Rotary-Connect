@@ -23,15 +23,26 @@ String formatTimeOfDay(TimeOfDay t) {
   return '$hour12:$minute $period';
 }
 
-/// Best-effort parse of "14 Mar 1990" — falls back to null on anything else.
+/// Best-effort parse of "14 Mar 1990" — falls back to trying a couple of
+/// other formats a member's DOB might have been typed in before this field
+/// became a picker (e.g. "14/03/1990", "1990-03-14"), then null.
 DateTime? tryParseDayMonYear(String s) {
-  final parts = s.trim().split(RegExp(r'\s+'));
-  if (parts.length != 3) return null;
-  final day = int.tryParse(parts[0]);
-  final month = _monthAbbr.indexOf(parts[1]) + 1;
-  final year = int.tryParse(parts[2]);
-  if (day == null || month == 0 || year == null) return null;
-  return DateTime(year, month, day);
+  final trimmed = s.trim();
+  final parts = trimmed.split(RegExp(r'\s+'));
+  if (parts.length == 3) {
+    final day = int.tryParse(parts[0]);
+    final month = _monthAbbr.indexOf(parts[1]) + 1;
+    final year = int.tryParse(parts[2]);
+    if (day != null && month != 0 && year != null) {
+      return DateTime(year, month, day);
+    }
+  }
+  final slash = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$').firstMatch(trimmed);
+  if (slash != null) {
+    return DateTime(int.parse(slash.group(3)!), int.parse(slash.group(2)!),
+        int.parse(slash.group(1)!));
+  }
+  return DateTime.tryParse(trimmed); // e.g. "1990-03-14"
 }
 
 /// Best-effort parse of "Sep 2026" — falls back to null on anything else.
@@ -44,17 +55,27 @@ DateTime? tryParseMonthYear(String s) {
   return DateTime(year, month);
 }
 
-/// Best-effort parse of "6:00 PM" — falls back to null on anything else.
+/// Best-effort parse of "6:00 PM" — also accepts a plain 24-hour "18:00"
+/// (what an event's TIME & VENUE could already contain; the backend's own
+/// parse_event_time has always accepted this form), then null.
 TimeOfDay? tryParseTimeOfDay(String s) {
-  final match =
-      RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false)
-          .firstMatch(s.trim());
-  if (match == null) return null;
-  var hour = int.parse(match.group(1)!);
-  final minute = int.parse(match.group(2)!);
-  final isPm = match.group(3)!.toUpperCase() == 'PM';
-  if (hour == 12) hour = 0;
-  return TimeOfDay(hour: isPm ? hour + 12 : hour, minute: minute);
+  final trimmed = s.trim();
+  final ampm = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false)
+      .firstMatch(trimmed);
+  if (ampm != null) {
+    var hour = int.parse(ampm.group(1)!);
+    final minute = int.parse(ampm.group(2)!);
+    final isPm = ampm.group(3)!.toUpperCase() == 'PM';
+    if (hour == 12) hour = 0;
+    return TimeOfDay(hour: isPm ? hour + 12 : hour, minute: minute);
+  }
+  final h24 = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(trimmed);
+  if (h24 != null) {
+    final hour = int.parse(h24.group(1)!);
+    final minute = int.parse(h24.group(2)!);
+    if (hour <= 23 && minute <= 59) return TimeOfDay(hour: hour, minute: minute);
+  }
+  return null;
 }
 
 Widget _rcPickerTheme(BuildContext context, Widget? child) => Theme(
@@ -68,11 +89,19 @@ Widget _rcPickerTheme(BuildContext context, Widget? child) => Theme(
 Future<DateTime?> pickRCDate(BuildContext context,
     {DateTime? initialDate, DateTime? firstDate, DateTime? lastDate}) {
   final now = DateTime.now();
+  final first = firstDate ?? DateTime(now.year - 100);
+  final last = lastDate ?? DateTime(now.year + 20);
+  // showDatePicker asserts initialDate falls within [first, last] — a
+  // parsed-but-implausible stored value (e.g. a mistyped future DOB) must
+  // not crash the picker that's meant to let someone fix it.
+  var initial = initialDate ?? now;
+  if (initial.isBefore(first)) initial = first;
+  if (initial.isAfter(last)) initial = last;
   return showDatePicker(
     context: context,
-    initialDate: initialDate ?? now,
-    firstDate: firstDate ?? DateTime(now.year - 100),
-    lastDate: lastDate ?? DateTime(now.year + 20),
+    initialDate: initial,
+    firstDate: first,
+    lastDate: last,
     builder: _rcPickerTheme,
   );
 }

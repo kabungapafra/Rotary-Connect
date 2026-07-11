@@ -38,7 +38,7 @@ class TreasuryScreen extends StatelessWidget {
                 color: PdfColor.fromInt(0xFF17458F),
                 borderRadius: pw.BorderRadius.all(pw.Radius.circular(999)),
               ),
-              child: pw.Text(state.clubName.toUpperCase(),
+              child: pw.Text(state.displayClubName.toUpperCase(),
                   style: const pw.TextStyle(
                       color: PdfColors.white,
                       fontWeight: pw.FontWeight.bold,
@@ -125,7 +125,7 @@ class TreasuryScreen extends StatelessWidget {
                                 color: Colors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800)),
-                        Text(state.clubName,
+                        Text(state.displayClubName,
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 12)),
                       ],

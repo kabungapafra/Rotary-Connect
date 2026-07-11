@@ -125,13 +125,15 @@ class MemberSummary {
   final String todayMeetingName;
   final int memberCount;
   final String clubStatus; // "active" | "suspended"
+  final bool checkedInToday;
   const MemberSummary(
       this.checkInCount,
       this.meetingsTotal,
       this.attendancePercent,
       this.todayMeetingName,
       this.memberCount,
-      this.clubStatus);
+      this.clubStatus,
+      this.checkedInToday);
 }
 
 class CheckInResult {
@@ -513,6 +515,7 @@ class ApiClient {
       res['today_meeting_name'] as String,
       res['member_count'] as int,
       res['club_status'] as String? ?? 'active',
+      res['checked_in_today'] as bool? ?? false,
     );
   }
 

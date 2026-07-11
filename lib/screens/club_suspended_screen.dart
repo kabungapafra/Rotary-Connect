@@ -112,7 +112,7 @@ class _ClubSuspendedScreenState extends State<ClubSuspendedScreen>
               _FadeSlideIn(
                 progress: _wordSlice(0.25, 1.0),
                 child: Text(
-                  '${state.clubName} has been suspended by the system admin. '
+                  '${state.displayClubName} has been suspended by the system admin. '
                   "You won't be able to use the app until your club is "
                   'reinstated — contact support for details.',
                   textAlign: TextAlign.center,

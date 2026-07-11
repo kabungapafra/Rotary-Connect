@@ -57,12 +57,22 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
   void initState() {
     super.initState();
     state.addListener(_onStateChanged);
-    PushService.instance.onToken = state.registerPushToken;
-    PushService.instance.init();
-    FirebaseMessaging.onMessageOpenedApp.listen(state.handlePushTap);
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) state.handlePushTap(message);
-    });
+    // Firebase may not be available (misconfigured, no Play Services, or —
+    // as with `flutter test`'s widget harness — no platform channel at
+    // all): push notifications just won't work rather than taking the
+    // whole app down on launch.
+    try {
+      PushService.instance.onToken = state.registerPushToken;
+      PushService.instance.init().catchError((Object e) {
+        debugPrint('Push notification setup failed: $e');
+      });
+      FirebaseMessaging.onMessageOpenedApp.listen(state.handlePushTap);
+      FirebaseMessaging.instance.getInitialMessage().then((message) {
+        if (message != null) state.handlePushTap(message);
+      });
+    } catch (e) {
+      debugPrint('Push notifications unavailable: $e');
+    }
   }
 
   void _onStateChanged() => setState(() {});

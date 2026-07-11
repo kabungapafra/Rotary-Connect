@@ -282,10 +282,12 @@ class AppState extends ChangeNotifier {
 
   // Greeting and role badge reflect the logged-in member; the design's
   // "Rtn. Peter / TREASURER" preview values remain only as the pre-login
-  // fallback so nothing renders empty.
+  // fallback so nothing renders empty. The honorific itself flips with
+  // club type — "Rtn." (Rotarian) vs "Ract." (Rotaractor).
+  String get _honorific => clubType == 'rotaract' ? 'Ract' : 'Rtn';
   String get greeting => currentMemberName.trim().isEmpty
-      ? 'Hello, Rtn. Peter'
-      : 'Hello, Rtn. ${currentMemberName.trim().split(RegExp(r'\s+')).first}';
+      ? 'Hello, $_honorific. Peter'
+      : 'Hello, $_honorific. ${currentMemberName.trim().split(RegExp(r'\s+')).first}';
   String get roleBadge => currentMemberRole.trim().isEmpty
       ? 'TREASURER'
       : currentMemberRole.trim().toUpperCase();
@@ -326,21 +328,42 @@ class AppState extends ChangeNotifier {
   String clubStatus = 'active'; // "active" | "suspended"
   bool clubBrandingKnown = false; // true once a login has identified the club
 
-  /// Second line of the splash wordmark: "Connect" until the member's club
-  /// is known, then e.g. "Club of Mbalwa" (the club name minus "Rotary"/
-  /// "Rotaract", which the wordmark's first line already says).
-  String get wordmarkClubLine {
-    if (!clubBrandingKnown) return 'Connect';
-    final n = clubName.trim();
+  /// clubName minus a leading "Rotary "/"Rotaract " — whichever is actually
+  /// there — so the wordmark's bold first line ("Rotary"/"Rotaract", driven
+  /// by clubType) never repeats itself if the stored name already has it.
+  String _stripClubPrefix(String n) {
     final lower = n.toLowerCase();
     if (lower.startsWith('rotary ')) return n.substring(7).trim();
     if (lower.startsWith('rotaract ')) return n.substring(9).trim();
     return n;
   }
 
+  /// Second line of the splash wordmark: "Connect" until the member's club
+  /// is known, then e.g. "Club of Mbalwa".
+  String get wordmarkClubLine =>
+      clubBrandingKnown ? _stripClubPrefix(clubName.trim()) : 'Connect';
+
+  /// clubName re-prefixed to always agree with clubType, so a club whose
+  /// stored name hasn't been updated to match a Rotary<->Rotaract switch
+  /// still displays correctly everywhere (headers, PDFs, splash) — not
+  /// just in the wordmark, which already derives its "Rotary"/"Rotaract"
+  /// word from clubType rather than the stored name. Only re-prefixes a
+  /// name that already starts with "Rotary "/"Rotaract " — clubs whose
+  /// stored name doesn't follow that convention at all are shown verbatim
+  /// rather than getting a fabricated prefix stitched onto their real name.
+  String get displayClubName {
+    final n = clubName.trim();
+    final lower = n.toLowerCase();
+    if (!lower.startsWith('rotary ') && !lower.startsWith('rotaract ')) {
+      return n;
+    }
+    return '${clubType == 'rotaract' ? 'Rotaract' : 'Rotary'} '
+        '${_stripClubPrefix(n)}';
+  }
+
   /// Splash subtitle, generic until the club is known.
   String get splashSubtitle => clubBrandingKnown
-      ? 'Check in, follow projects, and stay connected with the $clubName.'
+      ? 'Check in, follow projects, and stay connected with the $displayClubName.'
       : 'Check in, follow projects, and stay connected with your Rotary club.';
 
   /// Only the Club President can add/manage events, projects and members.
@@ -429,6 +452,7 @@ class AppState extends ChangeNotifier {
 
   // ── real club data loaders ─────────────────────────────────────────
   MemberSummary? summary;
+  bool get checkedInToday => summary?.checkedInToday ?? false;
   final List<ClubMeeting> clubMeetings = [];
   bool meetingsLoaded = false;
 

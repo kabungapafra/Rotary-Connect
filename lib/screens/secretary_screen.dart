@@ -94,7 +94,7 @@ class SecretaryScreen extends StatelessWidget {
                                 color: Colors.white,
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800)),
-                        Text(state.clubName,
+                        Text(state.displayClubName,
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 12)),
                       ],
@@ -354,7 +354,7 @@ class _ReportTab extends StatelessWidget {
           ),
         PressableScale(
           child: ElevatedButton(
-            onPressed: () => _exportReportPdf(state.clubName, r),
+            onPressed: () => _exportReportPdf(state.displayClubName, r),
             style: ElevatedButton.styleFrom(
               backgroundColor: RCColors.blue,
               foregroundColor: Colors.white,

@@ -89,7 +89,7 @@ class _DrawBody extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: RCColors.gold.withValues(alpha: .12),
+          color: RCColors.goldOnLight.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -162,8 +162,13 @@ class _DrawBody extends StatelessWidget {
           backgroundColor: RCColors.gold,
           foregroundColor: RCColors.blue,
           padding: const EdgeInsets.all(12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            // A subtle outline in the text color keeps the button reading
+            // as a button even when gold is white (Rotaract) and it would
+            // otherwise blend straight into the white card behind it.
+            side: BorderSide(color: RCColors.blue.withValues(alpha: .18)),
+          ),
           elevation: 0,
         ),
         child: const Text('Start draw',

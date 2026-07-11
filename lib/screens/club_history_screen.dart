@@ -42,7 +42,7 @@ class ClubHistoryScreen extends StatelessWidget {
                             color: Colors.white,
                             fontSize: 19,
                             fontWeight: FontWeight.w800)),
-                    Text(state.clubName,
+                    Text(state.displayClubName,
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12)),
                   ],

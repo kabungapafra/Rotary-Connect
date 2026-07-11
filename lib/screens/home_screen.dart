@@ -398,7 +398,7 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                     state.nextMeeting == null
-                        ? state.clubName
+                        ? state.displayClubName
                         : [
                             state.nextMeeting!.timeLabel,
                             state.nextMeeting!.venue
@@ -412,17 +412,27 @@ class _Header extends StatelessWidget {
                     Expanded(
                       child: PressableScale(
                         child: ElevatedButton(
-                          onPressed: state.goScan,
+                          onPressed:
+                              state.checkedInToday ? null : state.goScan,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: RCColors.blue,
-                            foregroundColor: Colors.white,
+                            backgroundColor: state.checkedInToday
+                                ? RCColors.chipBg
+                                : RCColors.blue,
+                            foregroundColor: state.checkedInToday
+                                ? RCColors.textMuted
+                                : Colors.white,
+                            disabledBackgroundColor: RCColors.chipBg,
+                            disabledForegroundColor: RCColors.textMuted,
                             padding: const EdgeInsets.all(12),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
-                          child: const Text('Check in',
-                              style: TextStyle(
+                          child: Text(
+                              state.checkedInToday
+                                  ? 'Checked in ✓'
+                                  : 'Check in',
+                              style: const TextStyle(
                                   fontWeight: FontWeight.w800, fontSize: 13)),
                         ),
                       ),

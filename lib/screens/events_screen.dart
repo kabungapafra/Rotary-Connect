@@ -1052,7 +1052,7 @@ class _QRSheet extends StatelessWidget {
                             ? null
                             : () => _exportPdf(
                                 event,
-                                state.clubName,
+                                state.displayClubName,
                                 link,
                                 base64Decode(
                                     registration.qrImage.split(',').last)),
