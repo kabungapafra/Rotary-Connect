@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "236502799564",
+    "project_id": "rotary-connect-b14e7",
+    "storage_bucket": "rotary-connect-b14e7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:236502799564:android:0efd65bd5292fb99bb5e69",
+        "android_client_info": {
+          "package_name": "com.example.rotary_connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiLRxmIq80F8oRXC23rHv-DM00ACFOaPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
