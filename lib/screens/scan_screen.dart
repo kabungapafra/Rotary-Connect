@@ -119,11 +119,26 @@ class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
   final MobileScannerController _camera = MobileScannerController();
   bool _handled = false;
   String? _invalidMessage;
+  // mobile_scanner flips to "initialized" a beat before the sensor actually
+  // pushes its first frame — without this, the live CameraPreview underneath
+  // renders one or two bare black frames right as the starting overlay
+  // disappears. Keeping the overlay up a little longer hides that gap so the
+  // screen never flashes black.
+  bool _previewReady = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _camera.addListener(_onCameraValueChanged);
+  }
+
+  void _onCameraValueChanged() {
+    if (_camera.value.isInitialized && !_previewReady) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _previewReady = true);
+      });
+    }
   }
 
   // The camera is released whenever the app goes to the background (or the
@@ -134,6 +149,7 @@ class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        setState(() => _previewReady = false);
         _camera.start();
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
@@ -185,6 +201,7 @@ class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _camera.removeListener(_onCameraValueChanged);
     _camera.dispose();
     super.dispose();
   }
@@ -203,22 +220,7 @@ class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
             // show a clear, branded "starting" state instead of a blank/
             // black frame so the screen never looks broken while it warms
             // up.
-            placeholderBuilder: (context) => const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.white70),
-                  ),
-                  SizedBox(height: 12),
-                  Text('Starting camera…',
-                      style: TextStyle(color: Colors.white70, fontSize: 12.5)),
-                ],
-              ),
-            ),
+            placeholderBuilder: (context) => const _CameraStarting(),
             errorBuilder: (context, error) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -273,7 +275,45 @@ class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
                 ),
               ),
             ),
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _previewReady ? 0 : 1,
+              duration: const Duration(milliseconds: 200),
+              child: const _CameraStarting(),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Branded "starting" state shown both while mobile_scanner is initializing
+/// (via [MobileScanner.placeholderBuilder]) and for a short grace period
+/// after, covering the bare black frame the live preview briefly renders
+/// before its first real camera frame arrives.
+class _CameraStarting extends StatelessWidget {
+  const _CameraStarting();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: RCColors.scanBg,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.5, color: Colors.white70),
+            ),
+            SizedBox(height: 12),
+            Text('Starting camera…',
+                style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+          ],
+        ),
       ),
     );
   }
