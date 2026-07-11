@@ -205,11 +205,6 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  /// Explicit member-initiated sign-out — e.g. the "Log out" button on the
-  /// club-suspended screen, since a suspended member has nothing else to
-  /// do in the app until reinstated.
-  Future<void> logout() => _clearSession();
-
   /// Remembered once a walk-in visitor has checked in anywhere, so a QR
   /// scan at any club (the same one again, or a different one) never asks
   /// them to re-enter their details.
