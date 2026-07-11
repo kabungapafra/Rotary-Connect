@@ -3,7 +3,8 @@ import '../app_state.dart';
 import 'pressable.dart';
 
 /// Full-screen photo viewer overlay — tap anywhere to close, matching the
-/// design's absolute-positioned dark scrim.
+/// design's absolute-positioned dark scrim. Swipes between the rest of the
+/// album's photos when the open photo came from a gallery grid.
 class PhotoViewerOverlay extends StatelessWidget {
   final AppState state;
   const PhotoViewerOverlay({super.key, required this.state});
@@ -11,6 +12,12 @@ class PhotoViewerOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = state.photo!;
+    final album = state.photoAlbum;
+    final albumPhotos = album == null ? const [] : state.uploadsFor(album);
+    final currentIndex = albumPhotos.isEmpty
+        ? -1
+        : albumPhotos.indexWhere((p) => p.id == photo.id);
+
     return Positioned.fill(
       child: GestureDetector(
         onTap: state.closePhoto,
@@ -23,9 +30,8 @@ class PhotoViewerOverlay extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 height: 340,
-                child: photo.imageUrl != null
-                    ? Image.network(photo.imageUrl!, fit: BoxFit.contain)
-                    : Container(
+                child: photo.imageUrl == null
+                    ? Container(
                         decoration: BoxDecoration(
                             color: const Color(0xFF1C2740),
                             borderRadius: BorderRadius.circular(14)),
@@ -35,7 +41,24 @@ class PhotoViewerOverlay extends StatelessWidget {
                                 fontFamily: 'monospace',
                                 fontSize: 11,
                                 color: Color(0xFF8FA0C0))),
-                      ),
+                      )
+                    : currentIndex < 0
+                        ? Image.network(photo.imageUrl!, fit: BoxFit.contain)
+                        : GestureDetector(
+                            // Swallow taps on the page view itself so only
+                            // the surrounding scrim closes the viewer.
+                            onTap: () {},
+                            child: PageView.builder(
+                              key: ValueKey(album),
+                              controller:
+                                  PageController(initialPage: currentIndex),
+                              itemCount: albumPhotos.length,
+                              onPageChanged: state.showAlbumPhotoAt,
+                              itemBuilder: (context, i) => Image.network(
+                                  albumPhotos[i].image,
+                                  fit: BoxFit.contain),
+                            ),
+                          ),
               ),
               const SizedBox(height: 14),
               Text(photo.activity,

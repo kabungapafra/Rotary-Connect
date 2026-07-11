@@ -65,7 +65,8 @@ class EventsScreen extends StatelessWidget {
                             ),
                             child: const Text('＋ Add event',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 12.5)),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5)),
                           ),
                         ),
                     ],
@@ -145,27 +146,28 @@ class EventsScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color: RCColors.textMuted)),
                           if (state.isPresident) ...[
-                          const SizedBox(height: 10),
-                          PressableScale(
-                            child: ElevatedButton(
-                              onPressed: state.openAddEvent,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: RCColors.chipBg,
-                                foregroundColor: RCColors.blue,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            const SizedBox(height: 10),
+                            PressableScale(
+                              child: ElevatedButton(
+                                onPressed: state.openAddEvent,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: RCColors.chipBg,
+                                  foregroundColor: RCColors.blue,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text('＋ Add event',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12.5)),
                               ),
-                              child: const Text('＋ Add event',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12.5)),
                             ),
-                          ),
                           ],
                         ],
                       ),
@@ -454,9 +456,9 @@ class _EventCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-              color: RCColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))
+              color: RCColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -466,7 +468,7 @@ class _EventCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (event.photo != null)
-              Image.memory(event.photo!, height: 110, fit: BoxFit.cover),
+              Image.network(event.photo!, height: 110, fit: BoxFit.cover),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -480,13 +482,13 @@ class _EventCard extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(event.dow,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 color: RCColors.blue,
                                 height: 1.1)),
                         Text(event.num,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: RCColors.blue,
@@ -615,7 +617,7 @@ class _EditorSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    if (ed.photo == null)
+                    if (ed.pendingPhotoBytes == null && ed.photo == null)
                       InkWell(
                         borderRadius: BorderRadius.circular(14),
                         onTap: _pickPhoto,
@@ -627,21 +629,21 @@ class _EditorSheet extends StatelessWidget {
                             border: Border.all(
                                 color: const Color(0xFFB9C4D6), width: 1.5),
                           ),
-                          child: const Column(
+                          child: Column(
                             children: [
                               Text('＋',
                                   style: TextStyle(
                                       fontSize: 18,
                                       color: RCColors.blue,
                                       fontWeight: FontWeight.w800)),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text('Add photo or poster',
                                   style: TextStyle(
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w700,
                                       color: RCColors.blue)),
-                              SizedBox(height: 4),
-                              Text('Shown on the event card',
+                              const SizedBox(height: 4),
+                              const Text('Shown on the event card',
                                   style: TextStyle(
                                       fontSize: 11, color: Color(0xFF8B96A8))),
                             ],
@@ -651,10 +653,15 @@ class _EditorSheet extends StatelessWidget {
                     else ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Image.memory(ed.photo!,
-                            height: 130,
-                            width: double.infinity,
-                            fit: BoxFit.cover),
+                        child: ed.pendingPhotoBytes != null
+                            ? Image.memory(ed.pendingPhotoBytes!,
+                                height: 130,
+                                width: double.infinity,
+                                fit: BoxFit.cover)
+                            : Image.network(ed.photo!,
+                                height: 130,
+                                width: double.infinity,
+                                fit: BoxFit.cover),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -760,7 +767,8 @@ class _EditorSheet extends StatelessWidget {
                               ),
                               child: const Text('Delete',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 13)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13)),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -779,7 +787,8 @@ class _EditorSheet extends StatelessWidget {
                               ),
                               child: const Text('Save event',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 14)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14)),
                             ),
                           ),
                         ),
@@ -803,8 +812,8 @@ class _QRSheet extends StatelessWidget {
   // Embeds the backend's own QR PNG (decoded from its data URL) rather
   // than rendering a second, separate QR locally — one source of truth
   // for the image, matching what's shown on screen.
-  Future<void> _exportPdf(
-      EventItem event, String clubName, String link, Uint8List qrPngBytes) async {
+  Future<void> _exportPdf(EventItem event, String clubName, String link,
+      Uint8List qrPngBytes) async {
     final doc = pw.Document();
     final qrImage = pw.MemoryImage(qrPngBytes);
     doc.addPage(
@@ -998,7 +1007,8 @@ class _QRSheet extends StatelessWidget {
                               child: Text(
                                   state.qrCopied ? 'Copied ✓' : 'Copy link',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 13)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13)),
                             ),
                           ),
                         ),
@@ -1017,7 +1027,8 @@ class _QRSheet extends StatelessWidget {
                               ),
                               child: const Text('Done',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 13)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13)),
                             ),
                           ),
                         ),

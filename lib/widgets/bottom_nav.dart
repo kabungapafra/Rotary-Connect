@@ -44,7 +44,7 @@ class BottomNav extends StatelessWidget {
               child: Transform.translate(
                 offset: const Offset(0, -12),
                 child: Material(
-                  color: RCColors.gold,
+                  color: RCColors.scanLauncherBg,
                   shape: const CircleBorder(),
                   elevation: 0,
                   child: InkWell(
@@ -54,12 +54,12 @@ class BottomNav extends StatelessWidget {
                       width: 52,
                       height: 52,
                       alignment: Alignment.center,
-                      child: const Text(
+                      child: Text(
                         '⌗',
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: RCColors.blue),
+                            color: RCColors.scanLauncherIcon),
                       ),
                     ),
                   ),

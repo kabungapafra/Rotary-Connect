@@ -115,8 +115,7 @@ class _CameraFeed extends StatefulWidget {
   State<_CameraFeed> createState() => _CameraFeedState();
 }
 
-class _CameraFeedState extends State<_CameraFeed>
-    with WidgetsBindingObserver {
+class _CameraFeedState extends State<_CameraFeed> with WidgetsBindingObserver {
   final MobileScannerController _camera = MobileScannerController();
   bool _handled = false;
   String? _invalidMessage;
@@ -172,7 +171,8 @@ class _CameraFeedState extends State<_CameraFeed>
     }
     final clubId = raw == null ? null : _decodeClubId(raw);
     if (clubId == null) {
-      setState(() => _invalidMessage = "That's not a Rotary Connect club QR code");
+      setState(
+          () => _invalidMessage = "That's not a Rotary Connect club QR code");
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) setState(() => _invalidMessage = null);
       });
@@ -228,8 +228,7 @@ class _CameraFeedState extends State<_CameraFeed>
                     const Text(
                       'Camera unavailable — check your camera permission',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 12, color: RCColors.scanMuted),
+                      style: TextStyle(fontSize: 12, color: RCColors.scanMuted),
                     ),
                     const SizedBox(height: 14),
                     PressableScale(
@@ -297,7 +296,8 @@ class _ScanTab extends StatelessWidget {
           foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
           side: BorderSide(color: active ? RCColors.gold : RCColors.scanBorder),
           padding: const EdgeInsets.symmetric(vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: Text(label,
@@ -351,7 +351,7 @@ class _ScanIdleState extends State<_ScanIdle>
                         right: 230 * 0.08,
                         child: Container(
                           height: 2,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: RCColors.gold,
                             boxShadow: [
                               BoxShadow(color: RCColors.gold, blurRadius: 12)
@@ -366,7 +366,7 @@ class _ScanIdleState extends State<_ScanIdle>
             ),
             if (widget.state.checkInLoading) ...[
               const SizedBox(height: 24),
-              const SizedBox(
+              SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
@@ -402,16 +402,16 @@ class _ScanIdleState extends State<_ScanIdle>
       return BoxDecoration(
         border: Border(
           top: top
-              ? const BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.gold, width: t)
               : BorderSide.none,
           bottom: bottom
-              ? const BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.gold, width: t)
               : BorderSide.none,
           left: left
-              ? const BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.gold, width: t)
               : BorderSide.none,
           right: right
-              ? const BorderSide(color: RCColors.gold, width: t)
+              ? BorderSide(color: RCColors.gold, width: t)
               : BorderSide.none,
         ),
         borderRadius: BorderRadius.only(
@@ -473,7 +473,10 @@ class _ScanSuccess extends StatelessWidget {
                   style: TextStyle(fontSize: 40, color: Colors.white)),
             ),
             const SizedBox(height: 16),
-            Text(state.checkInAlready ? 'Already checked in' : 'Attendance recorded',
+            Text(
+                state.checkInAlready
+                    ? 'Already checked in'
+                    : 'Attendance recorded',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: Colors.white,
@@ -484,7 +487,7 @@ class _ScanSuccess extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 8),
-            const Text('Week streak now 8 — keep it up!',
+            Text('Week streak now 8 — keep it up!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: RCColors.gold,
@@ -642,7 +645,9 @@ class _GuestForm extends StatelessWidget {
                 elevation: 0,
               ),
               child: Text(
-                  state.guestSubmitting ? 'Registering…' : 'Register & check in',
+                  state.guestSubmitting
+                      ? 'Registering…'
+                      : 'Register & check in',
                   style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 14)),
             ),
@@ -756,14 +761,13 @@ class _GuestDone extends StatelessWidget {
                     fontSize: 19,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            Text(
-                state.guestConfirmationLine,
+            Text(state.guestConfirmationLine,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 8),
             Text(state.guestStreakLine,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     color: RCColors.gold,
                     fontSize: 13,
                     fontWeight: FontWeight.w700)),

@@ -22,7 +22,8 @@ class LoggedInMember {
   final String name;
   final String role;
   final String phone;
-  const LoggedInMember(this.name, this.role, this.phone);
+  final bool isBoard;
+  const LoggedInMember(this.name, this.role, this.phone, this.isBoard);
 }
 
 class LoginResult {
@@ -31,8 +32,9 @@ class LoginResult {
   final int clubId;
   final String clubName;
   final String? clubLogo; // data URL uploaded by the system admin
-  const LoginResult(
-      this.token, this.member, this.clubId, this.clubName, this.clubLogo);
+  final String clubType; // "rotary" | "rotaract"
+  const LoginResult(this.token, this.member, this.clubId, this.clubName,
+      this.clubLogo, this.clubType);
 }
 
 class AddedClubMember {
@@ -59,7 +61,8 @@ class ClubEvent {
   final String dow;
   final String name;
   final String meta;
-  const ClubEvent(this.id, this.dow, this.name, this.meta);
+  final String? image; // public R2 URL, null until a banner is uploaded
+  const ClubEvent(this.id, this.dow, this.name, this.meta, this.image);
 }
 
 class GalleryPhotoInfo {
@@ -92,8 +95,9 @@ class ClubProject {
   final int pct;
   final String desc;
   final String deadline;
-  const ClubProject(
-      this.id, this.name, this.area, this.pct, this.desc, this.deadline);
+  final String? image; // public R2 URL, null until a photo is uploaded
+  const ClubProject(this.id, this.name, this.area, this.pct, this.desc,
+      this.deadline, this.image);
 }
 
 class MeetingAttendee {
@@ -127,7 +131,8 @@ class CheckInResult {
   final bool alreadyCheckedIn;
   final DateTime checkedInAt;
   final String meetingName;
-  const CheckInResult(this.alreadyCheckedIn, this.checkedInAt, this.meetingName);
+  const CheckInResult(
+      this.alreadyCheckedIn, this.checkedInAt, this.meetingName);
 }
 
 class TodayCheckedInMember {
@@ -144,6 +149,130 @@ class TodaySummary {
   const TodaySummary(this.meetingName, this.memberCount, this.members);
 }
 
+class ApologyInfo {
+  final int id;
+  final String memberName;
+  final String memberRole;
+  final String meetingDate;
+  final String reason;
+  const ApologyInfo(
+      this.id, this.memberName, this.memberRole, this.meetingDate, this.reason);
+}
+
+class TreasurySummary {
+  final int duesAmount;
+  final String duesPeriod;
+  final String duesPeriodLabel;
+  final int duesCollected;
+  final int duesOutstanding;
+  final int totalIncome;
+  final int totalExpenses;
+  const TreasurySummary(
+      this.duesAmount,
+      this.duesPeriod,
+      this.duesPeriodLabel,
+      this.duesCollected,
+      this.duesOutstanding,
+      this.totalIncome,
+      this.totalExpenses);
+}
+
+class DuesMemberInfo {
+  final int memberId;
+  final String name;
+  final String role;
+  final bool paid;
+  const DuesMemberInfo(this.memberId, this.name, this.role, this.paid);
+}
+
+class TransactionInfo {
+  final int id;
+  final String kind; // income | expense
+  final String label;
+  final int amount;
+  final DateTime createdAt;
+  const TransactionInfo(
+      this.id, this.kind, this.label, this.amount, this.createdAt);
+}
+
+class PollOptionResult {
+  final String label;
+  final int count;
+  const PollOptionResult(this.label, this.count);
+}
+
+class MinuteInfo {
+  final int id;
+  final String title;
+  final String meetingDate;
+  final String status; // draft | approved
+  const MinuteInfo(this.id, this.title, this.meetingDate, this.status);
+}
+
+class MilestoneInfo {
+  final int id;
+  final String year;
+  final String title;
+  final String category;
+  final String text;
+  const MilestoneInfo(this.id, this.year, this.title, this.category, this.text);
+}
+
+class ReportRowInfo {
+  final String label;
+  final String value;
+  const ReportRowInfo(this.label, this.value);
+}
+
+class ReportSectionInfo {
+  final String section;
+  final List<ReportRowInfo> rows;
+  const ReportSectionInfo(this.section, this.rows);
+}
+
+class ReportInfo {
+  final String title;
+  final String subtitle;
+  final List<ReportSectionInfo> sections;
+  const ReportInfo(this.title, this.subtitle, this.sections);
+}
+
+class DrawAssignment {
+  final String giver;
+  final String recipient;
+  const DrawAssignment(this.giver, this.recipient);
+}
+
+class PollInfo {
+  final int id;
+  final String type; // motion | election | draw
+  final String title;
+  final String sub;
+  final String closesLabel;
+  final List<String> options;
+  final String status; // open | closed
+  final String? winner;
+  final List<PollOptionResult> results;
+  final String? myVote;
+  final int totalVotes;
+  // "draw" polls only: every member paired with a different member, set
+  // once the draw has run.
+  final List<DrawAssignment>? assignments;
+  const PollInfo(
+      this.id,
+      this.type,
+      this.title,
+      this.sub,
+      this.closesLabel,
+      this.options,
+      this.status,
+      this.winner,
+      this.results,
+      this.myVote,
+      this.totalVotes,
+      this.assignments);
+}
+
 class ApiClient {
   /// Fire-and-forget ping that wakes a sleeping free-tier backend while the
   /// user is still on the splash/login screens.
@@ -152,15 +281,20 @@ class ApiClient {
   }
 
   Future<LoginResult> login(String identifier, String pin) async {
-    final res = await _post('/auth/login', {'identifier': identifier, 'pin': pin});
+    final res =
+        await _post('/auth/login', {'identifier': identifier, 'pin': pin});
     final member = res['member'] as Map<String, dynamic>;
     return LoginResult(
       res['access_token'] as String,
-      LoggedInMember(member['name'] as String, member['role'] as String,
-          member['phone'] as String? ?? ''),
+      LoggedInMember(
+          member['name'] as String,
+          member['role'] as String,
+          member['phone'] as String? ?? '',
+          member['is_board'] as bool? ?? false),
       res['club_id'] as int,
       res['club_name'] as String? ?? 'Rotary Club of Mbalwa',
       res['club_logo'] as String?,
+      res['club_type'] as String? ?? 'rotary',
     );
   }
 
@@ -255,18 +389,30 @@ class ApiClient {
     return [
       for (final e in list.cast<Map<String, dynamic>>())
         ClubEvent(e['id'] as int, e['dow'] as String, e['name'] as String,
-            e['meta'] as String),
+            e['meta'] as String, e['image'] as String?),
     ];
   }
 
+  /// [image] is a "data:image/...;base64,..." URL to set/replace the
+  /// banner, the sentinel "__remove__" to clear it, or null to leave it
+  /// as-is.
   Future<ClubEvent> saveEvent(String token,
-      {int? id, required String dow, required String name, required String meta}) async {
-    final body = {'dow': dow, 'name': name, 'meta': meta};
+      {int? id,
+      required String dow,
+      required String name,
+      required String meta,
+      String? image}) async {
+    final body = {
+      'dow': dow,
+      'name': name,
+      'meta': meta,
+      if (image != null) 'image': image,
+    };
     final res = id == null
         ? await _post('/club/events', body, token: token)
         : await _patch('/club/events/$id', body, token: token);
     return ClubEvent(res['id'] as int, res['dow'] as String,
-        res['name'] as String, res['meta'] as String);
+        res['name'] as String, res['meta'] as String, res['image'] as String?);
   }
 
   Future<void> deleteEvent(String token, int id) =>
@@ -276,31 +422,47 @@ class ApiClient {
     final list = await _getList('/club/projects', token);
     return [
       for (final p in list.cast<Map<String, dynamic>>())
-        ClubProject(p['id'] as int, p['name'] as String, p['area'] as String,
-            p['pct'] as int, p['desc'] as String, p['deadline'] as String),
+        ClubProject(
+            p['id'] as int,
+            p['name'] as String,
+            p['area'] as String,
+            p['pct'] as int,
+            p['desc'] as String,
+            p['deadline'] as String,
+            p['image'] as String?),
     ];
   }
 
+  /// [image] is a "data:image/...;base64,..." URL to set/replace the
+  /// photo, the sentinel "__remove__" to clear it, or null to leave it
+  /// as-is.
   Future<ClubProject> saveProject(String token,
       {int? id,
       required String name,
       required String area,
       required int pct,
       required String desc,
-      required String deadline}) async {
+      required String deadline,
+      String? image}) async {
     final body = {
       'name': name,
       'area': area,
       'pct': pct,
       'desc': desc,
       'deadline': deadline,
+      if (image != null) 'image': image,
     };
     final res = id == null
         ? await _post('/club/projects', body, token: token)
         : await _patch('/club/projects/$id', body, token: token);
-    return ClubProject(res['id'] as int, res['name'] as String,
-        res['area'] as String, res['pct'] as int, res['desc'] as String,
-        res['deadline'] as String);
+    return ClubProject(
+        res['id'] as int,
+        res['name'] as String,
+        res['area'] as String,
+        res['pct'] as int,
+        res['desc'] as String,
+        res['deadline'] as String,
+        res['image'] as String?);
   }
 
   Future<void> deleteProject(String token, int id) =>
@@ -316,9 +478,10 @@ class ApiClient {
           m['checkin_count'] as int,
           m['attended'] as bool,
           [
-            for (final a in (m['attendees'] as List).cast<Map<String, dynamic>>())
-              MeetingAttendee(
-                  a['name'] as String, a['role'] as String, a['time'] as String),
+            for (final a
+                in (m['attendees'] as List).cast<Map<String, dynamic>>())
+              MeetingAttendee(a['name'] as String, a['role'] as String,
+                  a['time'] as String),
           ],
         ),
     ];
@@ -366,7 +529,8 @@ class ApiClient {
     final http.Response res;
     try {
       res = await http
-          .post(Uri.parse('$apiBaseUrl/club/gallery'), headers: headers, body: body)
+          .post(Uri.parse('$apiBaseUrl/club/gallery'),
+              headers: headers, body: body)
           .timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
@@ -387,7 +551,8 @@ class ApiClient {
       _delete('/club/gallery/$photoId', token);
 
   // ── event registration ──────────────────────────────────────────────
-  Future<EventRegistration> fetchEventRegistration(String token, int eventId) async {
+  Future<EventRegistration> fetchEventRegistration(
+      String token, int eventId) async {
     final res = await _getAuthed('/club/events/$eventId/registration', token);
     return EventRegistration(res['link'] as String, res['qr_image'] as String);
   }
@@ -397,10 +562,8 @@ class ApiClient {
   Future<NextMeeting?> fetchNextMeeting(String token) async {
     final http.Response res;
     try {
-      res = await http
-          .get(Uri.parse('$apiBaseUrl/club/events/next'),
-              headers: {'Authorization': 'Bearer $token'})
-          .timeout(_requestTimeout);
+      res = await http.get(Uri.parse('$apiBaseUrl/club/events/next'),
+          headers: {'Authorization': 'Bearer $token'}).timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -415,6 +578,273 @@ class ApiClient {
     );
   }
 
+  // ── apologies ────────────────────────────────────────────────────────
+  Future<ApologyInfo> submitApology(String token, String reason,
+      {String? meetingDate}) async {
+    final res = await _post(
+      '/club/apologies',
+      {'reason': reason, if (meetingDate != null) 'meeting_date': meetingDate},
+      token: token,
+    );
+    return ApologyInfo(
+      res['id'] as int,
+      res['member_name'] as String,
+      res['member_role'] as String,
+      res['meeting_date'] as String,
+      res['reason'] as String,
+    );
+  }
+
+  Future<List<ApologyInfo>> fetchApologies(String token) async {
+    final list = await _getList('/club/apologies', token);
+    return [
+      for (final a in list.cast<Map<String, dynamic>>())
+        ApologyInfo(
+          a['id'] as int,
+          a['member_name'] as String,
+          a['member_role'] as String,
+          a['meeting_date'] as String,
+          a['reason'] as String,
+        ),
+    ];
+  }
+
+  // ── treasury ─────────────────────────────────────────────────────────
+  Future<TreasurySummary> fetchTreasurySummary(String token) async {
+    final res = await _getAuthed('/club/treasury/summary', token);
+    return _treasurySummaryFromJson(res);
+  }
+
+  Future<TreasurySummary> saveDuesSettings(
+      String token, int amount, String period) async {
+    final res = await _post(
+      '/club/treasury/dues/settings',
+      {'amount': amount, 'period': period},
+      token: token,
+    );
+    return _treasurySummaryFromJson(res);
+  }
+
+  TreasurySummary _treasurySummaryFromJson(Map<String, dynamic> res) =>
+      TreasurySummary(
+        res['dues_amount'] as int,
+        res['dues_period'] as String,
+        res['dues_period_label'] as String,
+        res['dues_collected'] as int,
+        res['dues_outstanding'] as int,
+        res['total_income'] as int,
+        res['total_expenses'] as int,
+      );
+
+  Future<List<DuesMemberInfo>> fetchDues(String token) async {
+    final list = await _getList('/club/treasury/dues', token);
+    return [
+      for (final d in list.cast<Map<String, dynamic>>())
+        DuesMemberInfo(d['member_id'] as int, d['name'] as String,
+            d['role'] as String, d['paid'] as bool),
+    ];
+  }
+
+  Future<DuesMemberInfo> markDuesPaid(String token, int memberId) async {
+    final res =
+        await _post('/club/treasury/dues/$memberId/pay', null, token: token);
+    return DuesMemberInfo(res['member_id'] as int, res['name'] as String,
+        res['role'] as String, res['paid'] as bool);
+  }
+
+  Future<List<TransactionInfo>> fetchTransactions(String token) async {
+    final list = await _getList('/club/treasury/transactions', token);
+    return [
+      for (final t in list.cast<Map<String, dynamic>>())
+        TransactionInfo(
+          t['id'] as int,
+          t['kind'] as String,
+          t['label'] as String,
+          t['amount'] as int,
+          DateTime.parse(t['created_at'] as String),
+        ),
+    ];
+  }
+
+  Future<TransactionInfo> recordTransaction(
+      String token, String kind, String label, int amount) async {
+    final res = await _post(
+      '/club/treasury/transactions',
+      {'kind': kind, 'label': label, 'amount': amount},
+      token: token,
+    );
+    return TransactionInfo(
+      res['id'] as int,
+      res['kind'] as String,
+      res['label'] as String,
+      res['amount'] as int,
+      DateTime.parse(res['created_at'] as String),
+    );
+  }
+
+  // ── polls ────────────────────────────────────────────────────────────
+  PollInfo _pollFromJson(Map<String, dynamic> res) => PollInfo(
+        res['id'] as int,
+        res['type'] as String,
+        res['title'] as String,
+        res['sub'] as String,
+        res['closes_label'] as String,
+        (res['options'] as List).cast<String>(),
+        res['status'] as String,
+        res['winner'] as String?,
+        [
+          for (final r in (res['results'] as List).cast<Map<String, dynamic>>())
+            PollOptionResult(r['label'] as String, r['count'] as int),
+        ],
+        res['my_vote'] as String?,
+        res['total_votes'] as int,
+        res['assignments'] == null
+            ? null
+            : [
+                for (final a in (res['assignments'] as List)
+                    .cast<Map<String, dynamic>>())
+                  DrawAssignment(
+                      a['giver'] as String, a['recipient'] as String),
+              ],
+      );
+
+  /// Null when the club has never created a poll (the backend responds
+  /// with a literal JSON `null` body, not a 404, in that case).
+  Future<PollInfo?> fetchActivePoll(String token) async {
+    final http.Response res;
+    try {
+      res = await http.get(Uri.parse('$apiBaseUrl/club/polls/active'),
+          headers: {'Authorization': 'Bearer $token'}).timeout(_requestTimeout);
+    } catch (_) {
+      throw ApiException('Could not reach the server. Check your connection.');
+    }
+    final decoded = jsonDecode(res.body);
+    if (res.statusCode >= 400) {
+      final data = decoded as Map<String, dynamic>;
+      throw ApiException(data['detail'] as String? ?? 'Something went wrong.');
+    }
+    if (decoded == null) return null;
+    return _pollFromJson(decoded as Map<String, dynamic>);
+  }
+
+  Future<PollInfo> createPoll(
+    String token, {
+    required String type,
+    required String title,
+    String sub = '',
+    String closesLabel = '',
+    List<String> options = const [],
+  }) async {
+    final res = await _post(
+      '/club/polls',
+      {
+        'type': type,
+        'title': title,
+        'sub': sub,
+        'closes_label': closesLabel,
+        'options': options,
+      },
+      token: token,
+    );
+    return _pollFromJson(res);
+  }
+
+  Future<PollInfo> castVote(String token, int pollId, String choice) async {
+    final res = await _post('/club/polls/$pollId/vote', {'choice': choice},
+        token: token);
+    return _pollFromJson(res);
+  }
+
+  Future<PollInfo> runDraw(String token, int pollId) async {
+    final res = await _post('/club/polls/$pollId/draw', null, token: token);
+    return _pollFromJson(res);
+  }
+
+  // ── secretary workspace ─────────────────────────────────────────────
+  Future<List<MinuteInfo>> fetchMinutes(String token) async {
+    final list = await _getList('/club/secretary/minutes', token);
+    return [
+      for (final m in list.cast<Map<String, dynamic>>())
+        MinuteInfo(m['id'] as int, m['title'] as String,
+            m['meeting_date'] as String, m['status'] as String),
+    ];
+  }
+
+  Future<MinuteInfo> createMinute(
+      String token, String title, String meetingDate) async {
+    final res = await _post(
+      '/club/secretary/minutes',
+      {'title': title, 'meeting_date': meetingDate},
+      token: token,
+    );
+    return MinuteInfo(res['id'] as int, res['title'] as String,
+        res['meeting_date'] as String, res['status'] as String);
+  }
+
+  Future<MinuteInfo> setMinuteStatus(
+      String token, int minuteId, String status) async {
+    final res = await _patch(
+      '/club/secretary/minutes/$minuteId',
+      {'status': status},
+      token: token,
+    );
+    return MinuteInfo(res['id'] as int, res['title'] as String,
+        res['meeting_date'] as String, res['status'] as String);
+  }
+
+  Future<List<MilestoneInfo>> fetchMilestones(String token) async {
+    final list = await _getList('/club/secretary/milestones', token);
+    return [
+      for (final m in list.cast<Map<String, dynamic>>())
+        MilestoneInfo(m['id'] as int, m['year'] as String, m['title'] as String,
+            m['category'] as String, m['text'] as String),
+    ];
+  }
+
+  Future<MilestoneInfo> createMilestone(String token,
+      {required String year,
+      required String title,
+      required String category,
+      required String text}) async {
+    final res = await _post(
+      '/club/secretary/milestones',
+      {'year': year, 'title': title, 'category': category, 'text': text},
+      token: token,
+    );
+    return MilestoneInfo(
+        res['id'] as int,
+        res['year'] as String,
+        res['title'] as String,
+        res['category'] as String,
+        res['text'] as String);
+  }
+
+  Future<void> deleteMilestone(String token, int id) =>
+      _delete('/club/secretary/milestones/$id', token);
+
+  ReportInfo _reportFromJson(Map<String, dynamic> res) => ReportInfo(
+        res['title'] as String,
+        res['subtitle'] as String,
+        [
+          for (final s
+              in (res['sections'] as List).cast<Map<String, dynamic>>())
+            ReportSectionInfo(s['section'] as String, [
+              for (final r in (s['rows'] as List).cast<Map<String, dynamic>>())
+                ReportRowInfo(r['label'] as String, r['value'] as String),
+            ]),
+        ],
+      );
+
+  Future<ReportInfo> fetchMonthlyReport(String token) async {
+    final res = await _getAuthed('/club/secretary/monthly-report', token);
+    return _reportFromJson(res);
+  }
+
+  Future<ReportInfo> fetchAnnualReport(String token) async {
+    final res = await _getAuthed('/club/secretary/annual-report', token);
+    return _reportFromJson(res);
+  }
+
   Future<TodaySummary> fetchToday() async {
     final res = await _get('/checkin/today');
     final members = (res['members'] as List)
@@ -424,7 +854,8 @@ class ApiClient {
               DateTime.parse(m['checked_in_at'] as String),
             ))
         .toList();
-    return TodaySummary(res['meeting_name'] as String, res['member_count'] as int, members);
+    return TodaySummary(
+        res['meeting_name'] as String, res['member_count'] as int, members);
   }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic>? body,
@@ -446,7 +877,9 @@ class ApiClient {
   Future<Map<String, dynamic>> _get(String path) async {
     final http.Response res;
     try {
-      res = await http.get(Uri.parse('$apiBaseUrl$path')).timeout(_requestTimeout);
+      res = await http
+          .get(Uri.parse('$apiBaseUrl$path'))
+          .timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -456,10 +889,8 @@ class ApiClient {
   Future<Map<String, dynamic>> _getAuthed(String path, String token) async {
     final http.Response res;
     try {
-      res = await http
-          .get(Uri.parse('$apiBaseUrl$path'),
-              headers: {'Authorization': 'Bearer $token'})
-          .timeout(_requestTimeout);
+      res = await http.get(Uri.parse('$apiBaseUrl$path'),
+          headers: {'Authorization': 'Bearer $token'}).timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -469,10 +900,8 @@ class ApiClient {
   Future<List<dynamic>> _getList(String path, String token) async {
     final http.Response res;
     try {
-      res = await http
-          .get(Uri.parse('$apiBaseUrl$path'),
-              headers: {'Authorization': 'Bearer $token'})
-          .timeout(_requestTimeout);
+      res = await http.get(Uri.parse('$apiBaseUrl$path'),
+          headers: {'Authorization': 'Bearer $token'}).timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }
@@ -502,10 +931,8 @@ class ApiClient {
   Future<void> _delete(String path, String token) async {
     final http.Response res;
     try {
-      res = await http
-          .delete(Uri.parse('$apiBaseUrl$path'),
-              headers: {'Authorization': 'Bearer $token'})
-          .timeout(_requestTimeout);
+      res = await http.delete(Uri.parse('$apiBaseUrl$path'),
+          headers: {'Authorization': 'Bearer $token'}).timeout(_requestTimeout);
     } catch (_) {
       throw ApiException('Could not reach the server. Check your connection.');
     }

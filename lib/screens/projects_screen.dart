@@ -106,7 +106,7 @@ class _ProjectCard extends StatelessWidget {
           if (project.photo != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.memory(project.photo!,
+              child: Image.network(project.photo!,
                   height: 90, width: double.infinity, fit: BoxFit.cover),
             ),
             const SizedBox(height: 10),
@@ -121,7 +121,7 @@ class _ProjectCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10)),
                 alignment: Alignment.center,
                 child: Text(project.icon,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: RCColors.blue,
                         fontWeight: FontWeight.w800,
                         fontSize: 15)),
@@ -143,7 +143,7 @@ class _ProjectCard extends StatelessWidget {
                 ),
               ),
               Text(project.pctLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: RCColors.blue)),
@@ -268,7 +268,7 @@ class _ProjectEditorSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    if (ed.photo == null)
+                    if (ed.pendingPhotoBytes == null && ed.photo == null)
                       InkWell(
                         borderRadius: BorderRadius.circular(14),
                         onTap: _pickPhoto,
@@ -280,14 +280,14 @@ class _ProjectEditorSheet extends StatelessWidget {
                             border: Border.all(
                                 color: const Color(0xFFB9C4D6), width: 1.5),
                           ),
-                          child: const Column(
+                          child: Column(
                             children: [
                               Text('＋',
                                   style: TextStyle(
                                       fontSize: 18,
                                       color: RCColors.blue,
                                       fontWeight: FontWeight.w800)),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text('Add project photo',
                                   style: TextStyle(
                                       fontSize: 12.5,
@@ -300,10 +300,15 @@ class _ProjectEditorSheet extends StatelessWidget {
                     else ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Image.memory(ed.photo!,
-                            height: 120,
-                            width: double.infinity,
-                            fit: BoxFit.cover),
+                        child: ed.pendingPhotoBytes != null
+                            ? Image.memory(ed.pendingPhotoBytes!,
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover)
+                            : Image.network(ed.photo!,
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -411,7 +416,8 @@ class _ProjectEditorSheet extends StatelessWidget {
                               ),
                               child: const Text('Delete',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 13)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13)),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -428,9 +434,11 @@ class _ProjectEditorSheet extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              child: Text(isNew ? 'Add project' : 'Save changes',
+                              child: Text(
+                                  isNew ? 'Add project' : 'Save changes',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 14)),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14)),
                             ),
                           ),
                         ),

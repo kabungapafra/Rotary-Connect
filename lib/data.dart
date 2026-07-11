@@ -8,29 +8,32 @@ import 'dart:typed_data';
 /// The club's standard positions, offered as a dropdown on Add Member
 /// instead of free text — keeps role strings consistent with the ones
 /// permission checks compare against (AppState.isPresident,
-/// canGenerateEventQr, isTreasurer).
-const List<String> clubPositions = [
-  'Member',
-  'President',
-  'President-Elect',
-  'Immediate Past President',
-  'Secretary',
-  'Treasurer',
-  'Sergeant-at-Arms',
-  'Club Trainer',
-  'Club Administration Chair',
-  'Membership Chair',
-  'Public Image Chair',
-  'Rotary Foundation Chair',
-  'Service Projects Chair',
-  'Youth Service Chair',
-  'Vocational Service Chair',
-  'International Service Chair',
-  'Board Director',
-  'Committee Member',
-  'Auditor',
-  'Legal Advisor',
-];
+/// canGenerateEventQr, isTreasurer). "Rotary Foundation Chair" becomes
+/// "Rotaract Foundation Chair" for a Rotaract club's clubType.
+List<String> clubPositions(String clubType) => [
+      'Member',
+      'President',
+      'President-Elect',
+      'Immediate Past President',
+      'Secretary',
+      'Treasurer',
+      'Sergeant-at-Arms',
+      'Club Trainer',
+      'Club Administration Chair',
+      'Membership Chair',
+      'Public Image Chair',
+      clubType == 'rotaract'
+          ? 'Rotaract Foundation Chair'
+          : 'Rotary Foundation Chair',
+      'Service Projects Chair',
+      'Youth Service Chair',
+      'Vocational Service Chair',
+      'International Service Chair',
+      'Board Director',
+      'Committee Member',
+      'Auditor',
+      'Legal Advisor',
+    ];
 
 class Member {
   final String name;
@@ -61,7 +64,12 @@ class Project {
   int pct;
   String desc;
   String deadline;
-  Uint8List? photo;
+  // The saved photo's public URL (from the backend/R2), null until one is
+  // uploaded. Distinct from [pendingPhotoBytes], which holds a freshly
+  // picked-but-not-yet-saved photo on the editor's working copy.
+  String? photo;
+  Uint8List? pendingPhotoBytes;
+  bool photoRemoved = false;
   Project({
     required this.id,
     required this.name,
@@ -151,7 +159,12 @@ class EventItem {
   String meta;
   String time;
   String venue;
-  Uint8List? photo;
+  // The saved banner's public URL (from the backend/R2), null until one is
+  // uploaded. Distinct from [pendingPhotoBytes], which holds a freshly
+  // picked-but-not-yet-saved photo on the editor's working copy.
+  String? photo;
+  Uint8List? pendingPhotoBytes;
+  bool photoRemoved = false;
   EventItem(
       {required this.id,
       required this.dow,
@@ -171,20 +184,32 @@ class EventItem {
       required String dow,
       required String name,
       required String meta,
-      Uint8List? photo}) {
+      String? photo}) {
     final parts = meta.split(RegExp(r'[-–—·,]'));
-    final looksLikeTime =
-        parts.isNotEmpty && RegExp(r'^\d{1,2}(:\d{2})?\s*([AaPp][Mm])?$').hasMatch(parts[0].trim());
+    final looksLikeTime = parts.isNotEmpty &&
+        RegExp(r'^\d{1,2}(:\d{2})?\s*([AaPp][Mm])?$').hasMatch(parts[0].trim());
     final time = parts.length >= 2 && looksLikeTime ? parts[0].trim() : '';
     final venue = parts.length >= 2 && looksLikeTime
         ? parts.sublist(1).join(',').trim()
         : meta.trim();
     return EventItem(
-        id: id, dow: dow, name: name, meta: meta, time: time, venue: venue, photo: photo);
+        id: id,
+        dow: dow,
+        name: name,
+        meta: meta,
+        time: time,
+        venue: venue,
+        photo: photo);
   }
 
   EventItem copy() => EventItem(
-      id: id, dow: dow, name: name, meta: meta, time: time, venue: venue, photo: photo);
+      id: id,
+      dow: dow,
+      name: name,
+      meta: meta,
+      time: time,
+      venue: venue,
+      photo: photo);
 }
 
 const List<String> guestTypes = [

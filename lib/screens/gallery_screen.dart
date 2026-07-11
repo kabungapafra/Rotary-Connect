@@ -93,7 +93,8 @@ class GalleryScreen extends StatelessWidget {
                         child: SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5))),
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2.5))),
                   );
                 }
                 if (albumNames.isEmpty) {
@@ -166,12 +167,13 @@ class _Album extends StatelessWidget {
           children: [
             for (final up in uploads)
               GestureDetector(
-                onTap: () =>
-                    state.openPhoto(
-                    PhotoInfo('', name, '', imageUrl: up.image, id: up.id)),
+                onTap: () => state.openPhoto(
+                    PhotoInfo('', name, '', imageUrl: up.image, id: up.id),
+                    album: name),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(up.image, height: 100, fit: BoxFit.cover),
+                  child:
+                      Image.network(up.image, height: 100, fit: BoxFit.cover),
                 ),
               ),
           ],
@@ -268,8 +270,8 @@ class _UploadSheet extends StatelessWidget {
                     const SizedBox(height: 6),
                     TextField(
                       controller: TextEditingController(text: sheet.album)
-                        ..selection = TextSelection.collapsed(
-                            offset: sheet.album.length),
+                        ..selection =
+                            TextSelection.collapsed(offset: sheet.album.length),
                       onChanged: state.pickUploadAlbum,
                       style: const TextStyle(
                           fontSize: 13.5,
@@ -292,8 +294,7 @@ class _UploadSheet extends StatelessWidget {
                                 const BorderSide(color: Color(0xFFD4DBE8))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: RCColors.blue)),
+                            borderSide: BorderSide(color: RCColors.blue)),
                       ),
                     ),
                     if (sheet.srcs.isNotEmpty) ...[
@@ -325,21 +326,21 @@ class _UploadSheet extends StatelessWidget {
                           border: Border.all(
                               color: const Color(0xFFB9C4D6), width: 1.5),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
                             Text('＋',
                                 style: TextStyle(
                                     fontSize: 18,
                                     color: RCColors.blue,
                                     fontWeight: FontWeight.w800)),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text('Choose photos',
                                 style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
                                     color: RCColors.blue)),
-                            SizedBox(height: 4),
-                            Text('You can select several at once',
+                            const SizedBox(height: 4),
+                            const Text('You can select several at once',
                                 style: TextStyle(
                                     fontSize: 11, color: Color(0xFF8B96A8))),
                           ],
@@ -386,4 +387,3 @@ class _UploadSheet extends StatelessWidget {
     );
   }
 }
-

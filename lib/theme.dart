@@ -2,9 +2,25 @@ import 'package:flutter/material.dart';
 
 /// Colors and text styles lifted directly from the Rotary Mbalwa design.
 class RCColors {
-  static const blue = Color(0xFF17458F);
+  // Rotary is the default brand; a Rotaract club's members set this once,
+  // right after login/session-restore (see AppState.clubType), and every
+  // reference below picks it up on the next rebuild.
+  static bool _isRotaract = false;
+  static void setClubType(String clubType) =>
+      _isRotaract = clubType.toLowerCase() == 'rotaract';
+
+  static Color get blue =>
+      _isRotaract ? const Color(0xFFD41367) : const Color(0xFF17458F);
   static const blueDark = Color(0xFF0C2F66);
-  static const gold = Color(0xFFF7A81B);
+  static Color get gold => _isRotaract ? Colors.white : const Color(0xFFF7A81B);
+  // A lighter tint of [blue], used for muted text/overlays on top of a blue
+  // card — derived so it always matches whichever brand color is active.
+  static Color get blueMuted => Color.lerp(blue, Colors.white, 0.55)!;
+  // The bottom-nav scan launcher is the one gold usage that doesn't turn
+  // white for a Rotaract club — it stays a solid brand accent, so it needs
+  // its own background/icon pair instead of following gold/blue directly.
+  static Color get scanLauncherBg => _isRotaract ? blue : gold;
+  static Color get scanLauncherIcon => _isRotaract ? Colors.white : blue;
   static const scaffoldBg = Color(0xFFF4F6FA);
   static const cardBg = Colors.white;
   static const textDark = Color(0xFF1A2437);
@@ -16,7 +32,7 @@ class RCColors {
   static const red = Color(0xFFC0392B);
   static const amber = Color(0xFFB57708);
   static const amberBg = Color(0xFFFFF5E0);
-  static const cardShadow = Color(0x0F17458F);
+  static Color get cardShadow => blue.withAlpha(0x0F);
 
   // scan / dark screen
   static const scanBg = Color(0xFF0E1524);

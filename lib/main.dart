@@ -11,6 +11,8 @@ import 'screens/today_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/gallery_screen.dart';
 import 'screens/treasury_screen.dart';
+import 'screens/secretary_screen.dart';
+import 'screens/club_history_screen.dart';
 import 'screens/scan_screen.dart';
 import 'screens/attendance_screen.dart';
 import 'screens/events_screen.dart';
@@ -72,6 +74,10 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
         return GalleryScreen(state: state);
       case 'treasury':
         return TreasuryScreen(state: state);
+      case 'secretary':
+        return SecretaryScreen(state: state);
+      case 'history':
+        return ClubHistoryScreen(state: state);
       case 'scan':
         return ScanScreen(state: state);
       case 'attendance':
@@ -115,8 +121,8 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                           _previousTab == 'splash' && state.tab != 'splash';
                       _previousTab = state.tab;
                       return AnimatedSwitcher(
-                        duration: Duration(
-                            milliseconds: leavingSplash ? 460 : 280),
+                        duration:
+                            Duration(milliseconds: leavingSplash ? 460 : 280),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeIn,
                         transitionBuilder: (child, animation) => leavingSplash
@@ -165,7 +171,13 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                       state.projectEditor == null &&
                       state.memberEditor == null &&
                       state.memberProfile == null &&
-                      state.uploadSheet == null)
+                      state.uploadSheet == null &&
+                      state.apologySheet == null &&
+                      state.voteEditor == null &&
+                      state.txEntry == null &&
+                      state.duesSettingEditor == null &&
+                      state.minuteEditor == null &&
+                      state.milestoneEditor == null)
                     BottomNav(state: state),
                 ],
               ),

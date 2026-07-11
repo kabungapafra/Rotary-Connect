@@ -15,8 +15,15 @@ class Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wheel =
+    final isRotaract = state.clubType == 'rotaract';
+    Widget wheel =
         Image.asset('assets/images/rotary_wheel_spin.png', height: 55 * scale);
+    if (isRotaract) {
+      wheel = ColorFiltered(
+        colorFilter: ColorFilter.mode(RCColors.blue, BlendMode.srcIn),
+        child: wheel,
+      );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -31,7 +38,7 @@ class Wordmark extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'Rotary',
+                isRotaract ? 'Rotaract' : 'Rotary',
                 style: TextStyle(
                   color: RCColors.blue,
                   fontSize: 30 * scale,

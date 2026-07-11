@@ -60,7 +60,7 @@ class LoginScreen extends StatelessWidget {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
                             onTap: state.goSplash,
-                            child: const SizedBox(
+                            child: SizedBox(
                               width: 36,
                               height: 36,
                               child: Center(
@@ -81,7 +81,7 @@ class LoginScreen extends StatelessWidget {
                             const SizedBox(height: 22),
                             Wordmark(state: state, scale: 0.8),
                             const SizedBox(height: 22),
-                            const Text(
+                            Text(
                               'Member login',
                               style: TextStyle(
                                 color: RCColors.blue,
@@ -128,7 +128,7 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ],
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               'Forgot PIN?',
                               style: TextStyle(
                                   fontSize: 12,
@@ -153,7 +153,8 @@ class LoginScreen extends StatelessWidget {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: state.loginLoading ? null : state.submitLogin,
+                          onPressed:
+                              state.loginLoading ? null : state.submitLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: RCColors.blue,
                             foregroundColor: Colors.white,
@@ -162,7 +163,8 @@ class LoginScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(14)),
                             elevation: 0,
                           ),
-                          child: Text(state.loginLoading ? 'Signing in…' : 'Log in',
+                          child: Text(
+                              state.loginLoading ? 'Signing in…' : 'Log in',
                               style: const TextStyle(
                                   fontWeight: FontWeight.w800, fontSize: 15)),
                         ),
@@ -179,7 +181,7 @@ class LoginScreen extends StatelessWidget {
                             WidgetSpan(
                               child: GestureDetector(
                                 onTap: state.enterGuest,
-                                child: const Text(
+                                child: Text(
                                   'Continue as a Guest',
                                   style: TextStyle(
                                       fontSize: 12,

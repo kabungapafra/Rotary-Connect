@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
+import 'theme.dart';
 
 class PhotoInfo {
   final String label;
@@ -43,6 +45,60 @@ class UploadSheet {
   bool saving = false;
   String? error;
   UploadSheet(this.album);
+}
+
+/// Working copy of the "Send apology" bottom sheet fields.
+class ApologyDraft {
+  String reason = '';
+  bool saving = false;
+  String? error;
+}
+
+/// Working copy of the "Record entry" (income/expense) bottom sheet fields.
+class TxDraft {
+  String kind = 'income'; // income | expense
+  String label = '';
+  String amount = '';
+  bool saving = false;
+  String? error;
+}
+
+/// Working copy of the Treasurer's "Dues settings" bottom sheet fields.
+class DuesSettingDraft {
+  String amount;
+  String period; // quarterly | monthly | annual
+  bool saving = false;
+  String? error;
+  DuesSettingDraft({required this.amount, required this.period});
+}
+
+/// Working copy of the "New vote" bottom sheet fields.
+class PollDraft {
+  String type = 'motion'; // motion | election | draw
+  String title = '';
+  String sub = '';
+  String closes = '';
+  String options = ''; // newline/comma separated, election & draw only
+  bool saving = false;
+  String? error;
+}
+
+/// Working copy of the "Add minute" bottom sheet fields.
+class MinuteDraft {
+  String title = '';
+  String meetingDate = ''; // "YYYY-MM-DD"
+  bool saving = false;
+  String? error;
+}
+
+/// Working copy of the "Add milestone" bottom sheet fields.
+class MilestoneDraft {
+  String year = '';
+  String title = '';
+  String category = 'Milestones';
+  String text = '';
+  bool saving = false;
+  String? error;
 }
 
 /// Working copy of the "Add member" bottom sheet fields.
@@ -88,9 +144,12 @@ class AppState extends ChangeNotifier {
       currentMemberName = prefs.getString('member_name') ?? '';
       currentMemberRole = prefs.getString('member_role') ?? '';
       currentMemberPhone = prefs.getString('member_phone') ?? '';
+      currentMemberIsBoard = prefs.getBool('member_is_board') ?? false;
       clubId = prefs.getInt('club_id');
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
+      clubType = prefs.getString('club_type') ?? clubType;
+      RCColors.setClubType(clubType);
       clubBrandingKnown = true;
       // Stay on the splash screen — its welcome animation plays every
       // launch regardless of login state. Only the login FORM is skipped
@@ -112,9 +171,11 @@ class AppState extends ChangeNotifier {
     await prefs.setString('member_name', currentMemberName);
     await prefs.setString('member_role', currentMemberRole);
     await prefs.setString('member_phone', currentMemberPhone);
+    await prefs.setBool('member_is_board', currentMemberIsBoard);
     final id = clubId;
     if (id != null) await prefs.setInt('club_id', id);
     await prefs.setString('club_name', clubName);
+    await prefs.setString('club_type', clubType);
     final logo = clubLogo;
     if (logo != null) {
       await prefs.setString('club_logo', logo);
@@ -133,11 +194,13 @@ class AppState extends ChangeNotifier {
     await prefs.remove('member_name');
     await prefs.remove('member_role');
     await prefs.remove('member_phone');
+    await prefs.remove('member_is_board');
     _update(() {
       authToken = null;
       currentMemberName = '';
       currentMemberRole = '';
       currentMemberPhone = '';
+      currentMemberIsBoard = false;
       tab = 'splash';
     });
   }
@@ -154,8 +217,7 @@ class AppState extends ChangeNotifier {
     await prefs.setString('visitor_phone', phone);
   }
 
-  bool _isAuthFailure(ApiException e) =>
-      e.message.contains('credentials');
+  bool _isAuthFailure(ApiException e) => e.message.contains('credentials');
 
   String tab = 'splash';
   // True only when the scan screen was reached via the splash screen's
@@ -176,7 +238,6 @@ class AppState extends ChangeNotifier {
   PhotoInfo? photo;
   CertInfo? cert;
 
-  final List<int> paidIds = [];
   String search = '';
 
   // Greeting and role badge reflect the logged-in member; the design's
@@ -193,6 +254,10 @@ class AppState extends ChangeNotifier {
   /// Treasury workspace.
   bool get isTreasurer => currentMemberRole.trim() == 'Treasurer';
 
+  /// The Secretary workspace is the Secretary's alone — the President
+  /// doesn't share it (matching the backend's `_require_secretary` gate).
+  bool get isSecretary => currentMemberRole.trim() == 'Secretary';
+
   // login
   String loginId = '';
   String loginPin = '';
@@ -204,6 +269,7 @@ class AppState extends ChangeNotifier {
   String currentMemberName = '';
   String currentMemberRole = '';
   String currentMemberPhone = '';
+  bool currentMemberIsBoard = false;
 
   // Branding for the logged-in member's club, provided by the backend at
   // login. Until then the app brands itself as "Rotary Connect". clubId
@@ -213,15 +279,18 @@ class AppState extends ChangeNotifier {
   int? clubId;
   String clubName = 'Rotary Club of Mbalwa';
   String? clubLogo; // data URL uploaded by the system admin
+  String clubType = 'rotary'; // "rotary" | "rotaract", set by the system admin
   bool clubBrandingKnown = false; // true once a login has identified the club
 
   /// Second line of the splash wordmark: "Connect" until the member's club
-  /// is known, then e.g. "Club of Mbalwa" (the club name minus "Rotary",
-  /// which the wordmark's first line already says).
+  /// is known, then e.g. "Club of Mbalwa" (the club name minus "Rotary"/
+  /// "Rotaract", which the wordmark's first line already says).
   String get wordmarkClubLine {
     if (!clubBrandingKnown) return 'Connect';
     final n = clubName.trim();
-    if (n.toLowerCase().startsWith('rotary ')) return n.substring(7).trim();
+    final lower = n.toLowerCase();
+    if (lower.startsWith('rotary ')) return n.substring(7).trim();
+    if (lower.startsWith('rotaract ')) return n.substring(9).trim();
     return n;
   }
 
@@ -249,6 +318,10 @@ class AppState extends ChangeNotifier {
   bool get canGenerateEventQr =>
       _eventRegistrationRoles.contains(currentMemberRole.trim());
 
+  /// Creating and resolving club votes is limited to board members and the
+  /// President — matches the backend's `_require_board_or_president` gate.
+  bool get canCreatePoll => currentMemberIsBoard || isPresident;
+
   // check-in (member scan)
   bool checkInLoading = false;
   String? checkInError;
@@ -261,6 +334,19 @@ class AppState extends ChangeNotifier {
   String todayMeetingName = 'Weekly Fellowship Meeting';
   int todayCheckedInCount = 0;
   List<TodayCheckedInMember> todayCheckedIn = [];
+
+  // apologies — who's apologised for today's meeting
+  ApologyDraft? apologySheet;
+  bool apologiesLoading = false;
+  List<ApologyInfo> apologies = [];
+
+  // polls — the club's current (or most recently closed) vote
+  PollInfo? activePoll;
+  bool pollLoading = false;
+  PollDraft? voteEditor;
+  bool drawSpinning = false;
+  String drawSpinName = '';
+  Timer? _drawTimer;
 
   // events — real club data, loaded from the backend after login
   final List<EventItem> events = [];
@@ -309,6 +395,27 @@ class AppState extends ChangeNotifier {
   bool nextMeetingLoaded = false;
   bool nextMeetingLoading = false;
 
+  // ── treasury ─────────────────────────────────────────────────────────
+  TreasurySummary? treasurySummary;
+  List<DuesMemberInfo> duesList = [];
+  List<TransactionInfo> transactions = [];
+  bool treasuryLoaded = false;
+  bool treasuryLoading = false;
+  TxDraft? txEntry;
+  DuesSettingDraft? duesSettingEditor;
+
+  // ── secretary workspace ─────────────────────────────────────────────
+  List<MinuteInfo> minutes = [];
+  List<MilestoneInfo> milestones = [];
+  ReportInfo? monthlyReport;
+  ReportInfo? annualReport;
+  bool secretaryLoaded = false;
+  bool secretaryLoading = false;
+  MinuteDraft? minuteEditor;
+  MilestoneDraft? milestoneEditor;
+  String milestoneFilter = 'All';
+  String secretaryTab = 'minutes'; // minutes | monthly | annual
+
   Future<void> loadSummary() async {
     final token = authToken;
     if (token == null) return;
@@ -349,10 +456,12 @@ class AppState extends ChangeNotifier {
     final diffDays = DateTime(date.year, date.month, date.day)
         .difference(DateTime(today.year, today.month, today.day))
         .inDays;
-    final monthShort = _monthNames[date.month - 1].substring(0, 3).toUpperCase();
+    final monthShort =
+        _monthNames[date.month - 1].substring(0, 3).toUpperCase();
     if (diffDays == 0) return 'TODAY · ${date.day} $monthShort';
     if (diffDays == 1) return 'TOMORROW · ${date.day} $monthShort';
-    final weekdayShort = _weekdayNames[date.weekday - 1].substring(0, 3).toUpperCase();
+    final weekdayShort =
+        _weekdayNames[date.weekday - 1].substring(0, 3).toUpperCase();
     return '$weekdayShort · ${date.day} $monthShort';
   }
 
@@ -367,7 +476,12 @@ class AppState extends ChangeNotifier {
           ..clear()
           ..addAll([
             for (final e in list)
-              EventItem(id: e.id, dow: e.dow, name: e.name, meta: e.meta),
+              EventItem(
+                  id: e.id,
+                  dow: e.dow,
+                  name: e.name,
+                  meta: e.meta,
+                  photo: e.image),
           ]);
         eventsLoaded = true;
         eventsLoading = false;
@@ -416,6 +530,7 @@ class AppState extends ChangeNotifier {
                 pct: p.pct,
                 desc: p.desc,
                 deadline: p.deadline,
+                photo: p.image,
               ),
           ]);
         projectsLoaded = true;
@@ -508,6 +623,7 @@ class AppState extends ChangeNotifier {
     go('home');
     if (authToken != null) {
       loadSummary();
+      loadActivePoll();
       if (!galleryLoaded && !galleryLoading) loadGallery();
       if (!nextMeetingLoaded && !nextMeetingLoading) loadNextMeeting();
     }
@@ -532,19 +648,24 @@ class AppState extends ChangeNotifier {
     go('events');
     if (authToken != null && !eventsLoaded && !eventsLoading) loadEvents();
   }
+
   void goMembers() {
     go('members');
     if (authToken != null && !clubMembersLoaded && !clubMembersLoading) {
       loadClubMembers();
     }
   }
+
   void goProjects() {
     go('projects');
-    if (authToken != null && !projectsLoaded && !projectsLoading) loadProjects();
+    if (authToken != null && !projectsLoaded && !projectsLoading)
+      loadProjects();
   }
+
   void goToday() {
     go('today');
     loadToday();
+    loadApologies();
   }
 
   Future<void> loadToday() async {
@@ -563,11 +684,187 @@ class AppState extends ChangeNotifier {
       _update(() => todayLoading = false);
     }
   }
+
+  Future<void> loadApologies() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => apologiesLoading = true);
+    try {
+      final list = await _api.fetchApologies(token);
+      _update(() {
+        apologies = list;
+        apologiesLoading = false;
+      });
+    } on ApiException {
+      _update(() => apologiesLoading = false);
+    }
+  }
+
+  void openApology() => _update(() => apologySheet = ApologyDraft());
+  void closeApology() => _update(() => apologySheet = null);
+  void onApologyReason(String v) => _update(() => apologySheet?.reason = v);
+
+  Future<void> sendApology() async {
+    final sheet = apologySheet;
+    final token = authToken;
+    if (sheet == null || token == null) return;
+    _update(() {
+      sheet.saving = true;
+      sheet.error = null;
+    });
+    try {
+      // The apology is for the upcoming fellowship (the Home card the
+      // button sits on), falling back to today when none is scheduled.
+      final result = await _api.submitApology(token, sheet.reason.trim(),
+          meetingDate: nextMeeting?.dateIso);
+      _update(() {
+        apologies.removeWhere((a) => a.id == result.id);
+        apologies.add(result);
+        apologySheet = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        sheet.saving = false;
+        sheet.error = e.message;
+      });
+    }
+  }
+
+  // ── polls ────────────────────────────────────────────────────────────
+  Future<void> loadActivePoll() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => pollLoading = true);
+    try {
+      final poll = await _api.fetchActivePoll(token);
+      _update(() {
+        activePoll = poll;
+        pollLoading = false;
+      });
+    } on ApiException {
+      _update(() => pollLoading = false);
+    }
+  }
+
+  void openVoteEditor() => _update(() => voteEditor = PollDraft());
+  void closeVoteEditor() => _update(() => voteEditor = null);
+  void setVoteType(String v) => _update(() => voteEditor?.type = v);
+  void setVoteTitle(String v) => _update(() => voteEditor?.title = v);
+  void setVoteSub(String v) => _update(() => voteEditor?.sub = v);
+  void setVoteCloses(String v) => _update(() => voteEditor?.closes = v);
+  void setVoteOptions(String v) => _update(() => voteEditor?.options = v);
+
+  Future<void> saveVoteEditor() async {
+    final draft = voteEditor;
+    final token = authToken;
+    if (draft == null || token == null) return;
+    if (draft.title.trim().isEmpty) {
+      _update(() => draft.error = 'Enter a title.');
+      return;
+    }
+    final options = draft.options
+        .split(RegExp(r'[\n,]'))
+        .map((o) => o.trim())
+        .where((o) => o.isNotEmpty)
+        .toList();
+    if (draft.type == 'election' && options.length < 2) {
+      _update(() => draft.error = 'An election needs at least 2 candidates.');
+      return;
+    }
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      final poll = await _api.createPoll(
+        token,
+        type: draft.type,
+        title: draft.title.trim(),
+        sub: draft.sub.trim(),
+        closesLabel: draft.closes.trim(),
+        options: options,
+      );
+      _update(() {
+        activePoll = poll;
+        voteEditor = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
+    }
+  }
+
+  Future<void> castVote(String choice) async {
+    final poll = activePoll;
+    final token = authToken;
+    if (poll == null || token == null) return;
+    try {
+      final updated = await _api.castVote(token, poll.id, choice);
+      _update(() => activePoll = updated);
+    } on ApiException {
+      // Leave the ballot showing so the member can try again.
+    }
+  }
+
+  /// A few seconds of purely local suspense (mirroring the source design's
+  /// spinning-name animation) before the server-resolved winner lands.
+  void runDraw() {
+    final poll = activePoll;
+    final token = authToken;
+    if (poll == null || token == null || drawSpinning || poll.options.isEmpty) {
+      return;
+    }
+    _drawTimer?.cancel();
+    var tick = 0;
+    _update(() {
+      drawSpinning = true;
+      drawSpinName = poll.options[0];
+    });
+    _drawTimer =
+        Timer.periodic(const Duration(milliseconds: 90), (timer) async {
+      tick++;
+      if (tick > 22) {
+        timer.cancel();
+        try {
+          final updated = await _api.runDraw(token, poll.id);
+          _update(() {
+            activePoll = updated;
+            drawSpinning = false;
+          });
+        } on ApiException {
+          _update(() => drawSpinning = false);
+        }
+      } else {
+        _update(() =>
+            drawSpinName = poll.options[Random().nextInt(poll.options.length)]);
+      }
+    });
+  }
+
   void goGallery() {
     go('gallery');
     if (authToken != null && !galleryLoaded && !galleryLoading) loadGallery();
   }
-  void goTreasury() => go('treasury');
+
+  void goTreasury() {
+    go('treasury');
+    if (authToken != null && !treasuryLoaded && !treasuryLoading)
+      loadTreasury();
+  }
+
+  void goSecretary() {
+    go('secretary');
+    if (authToken != null && !secretaryLoaded && !secretaryLoading)
+      loadSecretaryWorkspace();
+  }
+
+  void goClubHistory() {
+    go('history');
+    if (authToken != null) loadMilestones();
+  }
+
   void goSplash() => go('splash');
 
   /// Every screen in this app is reached directly from Home (or from the
@@ -583,6 +880,12 @@ class AppState extends ChangeNotifier {
       projectEditor != null ||
       memberEditor != null ||
       memberProfile != null ||
+      apologySheet != null ||
+      txEntry != null ||
+      duesSettingEditor != null ||
+      voteEditor != null ||
+      minuteEditor != null ||
+      milestoneEditor != null ||
       (tab != 'home' && tab != 'splash');
 
   void goBack() {
@@ -596,6 +899,18 @@ class AppState extends ChangeNotifier {
       closeQR();
     } else if (uploadSheet != null) {
       closeUpload();
+    } else if (apologySheet != null) {
+      closeApology();
+    } else if (txEntry != null) {
+      closeTxEntry();
+    } else if (duesSettingEditor != null) {
+      closeDuesSettings();
+    } else if (voteEditor != null) {
+      closeVoteEditor();
+    } else if (minuteEditor != null) {
+      closeMinuteEditor();
+    } else if (milestoneEditor != null) {
+      closeMilestoneEditor();
     } else if (projectEditor != null) {
       closeProjectEditor();
     } else if (memberEditor != null) {
@@ -623,6 +938,7 @@ class AppState extends ChangeNotifier {
         if (authToken != null) {
           tab = 'home';
           loadSummary();
+          loadActivePoll();
           return;
         }
         tab = 'login';
@@ -659,9 +975,12 @@ class AppState extends ChangeNotifier {
         currentMemberName = result.member.name;
         currentMemberRole = result.member.role;
         currentMemberPhone = result.member.phone;
+        currentMemberIsBoard = result.member.isBoard;
         clubId = result.clubId;
         clubName = result.clubName;
         clubLogo = result.clubLogo;
+        clubType = result.clubType;
+        RCColors.setClubType(clubType);
         clubBrandingKnown = true;
         clubMembers = [];
         clubMembersLoaded = false;
@@ -676,6 +995,7 @@ class AppState extends ChangeNotifier {
       unawaited(loadEvents());
       unawaited(loadProjects());
       unawaited(loadMeetings());
+      unawaited(loadActivePoll());
     } on ApiException catch (e) {
       _update(() {
         loginError = true;
@@ -925,8 +1245,31 @@ class AppState extends ChangeNotifier {
   }
 
   // ── overlays ───────────────────────────────────────────────────────────
-  void openPhoto(PhotoInfo p) => _update(() => photo = p);
-  void closePhoto() => _update(() => photo = null);
+  /// Which album the open photo belongs to — lets the viewer swipe between
+  /// the rest of that album's photos. Null when opened from somewhere that
+  /// isn't a gallery grid (e.g. a placeholder tile with no real photos).
+  String? photoAlbum;
+
+  void openPhoto(PhotoInfo p, {String? album}) => _update(() {
+        photo = p;
+        photoAlbum = album;
+      });
+  void closePhoto() => _update(() {
+        photo = null;
+        photoAlbum = null;
+      });
+
+  /// Swiping the full-screen viewer to a different photo in the same
+  /// album — keeps download/delete pointed at whatever's on screen.
+  void showAlbumPhotoAt(int index) {
+    final album = photoAlbum;
+    if (album == null) return;
+    final photos = uploadsFor(album);
+    if (index < 0 || index >= photos.length) return;
+    final p = photos[index];
+    _update(
+        () => photo = PhotoInfo('', album, '', imageUrl: p.image, id: p.id));
+  }
 
   void openCert(CertInfo c) => _update(() => cert = c);
   void closeCert() => _update(() => cert = null);
@@ -937,8 +1280,7 @@ class AppState extends ChangeNotifier {
 
   /// Logged in → the real club roster from the backend; otherwise the
   /// static design list (pre-login preview only).
-  List<Member> get allMembers =>
-      authToken != null ? clubMembers : const [];
+  List<Member> get allMembers => authToken != null ? clubMembers : const [];
 
   void openAddMember() => _update(() => memberEditor = MemberDraft());
   void closeMemberEditor() => _update(() => memberEditor = null);
@@ -1047,9 +1389,15 @@ class AppState extends ChangeNotifier {
   void setProjectDeadline(String v) =>
       _update(() => projectEditor?.deadline = v);
   void setProjectPct(int v) => _update(() => projectEditor?.pct = v);
-  void setProjectPhoto(Uint8List bytes) =>
-      _update(() => projectEditor?.photo = bytes);
-  void removeProjectPhoto() => _update(() => projectEditor?.photo = null);
+  void setProjectPhoto(Uint8List bytes) => _update(() {
+        projectEditor?.pendingPhotoBytes = bytes;
+        projectEditor?.photoRemoved = false;
+      });
+  void removeProjectPhoto() => _update(() {
+        projectEditor?.photo = null;
+        projectEditor?.pendingPhotoBytes = null;
+        projectEditor?.photoRemoved = true;
+      });
   void closeProjectEditor() => _update(() => projectEditor = null);
 
   bool get canDeleteProject => projectEditor != null && !projectEditorIsNew;
@@ -1076,6 +1424,11 @@ class AppState extends ChangeNotifier {
     final deadline = p.deadline.trim().isEmpty
         ? (p.pct >= 100 ? 'Completed' : 'Not set')
         : p.deadline.trim();
+    // null leaves the photo untouched; a data URL sets/replaces it; the
+    // "__remove__" sentinel clears it.
+    final String? image = p.pendingPhotoBytes != null
+        ? 'data:image/jpeg;base64,${base64Encode(p.pendingPhotoBytes!)}'
+        : (p.photoRemoved ? '__remove__' : null);
     try {
       await _api.saveProject(token,
           id: projectEditorIsNew ? null : p.id,
@@ -1083,7 +1436,8 @@ class AppState extends ChangeNotifier {
           area: area,
           pct: p.pct,
           desc: desc,
-          deadline: deadline);
+          deadline: deadline,
+          image: image);
       _update(() => projectEditor = null);
       await loadProjects();
     } on ApiException {
@@ -1092,9 +1446,265 @@ class AppState extends ChangeNotifier {
   }
 
   // ── treasury ───────────────────────────────────────────────────────────
-  void markPaid(int index) => _update(() => paidIds.add(index));
-  bool isPaid(int index, bool paidInitially) =>
-      paidInitially || paidIds.contains(index);
+  Future<void> loadTreasury() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => treasuryLoading = true);
+    try {
+      final results = await Future.wait([
+        _api.fetchTreasurySummary(token),
+        _api.fetchDues(token),
+        _api.fetchTransactions(token),
+      ]);
+      _update(() {
+        treasurySummary = results[0] as TreasurySummary;
+        duesList = results[1] as List<DuesMemberInfo>;
+        transactions = results[2] as List<TransactionInfo>;
+        treasuryLoaded = true;
+        treasuryLoading = false;
+      });
+    } on ApiException {
+      _update(() => treasuryLoading = false);
+    }
+  }
+
+  Future<void> markDuesPaid(int memberId) async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      final updated = await _api.markDuesPaid(token, memberId);
+      _update(() {
+        duesList = [
+          for (final d in duesList)
+            if (d.memberId == memberId) updated else d,
+        ];
+      });
+      await loadTreasury();
+    } on ApiException {
+      // Leave the list as-is — the row's "Mark paid" button stays tappable
+      // so the treasurer can retry.
+    }
+  }
+
+  void openTxEntry() => _update(() => txEntry = TxDraft());
+  void closeTxEntry() => _update(() => txEntry = null);
+  void setTxKind(String kind) => _update(() => txEntry?.kind = kind);
+  void setTxLabel(String v) => _update(() => txEntry?.label = v);
+  void setTxAmount(String v) => _update(() => txEntry?.amount = v);
+
+  Future<void> saveTxEntry() async {
+    final entry = txEntry;
+    final token = authToken;
+    if (entry == null || token == null) return;
+    final amount =
+        int.tryParse(entry.amount.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+    if (entry.label.trim().isEmpty || amount == null || amount <= 0) {
+      _update(() => entry.error = 'Enter a label and a valid amount.');
+      return;
+    }
+    _update(() {
+      entry.saving = true;
+      entry.error = null;
+    });
+    try {
+      final tx = await _api.recordTransaction(
+          token, entry.kind, entry.label.trim(), amount);
+      _update(() {
+        transactions.insert(0, tx);
+        txEntry = null;
+      });
+      await loadTreasury();
+    } on ApiException catch (e) {
+      _update(() {
+        entry.saving = false;
+        entry.error = e.message;
+      });
+    }
+  }
+
+  void openDuesSettings() => _update(() => duesSettingEditor = DuesSettingDraft(
+        amount: treasurySummary?.duesAmount.toString() ?? '',
+        period: treasurySummary?.duesPeriod ?? 'quarterly',
+      ));
+  void closeDuesSettings() => _update(() => duesSettingEditor = null);
+  void setDuesAmount(String v) => _update(() => duesSettingEditor?.amount = v);
+  void setDuesPeriod(String v) => _update(() => duesSettingEditor?.period = v);
+
+  Future<void> saveDuesSettings() async {
+    final draft = duesSettingEditor;
+    final token = authToken;
+    if (draft == null || token == null) return;
+    final amount =
+        int.tryParse(draft.amount.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+    if (amount == null || amount < 0) {
+      _update(() => draft.error = 'Enter a valid amount.');
+      return;
+    }
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      final summary = await _api.saveDuesSettings(token, amount, draft.period);
+      _update(() {
+        treasurySummary = summary;
+        duesSettingEditor = null;
+      });
+      await loadTreasury();
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
+    }
+  }
+
+  // ── secretary workspace ───────────────────────────────────────────────
+  /// Milestones alone — the Club history screen is open to every member,
+  /// unlike the rest of the Secretary workspace.
+  Future<void> loadMilestones() async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      final list = await _api.fetchMilestones(token);
+      _update(() => milestones = list);
+    } on ApiException {
+      // Keep whatever was last loaded on a transient network error.
+    }
+  }
+
+  Future<void> loadSecretaryWorkspace() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => secretaryLoading = true);
+    try {
+      final results = await Future.wait([
+        _api.fetchMinutes(token),
+        _api.fetchMilestones(token),
+        _api.fetchMonthlyReport(token),
+        _api.fetchAnnualReport(token),
+      ]);
+      _update(() {
+        minutes = results[0] as List<MinuteInfo>;
+        milestones = results[1] as List<MilestoneInfo>;
+        monthlyReport = results[2] as ReportInfo;
+        annualReport = results[3] as ReportInfo;
+        secretaryLoaded = true;
+        secretaryLoading = false;
+      });
+    } on ApiException {
+      _update(() => secretaryLoading = false);
+    }
+  }
+
+  void pickSecretaryTab(String tab) => _update(() => secretaryTab = tab);
+
+  void openMinuteEditor() => _update(() => minuteEditor = MinuteDraft());
+  void closeMinuteEditor() => _update(() => minuteEditor = null);
+  void setMinuteTitle(String v) => _update(() => minuteEditor?.title = v);
+  void setMinuteDate(String v) => _update(() => minuteEditor?.meetingDate = v);
+
+  Future<void> saveMinuteEditor() async {
+    final draft = minuteEditor;
+    final token = authToken;
+    if (draft == null || token == null) return;
+    if (draft.title.trim().isEmpty || draft.meetingDate.trim().isEmpty) {
+      _update(() => draft.error = 'Enter a title and date.');
+      return;
+    }
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      final minute = await _api.createMinute(
+          token, draft.title.trim(), draft.meetingDate.trim());
+      _update(() {
+        minutes.insert(0, minute);
+        minuteEditor = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
+    }
+  }
+
+  Future<void> toggleMinuteStatus(MinuteInfo minute) async {
+    final token = authToken;
+    if (token == null) return;
+    final next = minute.status == 'approved' ? 'draft' : 'approved';
+    try {
+      final updated = await _api.setMinuteStatus(token, minute.id, next);
+      _update(() {
+        minutes = [
+          for (final m in minutes)
+            if (m.id == minute.id) updated else m,
+        ];
+      });
+    } on ApiException {
+      // Leave the row as-is so the toggle stays tappable to retry.
+    }
+  }
+
+  void pickMilestoneFilter(String cat) => _update(() => milestoneFilter = cat);
+
+  List<MilestoneInfo> get visibleMilestones => milestoneFilter == 'All'
+      ? milestones
+      : milestones.where((m) => m.category == milestoneFilter).toList();
+
+  void openMilestoneEditor() =>
+      _update(() => milestoneEditor = MilestoneDraft());
+  void closeMilestoneEditor() => _update(() => milestoneEditor = null);
+  void setMilestoneYear(String v) => _update(() => milestoneEditor?.year = v);
+  void setMilestoneTitle(String v) => _update(() => milestoneEditor?.title = v);
+  void setMilestoneCategory(String v) =>
+      _update(() => milestoneEditor?.category = v);
+  void setMilestoneText(String v) => _update(() => milestoneEditor?.text = v);
+
+  Future<void> saveMilestoneEditor() async {
+    final draft = milestoneEditor;
+    final token = authToken;
+    if (draft == null || token == null) return;
+    if (draft.year.trim().isEmpty || draft.title.trim().isEmpty) {
+      _update(() => draft.error = 'Enter a year and title.');
+      return;
+    }
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      final milestone = await _api.createMilestone(
+        token,
+        year: draft.year.trim(),
+        title: draft.title.trim(),
+        category: draft.category,
+        text: draft.text.trim(),
+      );
+      _update(() {
+        milestones.insert(0, milestone);
+        milestoneEditor = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
+    }
+  }
+
+  Future<void> deleteMilestone(int id) async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      await _api.deleteMilestone(token, id);
+      _update(() => milestones.removeWhere((m) => m.id == id));
+    } on ApiException {
+      // Leave the entry showing so the secretary can retry.
+    }
+  }
 
   // ── events ─────────────────────────────────────────────────────────────
   List<EventItem> get visibleEvents {
@@ -1230,9 +1840,15 @@ class AppState extends ChangeNotifier {
   void setEditorTime(String v) => _update(() => eventEditor?.time = v);
   void setEditorVenue(String v) => _update(() => eventEditor?.venue = v);
   void setEditorDay(String dow) => _update(() => eventEditor?.dow = dow);
-  void setEditorPhoto(Uint8List bytes) =>
-      _update(() => eventEditor?.photo = bytes);
-  void removeEventPhoto() => _update(() => eventEditor?.photo = null);
+  void setEditorPhoto(Uint8List bytes) => _update(() {
+        eventEditor?.pendingPhotoBytes = bytes;
+        eventEditor?.photoRemoved = false;
+      });
+  void removeEventPhoto() => _update(() {
+        eventEditor?.photo = null;
+        eventEditor?.pendingPhotoBytes = null;
+        eventEditor?.photoRemoved = true;
+      });
 
   bool get canDeleteEvent => eventEditor != null && !editorIsNew;
 
@@ -1246,14 +1862,21 @@ class AppState extends ChangeNotifier {
     final meta = [cur.time.trim(), cur.venue.trim()]
         .where((s) => s.isNotEmpty)
         .join(' · ');
+    // null leaves the banner untouched; a data URL sets/replaces it; the
+    // "__remove__" sentinel clears it.
+    final String? image = cur.pendingPhotoBytes != null
+        ? 'data:image/jpeg;base64,${base64Encode(cur.pendingPhotoBytes!)}'
+        : (cur.photoRemoved ? '__remove__' : null);
     try {
       await _api.saveEvent(token,
           id: editorIsNew ? null : cur.id,
           dow: cur.dow,
           name: cur.name.trim(),
-          meta: meta);
+          meta: meta,
+          image: image);
       _update(() => eventEditor = null);
       await loadEvents();
+      await loadNextMeeting();
     } on ApiException {
       _update(() => eventEditor = null);
     }
@@ -1270,6 +1893,7 @@ class AppState extends ChangeNotifier {
     }
     _update(() => eventEditor = null);
     await loadEvents();
+    await loadNextMeeting();
   }
 
   void closeEditor() => _update(() => eventEditor = null);
@@ -1296,8 +1920,9 @@ class AppState extends ChangeNotifier {
     }).catchError((error) {
       if (eventQR?.id != e.id) return;
       _update(() {
-        eventRegistrationError =
-            error is ApiException ? error.message : 'Could not load the QR code.';
+        eventRegistrationError = error is ApiException
+            ? error.message
+            : 'Could not load the QR code.';
         eventRegistrationLoading = false;
       });
     });
@@ -1340,8 +1965,7 @@ class AppState extends ChangeNotifier {
   }
 
   // ── gallery ────────────────────────────────────────────────────────────
-  void openUpload() =>
-      _update(() => uploadSheet = UploadSheet('Club album'));
+  void openUpload() => _update(() => uploadSheet = UploadSheet('Club album'));
   void closeUpload() => _update(() => uploadSheet = null);
   void pickUploadAlbum(String album) =>
       _update(() => uploadSheet?.album = album);
@@ -1385,7 +2009,8 @@ class AppState extends ChangeNotifier {
     if (url == null) return;
     String message;
     try {
-      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      final res =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
       if (res.statusCode >= 400) throw ApiException('Download failed');
       await Gal.putImageBytes(res.bodyBytes,
           name: 'rotary_connect_${DateTime.now().millisecondsSinceEpoch}');

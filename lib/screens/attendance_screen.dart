@@ -235,8 +235,7 @@ class _MyRecord extends StatelessWidget {
                 children: [
                   for (var i = 0; i < meetings.length; i++)
                     _HistoryRow(
-                        meeting: meetings[i],
-                        isLast: i == meetings.length - 1),
+                        meeting: meetings[i], isLast: i == meetings.length - 1),
                 ],
               ),
             ),
@@ -335,11 +334,11 @@ class _ClubRegister extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
                     color: RCColors.cardShadow,
                     blurRadius: 8,
-                    offset: Offset(0, 2))
+                    offset: const Offset(0, 2))
               ],
             ),
             child: Column(
@@ -364,7 +363,7 @@ class _ClubRegister extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text('Members checked in · ${sel.checkinCount}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: RCColors.blue)),
@@ -374,8 +373,8 @@ class _ClubRegister extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Text('No check-ins recorded for this meeting.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 12, color: RCColors.textMuted)),
+                        style:
+                            TextStyle(fontSize: 12, color: RCColors.textMuted)),
                   )
                 else
                   for (var i = 0; i < sel.attendees.length; i++)

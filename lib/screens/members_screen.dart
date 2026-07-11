@@ -138,8 +138,8 @@ class MembersScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (state.clubMembersLoading && !state.clubMembersLoaded)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
+                    Padding(
+                      padding: const EdgeInsets.all(32),
                       child: Center(
                           child: CircularProgressIndicator(
                               color: RCColors.blue, strokeWidth: 2.5)),
@@ -162,8 +162,7 @@ class MembersScreen extends StatelessWidget {
                           TextButton(
                             onPressed: state.loadClubMembers,
                             child: const Text('Retry',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.w800)),
+                                style: TextStyle(fontWeight: FontWeight.w800)),
                           ),
                         ],
                       ),
@@ -179,8 +178,7 @@ class MembersScreen extends StatelessWidget {
                     if (showGen) ...[
                       _SectionLabel('MEMBERS · ${gen.length}'),
                       const SizedBox(height: 8),
-                      _MemberList(
-                          entries: gen, showBadge: false, state: state),
+                      _MemberList(entries: gen, showBadge: false, state: state),
                     ],
                     if (visibleCount == 0)
                       const RCCard(
@@ -252,7 +250,7 @@ class _MemberProfileSheet extends StatelessWidget {
                         Container(
                           width: 56,
                           height: 56,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                               color: RCColors.blue, shape: BoxShape.circle),
                           alignment: Alignment.center,
                           child: Text(m.initials,
@@ -472,7 +470,10 @@ class _MemberEditorSheet extends StatelessWidget {
                     const SizedBox(height: 14),
                     const _FieldLabel('ROLE'),
                     const SizedBox(height: 6),
-                    _RoleDropdown(value: ed.role, onChanged: state.setMemberRole),
+                    _RoleDropdown(
+                        value: ed.role,
+                        clubType: state.clubType,
+                        onChanged: state.setMemberRole),
                     const SizedBox(height: 14),
                     const _FieldLabel('EMAIL'),
                     const SizedBox(height: 6),
@@ -656,8 +657,10 @@ class _EditorInput extends StatelessWidget {
 
 class _RoleDropdown extends StatelessWidget {
   final String value;
+  final String clubType;
   final ValueChanged<String> onChanged;
-  const _RoleDropdown({required this.value, required this.onChanged});
+  const _RoleDropdown(
+      {required this.value, required this.clubType, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -680,7 +683,7 @@ class _RoleDropdown extends StatelessWidget {
         focusedBorder: border(RCColors.blue),
       ),
       items: [
-        for (final position in clubPositions)
+        for (final position in clubPositions(clubType))
           DropdownMenuItem(value: position, child: Text(position)),
       ],
       onChanged: (v) {
@@ -751,9 +754,9 @@ class _MemberList extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-              color: RCColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))
+              color: RCColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))
         ],
       ),
       child: Column(

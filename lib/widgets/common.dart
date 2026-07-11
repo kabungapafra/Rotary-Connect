@@ -19,9 +19,9 @@ class RCCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: RCColors.cardBg,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-              color: RCColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))
+              color: RCColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))
         ],
       ),
       child: child,
@@ -62,12 +62,12 @@ class RCAvatar extends StatelessWidget {
 class RCStatBox extends StatelessWidget {
   final String value;
   final String label;
-  final Color valueColor;
+  final Color? valueColor;
   const RCStatBox(
       {super.key,
       required this.value,
       required this.label,
-      this.valueColor = RCColors.blue});
+      this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +80,7 @@ class RCStatBox extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: valueColor)),
+                    color: valueColor ?? RCColors.blue)),
             const SizedBox(height: 2),
             Text(label,
                 style:
@@ -116,7 +116,7 @@ class RCSectionHeader extends StatelessWidget {
           GestureDetector(
             onTap: onAction,
             child: Text(actionLabel!,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: RCColors.blue)),
@@ -230,7 +230,7 @@ class RCPhotoPlaceholder extends StatelessWidget {
                     label!,
                     textAlign: TextAlign.center,
                     style: labelAlignment == Alignment.bottomLeft
-                        ? const TextStyle(
+                        ? TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                             color: RCColors.blue)

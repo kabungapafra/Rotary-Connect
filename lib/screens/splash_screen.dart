@@ -157,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   radius: 0,
                                 ),
                                 const SizedBox(width: 10),
-                                const Text(
+                                Text(
                                   'SERVICE ABOVE SELF',
                                   style: TextStyle(
                                     color: RCColors.gold,
@@ -251,7 +251,7 @@ class _WelcomeLine extends StatelessWidget {
             offset: Offset(0, 46 * (1 - progress.value)),
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 color: RCColors.blue,
                 fontSize: 38,
                 fontWeight: FontWeight.w800,
