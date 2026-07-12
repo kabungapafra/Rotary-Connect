@@ -1,15 +1,13 @@
 /// Thin client for the Rotary Connect backend (FastAPI + PostgreSQL),
-/// deployed at https://rotary-connect-backend.onrender.com.
+/// deployed at https://rotaryapi.digiflecttech.dev.
 library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const String apiBaseUrl = 'https://rotary-connect-backend.onrender.com';
+const String apiBaseUrl = 'https://rotaryapi.digiflecttech.dev';
 
-// Long enough to ride out Render's free-tier cold start (~30-60s after the
-// service has been idle), which is far longer than a normal request.
-const Duration _requestTimeout = Duration(seconds: 75);
+const Duration _requestTimeout = Duration(seconds: 30);
 
 class ApiException implements Exception {
   final String message;
