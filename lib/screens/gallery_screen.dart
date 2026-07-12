@@ -188,7 +188,8 @@ class _UploadSheet extends StatelessWidget {
   const _UploadSheet({required this.state});
 
   Future<void> _pickPhotos() async {
-    final files = await ImagePicker().pickMultiImage();
+    final files =
+        await ImagePicker().pickMultiImage(imageQuality: 80, maxWidth: 1920);
     if (files.isEmpty) return;
     final bytes = <Uint8List>[];
     for (final f in files) {

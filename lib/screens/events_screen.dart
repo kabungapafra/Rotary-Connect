@@ -549,7 +549,8 @@ class _EditorSheet extends StatelessWidget {
   const _EditorSheet({required this.state});
 
   Future<void> _pickPhoto() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery, imageQuality: 80, maxWidth: 1920);
     if (file == null) return;
     state.setEditorPhoto(await file.readAsBytes());
   }
