@@ -53,10 +53,10 @@ flutter:
 # Flutter engine loads, so there's never a blank white frame. Regenerate
 # with `dart run flutter_native_splash:create` after changing this.
 flutter_native_splash:
-  color: "#17458F"
+  color: "#FFFFFF"
   image: assets/images/rotary_connect_wheel.png
   android_gravity: center
   ios_content_mode: center
   android_12:
-    color: "#17458F"
+    color: "#FFFFFF"
     image: assets/images/rotary_connect_wheel.png

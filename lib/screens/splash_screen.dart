@@ -32,12 +32,21 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this, duration: const Duration(milliseconds: 2200))
     ..repeat(reverse: true);
 
+  // Boot phase: the native (OS) splash is a static wheel on white; this
+  // phase picks it up in the same spot, sets it spinning, and holds for a
+  // few seconds of pure branding before the welcome content plays.
+  bool _booting = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) _intro.forward();
+      Future.delayed(const Duration(milliseconds: 3500), () {
+        if (!mounted) return;
+        setState(() => _booting = false);
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (mounted) _intro.forward();
+        });
       });
     });
   }
@@ -220,6 +229,28 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            // Boot overlay: just the wheel, spinning on white, exactly
+            // where the native splash drew it — so launch reads as one
+            // continuous moment: static wheel → spinning wheel → welcome.
+            AnimatedOpacity(
+              opacity: _booting ? 1 : 0,
+              duration: const Duration(milliseconds: 400),
+              child: IgnorePointer(
+                ignoring: !_booting,
+                child: Container(
+                  color: Colors.white,
+                  alignment: Alignment.center,
+                  child: RotationTransition(
+                    turns: _wheelSpin,
+                    child: Image.asset(
+                      'assets/images/rotary_connect_wheel.png',
+                      width: 120,
+                      height: 120,
+                    ),
+                  ),
                 ),
               ),
             ),
