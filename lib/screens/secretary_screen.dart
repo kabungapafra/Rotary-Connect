@@ -300,7 +300,7 @@ class _DocumentsTab extends StatelessWidget {
   const _DocumentsTab({required this.state});
 
   Future<void> _pickAndUpload() async {
-    final result = await FilePicker.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
       withData: true,
