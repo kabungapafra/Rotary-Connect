@@ -503,7 +503,7 @@ class _MinuteBodySheetState extends State<_MinuteBodySheet> {
               ),
             ),
           ],
-          if (minute.status != 'approved') ...[
+          ...[
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => _confirmDelete(context),
