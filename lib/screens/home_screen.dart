@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme.dart';
@@ -117,9 +118,17 @@ class HomeScreen extends StatelessWidget {
                                     height: 86,
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
-                                          state.galleryUploads[i].image,
-                                          fit: BoxFit.cover),
+                                      child: CachedNetworkImage(
+                                          imageUrl:
+                                              state.galleryUploads[i].thumb ??
+                                                  state.galleryUploads[i].image,
+                                          fit: BoxFit.cover,
+                                          fadeInDuration: const Duration(
+                                              milliseconds: 150),
+                                          placeholder: (context, _) =>
+                                              Container(
+                                                  color: const Color(
+                                                      0xFFE8EDF5))),
                                     ),
                                   ),
                                 ),

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import 'pressable.dart';
@@ -43,7 +44,8 @@ class PhotoViewerOverlay extends StatelessWidget {
                                 color: Color(0xFF8FA0C0))),
                       )
                     : currentIndex < 0
-                        ? Image.network(photo.imageUrl!, fit: BoxFit.contain)
+                        ? CachedNetworkImage(
+                            imageUrl: photo.imageUrl!, fit: BoxFit.contain)
                         : GestureDetector(
                             // Swallow taps on the page view itself so only
                             // the surrounding scrim closes the viewer.
@@ -54,9 +56,17 @@ class PhotoViewerOverlay extends StatelessWidget {
                                   PageController(initialPage: currentIndex),
                               itemCount: albumPhotos.length,
                               onPageChanged: state.showAlbumPhotoAt,
-                              itemBuilder: (context, i) => Image.network(
-                                  albumPhotos[i].image,
-                                  fit: BoxFit.contain),
+                              // The grid's thumbnail is already on disk, so
+                              // it shows instantly while the full photo
+                              // downloads over it.
+                              itemBuilder: (context, i) => CachedNetworkImage(
+                                  imageUrl: albumPhotos[i].image,
+                                  fit: BoxFit.contain,
+                                  placeholder: albumPhotos[i].thumb == null
+                                      ? null
+                                      : (context, _) => CachedNetworkImage(
+                                          imageUrl: albumPhotos[i].thumb!,
+                                          fit: BoxFit.contain)),
                             ),
                           ),
               ),

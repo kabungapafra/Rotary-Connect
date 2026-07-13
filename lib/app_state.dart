@@ -37,7 +37,10 @@ class GalleryUpload {
   final int id;
   final String album;
   final String image;
-  const GalleryUpload(this.id, this.album, this.image);
+  // Small WebP URL for grid tiles; null on rows without a generated
+  // thumbnail, where the grid falls back to the full image.
+  final String? thumb;
+  const GalleryUpload(this.id, this.album, this.image, this.thumb);
 }
 
 /// State of the gallery "Upload photos" bottom sheet while it is open.
@@ -573,7 +576,8 @@ class AppState extends ChangeNotifier {
         galleryUploads
           ..clear()
           ..addAll([
-            for (final p in list) GalleryUpload(p.id, p.album, p.image),
+            for (final p in list)
+              GalleryUpload(p.id, p.album, p.image, p.thumb),
           ]);
         galleryLoaded = true;
         galleryLoading = false;
@@ -2061,7 +2065,8 @@ class AppState extends ChangeNotifier {
       final uploaded = await _api.uploadGalleryPhotos(token, u.album, dataUrls);
       _update(() {
         galleryUploads.insertAll(0, [
-          for (final p in uploaded) GalleryUpload(p.id, p.album, p.image),
+          for (final p in uploaded)
+            GalleryUpload(p.id, p.album, p.image, p.thumb),
         ]);
         uploadSheet = null;
       });

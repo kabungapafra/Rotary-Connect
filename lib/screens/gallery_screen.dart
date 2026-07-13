@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -172,8 +173,16 @@ class _Album extends StatelessWidget {
                     album: name),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child:
-                      Image.network(up.image, height: 100, fit: BoxFit.cover),
+                  // Grid tiles load the small WebP thumbnail (cached on
+                  // disk), not the full photo; tapping opens the original.
+                  child: CachedNetworkImage(
+                    imageUrl: up.thumb ?? up.image,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 150),
+                    placeholder: (context, _) =>
+                        Container(color: const Color(0xFFE8EDF5)),
+                  ),
                 ),
               ),
           ],

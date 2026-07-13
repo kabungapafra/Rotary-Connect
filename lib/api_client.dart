@@ -68,7 +68,8 @@ class GalleryPhotoInfo {
   final int id;
   final String album;
   final String image; // "data:image/jpeg;base64,..."
-  const GalleryPhotoInfo(this.id, this.album, this.image);
+  final String? thumb; // small WebP R2 URL for grid tiles; null on old rows
+  const GalleryPhotoInfo(this.id, this.album, this.image, this.thumb);
 }
 
 class EventRegistration {
@@ -531,8 +532,8 @@ class ApiClient {
     final list = await _getList('/club/gallery', token);
     return [
       for (final p in list.cast<Map<String, dynamic>>())
-        GalleryPhotoInfo(
-            p['id'] as int, p['album'] as String, p['image'] as String),
+        GalleryPhotoInfo(p['id'] as int, p['album'] as String,
+            p['image'] as String, p['thumb'] as String?),
     ];
   }
 
@@ -561,8 +562,8 @@ class ApiClient {
     final list = jsonDecode(res.body) as List<dynamic>;
     return [
       for (final p in list.cast<Map<String, dynamic>>())
-        GalleryPhotoInfo(
-            p['id'] as int, p['album'] as String, p['image'] as String),
+        GalleryPhotoInfo(p['id'] as int, p['album'] as String,
+            p['image'] as String, p['thumb'] as String?),
     ];
   }
 
