@@ -48,7 +48,7 @@ class ProjectsScreen extends StatelessWidget {
                             fontSize: 20,
                             fontWeight: FontWeight.w800)),
                   ),
-                  if (state.isPresident)
+                  if (state.canManageClub)
                     PressableScale(
                       child: ElevatedButton(
                         onPressed: state.openAddProject,

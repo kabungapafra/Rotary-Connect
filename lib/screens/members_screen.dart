@@ -52,7 +52,7 @@ class MembersScreen extends StatelessWidget {
                               fontSize: 20,
                               fontWeight: FontWeight.w800)),
                       // Only the Club President can add and manage members.
-                      if (state.isPresident)
+                      if (state.canManageClub)
                         PressableScale(
                           child: ElevatedButton(
                             onPressed: state.openAddMember,

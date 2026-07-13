@@ -369,11 +369,16 @@ class AppState extends ChangeNotifier {
       ? 'Check in, follow projects, and stay connected with the $displayClubName.'
       : 'Check in, follow projects, and stay connected with your Rotary club.';
 
-  /// Only the Club President can add/manage events, projects and members.
   /// "President" is the role dropdown's label; "Club President" is the
   /// legacy value existing president rows already carry — both count.
   static const Set<String> _presidentRoles = {'Club President', 'President'};
   bool get isPresident => _presidentRoles.contains(currentMemberRole.trim());
+
+  /// The Secretary shares the President's management powers (add/manage
+  /// members, events, projects, votes) — matches the backend's
+  /// `MANAGER_ROLES`. The reverse doesn't hold: the Secretary workspace
+  /// stays the Secretary's alone (see [isSecretary]).
+  bool get canManageClub => isPresident || isSecretary;
 
   /// Generating an event's registration QR/link is limited to the club's
   /// executive roles, not every member.
@@ -388,9 +393,10 @@ class AppState extends ChangeNotifier {
   bool get canGenerateEventQr =>
       _eventRegistrationRoles.contains(currentMemberRole.trim());
 
-  /// Creating and resolving club votes is limited to board members and the
-  /// President — matches the backend's `_require_board_or_president` gate.
-  bool get canCreatePoll => currentMemberIsBoard || isPresident;
+  /// Creating and resolving club votes is limited to the President and
+  /// Secretary — plain board members can't. Matches the backend's
+  /// `_require_manager` gate in polls.py.
+  bool get canCreatePoll => canManageClub;
 
   // check-in (member scan)
   bool checkInLoading = false;
@@ -1392,7 +1398,7 @@ class AppState extends ChangeNotifier {
 
     AddedClubMember? added;
     final token = authToken;
-    if (token != null && isPresident) {
+    if (token != null && canManageClub) {
       if (m.phone.trim().isEmpty) {
         _update(() => m.error = 'Phone number is required.');
         return null;
