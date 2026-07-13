@@ -1,0 +1,54 @@
+name: iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: rotary-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 📱 Unsigned IPA
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.4"
+          channel: stable
+          cache: true
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      # No Apple Developer signing yet, so the build is unsigned. The
+      # artifact IPA must be signed on install (e.g. sideloaded with a
+      # free Apple ID); switch to `flutter build ipa` with certificates
+      # once an Apple Developer account exists.
+      - name: Build iOS (unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -qr RotaryConnect-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RotaryConnect-unsigned-ipa
+          path: RotaryConnect-unsigned.ipa
+          retention-days: 14
