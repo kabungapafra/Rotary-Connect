@@ -1756,6 +1756,20 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteMinute(int id) async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      await _api.deleteMinute(token, id);
+      _update(() {
+        minutes.removeWhere((m) => m.id == id);
+        if (minuteOpen?.id == id) minuteOpen = null;
+      });
+    } on ApiException {
+      // Leave the row showing so the secretary can retry.
+    }
+  }
+
   Future<void> uploadMinuteAudio(
       String title, String meetingDate, String filePath) async {
     final token = authToken;

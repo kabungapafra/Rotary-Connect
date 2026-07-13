@@ -825,6 +825,9 @@ class ApiClient {
     return _minuteFromJson(res);
   }
 
+  Future<void> deleteMinute(String token, int minuteId) =>
+      _delete('/club/secretary/minutes/$minuteId', token);
+
   Future<MinuteInfo> updateMinuteBody(
       String token, int minuteId, String body) async {
     final res = await _patch(

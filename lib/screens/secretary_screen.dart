@@ -413,6 +413,28 @@ class _MinuteBodySheetState extends State<_MinuteBodySheet> {
     super.dispose();
   }
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final state = widget.state;
+    final minute = state.minuteOpen!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete these minutes?'),
+        content: Text('"${minute.title}" will be removed for good.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child:
+                  const Text('Delete', style: TextStyle(color: RCColors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true) await state.deleteMinute(minute.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
@@ -479,6 +501,19 @@ class _MinuteBodySheetState extends State<_MinuteBodySheet> {
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 13.5)),
               ),
+            ),
+          ],
+          if (minute.status != 'approved') ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => _confirmDelete(context),
+              icon: const Icon(Icons.delete_outline,
+                  size: 17, color: RCColors.red),
+              label: const Text('Delete',
+                  style: TextStyle(
+                      color: RCColors.red,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5)),
             ),
           ],
         ],
