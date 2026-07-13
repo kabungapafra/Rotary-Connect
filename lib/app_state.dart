@@ -734,8 +734,9 @@ class AppState extends ChangeNotifier {
 
   void goProjects() {
     go('projects');
-    if (authToken != null && !projectsLoaded && !projectsLoading)
+    if (authToken != null && !projectsLoaded && !projectsLoading) {
       loadProjects();
+    }
   }
 
   void goToday() {
@@ -926,14 +927,16 @@ class AppState extends ChangeNotifier {
 
   void goTreasury() {
     go('treasury');
-    if (authToken != null && !treasuryLoaded && !treasuryLoading)
+    if (authToken != null && !treasuryLoaded && !treasuryLoading) {
       loadTreasury();
+    }
   }
 
   void goSecretary() {
     go('secretary');
-    if (authToken != null && !secretaryLoaded && !secretaryLoading)
+    if (authToken != null && !secretaryLoaded && !secretaryLoading) {
       loadSecretaryWorkspace();
+    }
   }
 
   void goClubHistory() {
