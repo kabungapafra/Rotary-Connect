@@ -1,7 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../api_client.dart';
 import '../app_state.dart';
 import '../theme.dart';
@@ -113,6 +115,7 @@ class SecretaryScreen extends StatelessWidget {
                           ['minutes', 'Minutes'],
                           ['monthly', 'Monthly'],
                           ['annual', 'Annual'],
+                          ['docs', 'Docs'],
                         ])
                           Expanded(
                             child: _SecTab(
@@ -144,6 +147,7 @@ class SecretaryScreen extends StatelessWidget {
                           state: state,
                           report: state.annualReport,
                         ),
+                      'docs' => _DocumentsTab(state: state),
                       _ => _MinutesTab(state: state),
                     },
             ),
@@ -286,6 +290,146 @@ class _MinuteRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DocumentsTab extends StatelessWidget {
+  final AppState state;
+  const _DocumentsTab({required this.state});
+
+  Future<void> _pickAndUpload() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      withData: true,
+    );
+    final file = result?.files.firstOrNull;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null) return;
+    final title = file.name.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
+    await state.uploadClubDocument(title, bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RCSectionHeader(
+          title: 'Club documents',
+          actionLabel: state.documentUploading ? 'Uploading…' : '+ Upload PDF',
+          onAction: state.documentUploading ? null : _pickAndUpload,
+        ),
+        const SizedBox(height: 10),
+        if (state.documentError != null) ...[
+          Text(state.documentError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: RCColors.red)),
+          const SizedBox(height: 10),
+        ],
+        if (state.clubDocuments.isEmpty)
+          const RCCard(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No documents uploaded yet.\nKeep the club constitution, bylaws and policies here as PDFs.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: RCColors.textMuted),
+            ),
+          )
+        else
+          RCCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < state.clubDocuments.length; i++)
+                  _DocumentRow(
+                    doc: state.clubDocuments[i],
+                    isLast: i == state.clubDocuments.length - 1,
+                    onDelete: () =>
+                        state.deleteClubDocument(state.clubDocuments[i].id),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DocumentRow extends StatelessWidget {
+  final ClubDocumentInfo doc;
+  final bool isLast;
+  final VoidCallback onDelete;
+  const _DocumentRow(
+      {required this.doc, required this.isLast, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: RCColors.divider)),
+      ),
+      child: InkWell(
+        onTap: () => launchUrl(Uri.parse(doc.url),
+            mode: LaunchMode.externalApplication),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.picture_as_pdf_outlined,
+                  size: 20, color: RCColors.red),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(doc.title,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: RCColors.textDark)),
+                    Text(
+                        doc.createdAt.length >= 10
+                            ? doc.createdAt.substring(0, 10)
+                            : doc.createdAt,
+                        style: const TextStyle(
+                            fontSize: 11, color: RCColors.textMuted)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline,
+                    size: 18, color: RCColors.textMuted),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete document?'),
+                      content: Text('"${doc.title}" will be removed for good.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Delete',
+                                style: TextStyle(color: RCColors.red))),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) onDelete();
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

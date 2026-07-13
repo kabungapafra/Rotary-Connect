@@ -486,12 +486,15 @@ class AppState extends ChangeNotifier {
   List<MilestoneInfo> milestones = [];
   ReportInfo? monthlyReport;
   ReportInfo? annualReport;
+  List<ClubDocumentInfo> clubDocuments = [];
+  bool documentUploading = false;
+  String? documentError;
   bool secretaryLoaded = false;
   bool secretaryLoading = false;
   MinuteDraft? minuteEditor;
   MilestoneDraft? milestoneEditor;
   String milestoneFilter = 'All';
-  String secretaryTab = 'minutes'; // minutes | monthly | annual
+  String secretaryTab = 'minutes'; // minutes | monthly | annual | docs
 
   Future<void> loadSummary() async {
     final token = authToken;
@@ -1670,12 +1673,14 @@ class AppState extends ChangeNotifier {
         _api.fetchMilestones(token),
         _api.fetchMonthlyReport(token),
         _api.fetchAnnualReport(token),
+        _api.fetchClubDocuments(token),
       ]);
       _update(() {
         minutes = results[0] as List<MinuteInfo>;
         milestones = results[1] as List<MilestoneInfo>;
         monthlyReport = results[2] as ReportInfo;
         annualReport = results[3] as ReportInfo;
+        clubDocuments = results[4] as List<ClubDocumentInfo>;
         secretaryLoaded = true;
         secretaryLoading = false;
       });
@@ -1788,6 +1793,47 @@ class AppState extends ChangeNotifier {
     try {
       await _api.deleteMilestone(token, id);
       _update(() => milestones.removeWhere((m) => m.id == id));
+    } on ApiException {
+      // Leave the entry showing so the secretary can retry.
+    }
+  }
+
+  /// Documents travel as base64 JSON like gallery photos, so cap the file
+  /// size well below anything that would stall a mobile upload.
+  static const int _maxDocumentBytes = 15 * 1024 * 1024;
+
+  Future<void> uploadClubDocument(String title, List<int> pdfBytes) async {
+    final token = authToken;
+    if (token == null) return;
+    if (pdfBytes.length > _maxDocumentBytes) {
+      _update(() => documentError = 'PDF is too large — keep it under 15 MB.');
+      return;
+    }
+    _update(() {
+      documentUploading = true;
+      documentError = null;
+    });
+    try {
+      final doc = await _api.uploadClubDocument(token, title,
+          'data:application/pdf;base64,${base64Encode(pdfBytes)}');
+      _update(() {
+        clubDocuments.insert(0, doc);
+        documentUploading = false;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        documentUploading = false;
+        documentError = e.message;
+      });
+    }
+  }
+
+  Future<void> deleteClubDocument(int id) async {
+    final token = authToken;
+    if (token == null) return;
+    try {
+      await _api.deleteClubDocument(token, id);
+      _update(() => clubDocuments.removeWhere((d) => d.id == id));
     } on ApiException {
       // Leave the entry showing so the secretary can retry.
     }

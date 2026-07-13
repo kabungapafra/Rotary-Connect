@@ -217,6 +217,14 @@ class MinuteInfo {
   const MinuteInfo(this.id, this.title, this.meetingDate, this.status);
 }
 
+class ClubDocumentInfo {
+  final int id;
+  final String title;
+  final String url; // public R2 URL of the PDF
+  final String createdAt; // ISO timestamp
+  const ClubDocumentInfo(this.id, this.title, this.url, this.createdAt);
+}
+
 class MilestoneInfo {
   final int id;
   final String year;
@@ -841,6 +849,29 @@ class ApiClient {
 
   Future<void> deleteMilestone(String token, int id) =>
       _delete('/club/secretary/milestones/$id', token);
+
+  Future<List<ClubDocumentInfo>> fetchClubDocuments(String token) async {
+    final list = await _getList('/club/secretary/documents', token);
+    return [
+      for (final d in list.cast<Map<String, dynamic>>())
+        ClubDocumentInfo(d['id'] as int, d['title'] as String,
+            d['url'] as String, d['created_at'] as String),
+    ];
+  }
+
+  Future<ClubDocumentInfo> uploadClubDocument(
+      String token, String title, String pdfDataUrl) async {
+    final res = await _post(
+      '/club/secretary/documents',
+      {'title': title, 'file': pdfDataUrl},
+      token: token,
+    );
+    return ClubDocumentInfo(res['id'] as int, res['title'] as String,
+        res['url'] as String, res['created_at'] as String);
+  }
+
+  Future<void> deleteClubDocument(String token, int id) =>
+      _delete('/club/secretary/documents/$id', token);
 
   ReportInfo _reportFromJson(Map<String, dynamic> res) => ReportInfo(
         res['title'] as String,
