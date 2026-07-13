@@ -33,21 +33,43 @@ class _SplashScreenState extends State<SplashScreen>
     ..repeat(reverse: true);
 
   // Boot phase: the native (OS) splash is a static wheel on white; this
-  // phase picks it up in the same spot, sets it spinning, and holds for a
-  // few seconds of pure branding before the welcome content plays.
+  // phase picks it up in the same spot and plays the logo choreography —
+  // the wheel spins alone, "Rotary Connect" slides out to complete the
+  // official lockup, holds, then the words tuck away and the wheel glides
+  // back to center before the welcome content plays.
   bool _booting = true;
+  late final AnimationController _logo = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 6000));
+
+  // 0 → words hidden (wheel alone, centered); 1 → full lockup. The Row is
+  // centered, so growing the text naturally slides the wheel aside and
+  // collapsing it brings the wheel back — no hand-tuned offsets.
+  late final Animation<double> _wordsReveal = TweenSequence<double>([
+    TweenSequenceItem(tween: ConstantTween(0), weight: 15), // wheel alone
+    TweenSequenceItem(
+        tween: Tween<double>(begin: 0, end: 1)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 16), // words slide out, logo forms
+    TweenSequenceItem(tween: ConstantTween(1), weight: 36), // hold the lockup
+    TweenSequenceItem(
+        tween: Tween<double>(begin: 1, end: 0)
+            .chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 16), // words tuck away, wheel re-centers
+    TweenSequenceItem(tween: ConstantTween(0), weight: 17), // wheel alone
+  ]).animate(_logo);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 3500), () {
-        if (!mounted) return;
-        setState(() => _booting = false);
-        Future.delayed(const Duration(milliseconds: 350), () {
-          if (mounted) _intro.forward();
-        });
+    _logo.addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      setState(() => _booting = false);
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) _intro.forward();
       });
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _logo.forward();
     });
   }
 
@@ -57,6 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _wheelSpin.dispose();
+    _logo.dispose();
     _intro.dispose();
     _pulse.dispose();
     super.dispose();
@@ -232,9 +255,8 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-            // Boot overlay: just the wheel, spinning on white, exactly
-            // where the native splash drew it — so launch reads as one
-            // continuous moment: static wheel → spinning wheel → welcome.
+            // Boot overlay: the logo choreography on white, picking the
+            // wheel up exactly where the native splash drew it.
             AnimatedOpacity(
               opacity: _booting ? 1 : 0,
               duration: const Duration(milliseconds: 400),
@@ -243,13 +265,60 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Container(
                   color: Colors.white,
                   alignment: Alignment.center,
-                  child: RotationTransition(
-                    turns: _wheelSpin,
-                    child: Image.asset(
-                      'assets/images/rotary_connect_wheel.png',
-                      width: 120,
-                      height: 120,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizeTransition(
+                        sizeFactor: _wordsReveal,
+                        axis: Axis.horizontal,
+                        alignment: Alignment.centerRight,
+                        child: FadeTransition(
+                          opacity: _wordsReveal,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 14),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              // Official lockup: lines share a right edge,
+                              // only "Rotary" is bold.
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Rotary',
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: RCColors.blue,
+                                    fontSize: 42,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.2,
+                                    letterSpacing: -.5,
+                                  ),
+                                ),
+                                Text(
+                                  'Connect',
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: RCColors.blue,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.25,
+                                    letterSpacing: .2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      RotationTransition(
+                        turns: _wheelSpin,
+                        child: Image.asset(
+                          'assets/images/rotary_connect_wheel.png',
+                          width: 120,
+                          height: 120,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
