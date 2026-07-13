@@ -36,10 +36,21 @@ class _SplashScreenState extends State<SplashScreen>
   // phase picks it up in the same spot and plays the logo choreography —
   // the wheel spins alone, "Rotary Connect" slides out to complete the
   // official lockup, holds, then the words tuck away and the wheel glides
-  // back to center before the welcome content plays.
-  bool _booting = true;
+  // back to center before flying up into the wordmark.
+  bool _flying = false; // wheel is traveling center → wordmark slot
+  bool _flightDone = false; // overlay gone, real wordmark wheel showing
+  final GlobalKey _wheelSlotKey = GlobalKey();
+  Rect? _flyTarget;
   late final AnimationController _logo = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 6000));
+
+  // The flight: white backdrop fades out revealing the welcome screen,
+  // the wheel arcs up into the wordmark's slot, and the wordmark text
+  // prints itself as the wheel travels.
+  late final AnimationController _fly = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100));
+  late final Animation<double> _wordPrint = CurvedAnimation(
+      parent: _fly, curve: const Interval(0.15, 0.95, curve: Curves.easeOut));
 
   // 0 → words hidden (wheel alone, centered); 1 → full lockup. The Row is
   // centered, so growing the text naturally slides the wheel aside and
@@ -63,10 +74,20 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _logo.addStatusListener((status) {
       if (status != AnimationStatus.completed || !mounted) return;
-      setState(() => _booting = false);
-      Future.delayed(const Duration(milliseconds: 350), () {
-        if (mounted) _intro.forward();
-      });
+      // Aim the flight at wherever layout actually put the wordmark's
+      // wheel slot (it's laid out under the overlay the whole time).
+      final box =
+          _wheelSlotKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        _flyTarget = box.localToGlobal(Offset.zero) & box.size;
+      }
+      setState(() => _flying = true);
+      _fly.forward();
+    });
+    _fly.addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      setState(() => _flightDone = true);
+      _intro.forward();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _logo.forward();
@@ -80,6 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
   void dispose() {
     _wheelSpin.dispose();
     _logo.dispose();
+    _fly.dispose();
     _intro.dispose();
     _pulse.dispose();
     super.dispose();
@@ -134,7 +156,13 @@ class _SplashScreenState extends State<SplashScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Spacer(flex: 2),
-                          Wordmark(state: state, spin: _wheelSpin),
+                          Wordmark(
+                            state: state,
+                            spin: _wheelSpin,
+                            reveal: _wordPrint,
+                            showWheel: _flightDone,
+                            wheelKey: _wheelSlotKey,
+                          ),
                           const SizedBox(height: 24),
                           // The gold dash grows out from the left as the
                           // welcome text arrives, then keeps breathing.
@@ -255,74 +283,108 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-            // Boot overlay: the logo choreography on white, picking the
-            // wheel up exactly where the native splash drew it.
-            AnimatedOpacity(
-              opacity: _booting ? 1 : 0,
-              duration: const Duration(milliseconds: 400),
-              child: IgnorePointer(
-                ignoring: !_booting,
-                child: Container(
-                  color: Colors.white,
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizeTransition(
-                        sizeFactor: _wordsReveal,
-                        axis: Axis.horizontal,
-                        alignment: Alignment.centerRight,
-                        child: FadeTransition(
-                          opacity: _wordsReveal,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 14),
-                            child: Column(
+            // Boot overlay. Phase 1 (logo choreography): full white,
+            // wheel + words forming/holding/tucking the lockup at center.
+            // Phase 2 (flight): the white fades out revealing the welcome
+            // screen while the wheel arcs up into the wordmark's slot and
+            // the wordmark text prints itself. Once landed, the overlay
+            // disappears and the real wordmark wheel takes over.
+            if (!_flightDone)
+              AnimatedBuilder(
+                animation: _fly,
+                builder: (context, _) {
+                  final t = Curves.easeInOutCubic.transform(_fly.value);
+                  final size = MediaQuery.sizeOf(context);
+                  final start = Rect.fromCenter(
+                      center: size.center(Offset.zero),
+                      width: 120,
+                      height: 120);
+                  final rect =
+                      Rect.lerp(start, _flyTarget ?? start, _flying ? t : 0)!;
+                  return IgnorePointer(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Opacity(
+                            opacity: 1 - t,
+                            child: Container(color: Colors.white),
+                          ),
+                        ),
+                        if (!_flying)
+                          Center(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              // Official lockup: lines share a right edge,
-                              // only "Rotary" is bold.
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text(
-                                  'Rotary',
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    color: RCColors.blue,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.2,
-                                    letterSpacing: -.5,
+                                SizeTransition(
+                                  sizeFactor: _wordsReveal,
+                                  axis: Axis.horizontal,
+                                  alignment: Alignment.centerRight,
+                                  child: FadeTransition(
+                                    opacity: _wordsReveal,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 14),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        // Official lockup: lines share a right
+                                        // edge, only "Rotary" is bold.
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'Rotary',
+                                            maxLines: 1,
+                                            style: TextStyle(
+                                              color: RCColors.blue,
+                                              fontSize: 42,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.2,
+                                              letterSpacing: -.5,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Connect',
+                                            maxLines: 1,
+                                            style: TextStyle(
+                                              color: RCColors.blue,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w400,
+                                              height: 1.25,
+                                              letterSpacing: .2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  'Connect',
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    color: RCColors.blue,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.25,
-                                    letterSpacing: .2,
+                                RotationTransition(
+                                  turns: _wheelSpin,
+                                  child: Image.asset(
+                                    'assets/images/rotary_connect_wheel.png',
+                                    width: 120,
+                                    height: 120,
                                   ),
                                 ),
                               ],
                             ),
+                          )
+                        else
+                          Positioned.fromRect(
+                            rect: rect,
+                            child: RotationTransition(
+                              turns: _wheelSpin,
+                              child: Image.asset(
+                                'assets/images/rotary_connect_wheel.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      RotationTransition(
-                        turns: _wheelSpin,
-                        child: Image.asset(
-                          'assets/images/rotary_connect_wheel.png',
-                          width: 120,
-                          height: 120,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ),
           ],
         ),
       ),

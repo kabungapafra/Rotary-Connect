@@ -147,7 +147,7 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                       _previousTab = state.tab;
                       return AnimatedSwitcher(
                         duration:
-                            Duration(milliseconds: leavingSplash ? 460 : 280),
+                            Duration(milliseconds: leavingSplash ? 600 : 280),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeIn,
                         transitionBuilder: (child, animation) => leavingSplash
@@ -155,13 +155,13 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                                 opacity: animation,
                                 child: SlideTransition(
                                   position: Tween(
-                                    begin: const Offset(0, .06),
+                                    begin: const Offset(0, .08),
                                     end: Offset.zero,
                                   ).animate(CurvedAnimation(
                                       parent: animation,
                                       curve: Curves.easeOutCubic)),
                                   child: ScaleTransition(
-                                    scale: Tween(begin: .96, end: 1.0).animate(
+                                    scale: Tween(begin: .94, end: 1.0).animate(
                                         CurvedAnimation(
                                             parent: animation,
                                             curve: Curves.easeOutCubic)),
