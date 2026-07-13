@@ -26,6 +26,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_native_splash: ^2.4.8
 
 flutter:
   uses-material-design: true
@@ -47,3 +48,15 @@ flutter:
           weight: 700
         - asset: assets/fonts/Poppins-ExtraBold.ttf
           weight: 800
+
+# Native splash — shown by the OS the instant the app launches, before the
+# Flutter engine loads, so there's never a blank white frame. Regenerate
+# with `dart run flutter_native_splash:create` after changing this.
+flutter_native_splash:
+  color: "#17458F"
+  image: assets/images/rotary_connect_wheel.png
+  android_gravity: center
+  ios_content_mode: center
+  android_12:
+    color: "#17458F"
+    image: assets/images/rotary_connect_wheel.png
