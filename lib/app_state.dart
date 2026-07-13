@@ -489,6 +489,11 @@ class AppState extends ChangeNotifier {
   List<ClubDocumentInfo> clubDocuments = [];
   bool documentUploading = false;
   String? documentError;
+  MinuteInfo? minuteOpen; // minute whose body is being viewed/edited
+  bool minuteBodySaving = false;
+  bool minuteAudioUploading = false;
+  String? minuteAudioError;
+  Timer? _minutesPollTimer;
   bool secretaryLoaded = false;
   bool secretaryLoading = false;
   MinuteDraft? minuteEditor;
@@ -1684,6 +1689,9 @@ class AppState extends ChangeNotifier {
         secretaryLoaded = true;
         secretaryLoading = false;
       });
+      if (minutes.any((m) => m.status == 'processing')) {
+        _pollMinutesWhileProcessing();
+      }
     } on ApiException {
       _update(() => secretaryLoading = false);
     }
@@ -1721,6 +1729,76 @@ class AppState extends ChangeNotifier {
         draft.error = e.message;
       });
     }
+  }
+
+  void openMinuteBody(MinuteInfo minute) => _update(() => minuteOpen = minute);
+  void closeMinuteBody() => _update(() => minuteOpen = null);
+
+  Future<void> saveMinuteBody(String body) async {
+    final minute = minuteOpen;
+    final token = authToken;
+    if (minute == null || token == null) return;
+    _update(() => minuteBodySaving = true);
+    try {
+      final updated = await _api.updateMinuteBody(token, minute.id, body);
+      _update(() {
+        minutes = [
+          for (final m in minutes)
+            if (m.id == minute.id) updated else m,
+        ];
+        minuteOpen = null;
+        minuteBodySaving = false;
+      });
+    } on ApiException {
+      // Leave the editor open so nothing typed is lost; the save button
+      // becomes tappable again.
+      _update(() => minuteBodySaving = false);
+    }
+  }
+
+  Future<void> uploadMinuteAudio(
+      String title, String meetingDate, String filePath) async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() {
+      minuteAudioUploading = true;
+      minuteAudioError = null;
+    });
+    try {
+      final minute = await _api.uploadMinuteAudio(token,
+          title: title, meetingDate: meetingDate, filePath: filePath);
+      _update(() {
+        minutes.insert(0, minute);
+        minuteAudioUploading = false;
+      });
+      _pollMinutesWhileProcessing();
+    } on ApiException catch (e) {
+      _update(() {
+        minuteAudioUploading = false;
+        minuteAudioError = e.message;
+      });
+    }
+  }
+
+  /// While any minute is still `processing` (transcription running on the
+  /// server), re-fetch the list every 15s so the row flips to draft/failed
+  /// without the secretary having to leave and come back.
+  void _pollMinutesWhileProcessing() {
+    _minutesPollTimer?.cancel();
+    _minutesPollTimer =
+        Timer.periodic(const Duration(seconds: 15), (timer) async {
+      final token = authToken;
+      if (token == null || !minutes.any((m) => m.status == 'processing')) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final list = await _api.fetchMinutes(token);
+        _update(() => minutes = list);
+      } on ApiException {
+        // Transient network error — the next tick retries.
+      }
+    });
   }
 
   Future<void> toggleMinuteStatus(MinuteInfo minute) async {

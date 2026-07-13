@@ -213,8 +213,10 @@ class MinuteInfo {
   final int id;
   final String title;
   final String meetingDate;
-  final String status; // draft | approved
-  const MinuteInfo(this.id, this.title, this.meetingDate, this.status);
+  final String status; // draft | approved | processing | failed
+  final String body; // the minutes text (markdown); empty on legacy rows
+  const MinuteInfo(this.id, this.title, this.meetingDate, this.status,
+      [this.body = '']);
 }
 
 class ClubDocumentInfo {
@@ -789,12 +791,17 @@ class ApiClient {
   }
 
   // ── secretary workspace ─────────────────────────────────────────────
+  MinuteInfo _minuteFromJson(Map<String, dynamic> m) => MinuteInfo(
+      m['id'] as int,
+      m['title'] as String,
+      m['meeting_date'] as String,
+      m['status'] as String,
+      m['body'] as String? ?? '');
+
   Future<List<MinuteInfo>> fetchMinutes(String token) async {
     final list = await _getList('/club/secretary/minutes', token);
     return [
-      for (final m in list.cast<Map<String, dynamic>>())
-        MinuteInfo(m['id'] as int, m['title'] as String,
-            m['meeting_date'] as String, m['status'] as String),
+      for (final m in list.cast<Map<String, dynamic>>()) _minuteFromJson(m),
     ];
   }
 
@@ -805,8 +812,7 @@ class ApiClient {
       {'title': title, 'meeting_date': meetingDate},
       token: token,
     );
-    return MinuteInfo(res['id'] as int, res['title'] as String,
-        res['meeting_date'] as String, res['status'] as String);
+    return _minuteFromJson(res);
   }
 
   Future<MinuteInfo> setMinuteStatus(
@@ -816,8 +822,44 @@ class ApiClient {
       {'status': status},
       token: token,
     );
-    return MinuteInfo(res['id'] as int, res['title'] as String,
-        res['meeting_date'] as String, res['status'] as String);
+    return _minuteFromJson(res);
+  }
+
+  Future<MinuteInfo> updateMinuteBody(
+      String token, int minuteId, String body) async {
+    final res = await _patch(
+      '/club/secretary/minutes/$minuteId',
+      {'body': body},
+      token: token,
+    );
+    return _minuteFromJson(res);
+  }
+
+  /// Uploads a meeting recording; the server transcribes it and drafts the
+  /// minutes in the background. Returns the placeholder `processing` minute.
+  Future<MinuteInfo> uploadMinuteAudio(String token,
+      {required String title,
+      required String meetingDate,
+      required String filePath}) async {
+    final req = http.MultipartRequest(
+        'POST', Uri.parse('$apiBaseUrl/club/secretary/minutes/from-audio'))
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields['title'] = title
+      ..fields['meeting_date'] = meetingDate
+      ..files.add(await http.MultipartFile.fromPath('audio', filePath));
+    final http.StreamedResponse streamed;
+    try {
+      // No timeout: a long recording on club-hall wifi can take minutes.
+      streamed = await req.send();
+    } catch (_) {
+      throw ApiException('Could not reach the server. Check your connection.');
+    }
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode >= 400) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(data['detail'] as String? ?? 'Upload failed.');
+    }
+    return _minuteFromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   Future<List<MilestoneInfo>> fetchMilestones(String token) async {

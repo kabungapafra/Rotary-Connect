@@ -154,6 +154,9 @@ class SecretaryScreen extends StatelessWidget {
           ],
         ),
         if (state.minuteEditor != null) _MinuteEditorSheet(state: state),
+        if (state.minuteOpen != null)
+          _MinuteBodySheet(
+              key: ValueKey(state.minuteOpen!.id), state: state),
       ],
     );
   }
@@ -192,6 +195,50 @@ class _MinutesTab extends StatelessWidget {
   final AppState state;
   const _MinutesTab({required this.state});
 
+  Future<void> _pickAudioAndUpload(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    final file = result?.files.firstOrNull;
+    final path = file?.path;
+    if (file == null || path == null || !context.mounted) return;
+    final title = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController(
+            text: file.name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), ''));
+        return AlertDialog(
+          title: const Text('Draft minutes from audio'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: 'Minutes title'),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'The recording will be transcribed and drafted into '
+                'minutes for today\'s meeting. This takes a few minutes.',
+                style: TextStyle(fontSize: 12, color: RCColors.textMuted),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                child: const Text('Upload')),
+          ],
+        );
+      },
+    );
+    if (title == null || title.isEmpty) return;
+    await state.uploadMinuteAudio(
+        title, formatDateYmd(DateTime.now()), path);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -202,6 +249,39 @@ class _MinutesTab extends StatelessWidget {
           actionLabel: '+ Add minute',
           onAction: state.openMinuteEditor,
         ),
+        const SizedBox(height: 10),
+        PressableScale(
+          child: OutlinedButton.icon(
+            onPressed: state.minuteAudioUploading
+                ? null
+                : () => _pickAudioAndUpload(context),
+            icon: state.minuteAudioUploading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.mic_none, size: 18),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: RCColors.blue,
+              side: BorderSide(color: RCColors.blue.withValues(alpha: .4)),
+              padding: const EdgeInsets.all(12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            label: Text(
+                state.minuteAudioUploading
+                    ? 'Uploading recording…'
+                    : 'Draft minutes from a recording',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 12.5)),
+          ),
+        ),
+        if (state.minuteAudioError != null) ...[
+          const SizedBox(height: 8),
+          Text(state.minuteAudioError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: RCColors.red)),
+        ],
         const SizedBox(height: 10),
         if (state.minutes.isEmpty)
           const RCCard(
@@ -225,6 +305,7 @@ class _MinutesTab extends StatelessWidget {
                     minute: state.minutes[i],
                     isLast: i == state.minutes.length - 1,
                     onToggle: () => state.toggleMinuteStatus(state.minutes[i]),
+                    onOpen: () => state.openMinuteBody(state.minutes[i]),
                   ),
               ],
             ),
@@ -238,57 +319,168 @@ class _MinuteRow extends StatelessWidget {
   final MinuteInfo minute;
   final bool isLast;
   final VoidCallback onToggle;
+  final VoidCallback onOpen;
   const _MinuteRow(
-      {required this.minute, required this.isLast, required this.onToggle});
+      {required this.minute,
+      required this.isLast,
+      required this.onToggle,
+      required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
-    final approved = minute.status == 'approved';
+    final (label, color, bg) = switch (minute.status) {
+      'approved' => ('Approved', RCColors.green, RCColors.green.withValues(alpha: .1)),
+      'processing' => ('Transcribing…', RCColors.blue, RCColors.blue.withValues(alpha: .1)),
+      'failed' => ('Failed', RCColors.red, RCColors.red.withValues(alpha: .1)),
+      _ => ('Draft', RCColors.amber, RCColors.amberBg),
+    };
+    final toggleable = minute.status == 'approved' || minute.status == 'draft';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         border: isLast
             ? null
             : const Border(bottom: BorderSide(color: RCColors.divider)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(minute.title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: RCColors.textDark)),
-                Text(minute.meetingDate,
-                    style: const TextStyle(
-                        fontSize: 11, color: RCColors.textMuted)),
-              ],
-            ),
-          ),
-          PressableScale(
-            child: Material(
-              color: approved
-                  ? RCColors.green.withValues(alpha: .1)
-                  : RCColors.amberBg,
-              borderRadius: BorderRadius.circular(999),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: onToggle,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  child: Text(approved ? 'Approved' : 'Draft',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: approved ? RCColors.green : RCColors.amber)),
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(minute.title,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: RCColors.textDark)),
+                    Text(minute.meetingDate,
+                        style: const TextStyle(
+                            fontSize: 11, color: RCColors.textMuted)),
+                  ],
                 ),
               ),
-            ),
+              PressableScale(
+                child: Material(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: toggleable ? onToggle : onOpen,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      child: Text(label,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: color)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MinuteBodySheet extends StatefulWidget {
+  final AppState state;
+  const _MinuteBodySheet({super.key, required this.state});
+
+  @override
+  State<_MinuteBodySheet> createState() => _MinuteBodySheetState();
+}
+
+class _MinuteBodySheetState extends State<_MinuteBodySheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        TextEditingController(text: widget.state.minuteOpen?.body ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final minute = state.minuteOpen!;
+    final processing = minute.status == 'processing';
+    return _sheetScaffold(
+      context: context,
+      onClose: state.closeMinuteBody,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sheetHeader(minute.title, state.closeMinuteBody),
+          const SizedBox(height: 4),
+          Text(minute.meetingDate,
+              style: const TextStyle(fontSize: 11.5, color: RCColors.textMuted)),
+          const SizedBox(height: 12),
+          if (processing)
+            const RCCard(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Transcribing the recording and drafting the minutes…\n'
+                'This usually takes a few minutes. Check back shortly.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: RCColors.textMuted),
+              ),
+            )
+          else ...[
+            if (minute.status == 'failed') ...[
+              const Text(
+                'Transcription failed — the recording may be too quiet or '
+                'in an unsupported format. You can write the minutes below '
+                'or try uploading again.',
+                style: TextStyle(fontSize: 12, color: RCColors.red),
+              ),
+              const SizedBox(height: 10),
+            ],
+            TextField(
+              controller: _controller,
+              maxLines: 14,
+              minLines: 8,
+              style: const TextStyle(fontSize: 13, color: RCColors.textDark),
+              decoration: _fieldDecoration(
+                  'Write or paste the meeting minutes here…'),
+            ),
+            const SizedBox(height: 12),
+            PressableScale(
+              child: ElevatedButton(
+                onPressed: state.minuteBodySaving
+                    ? null
+                    : () => state.saveMinuteBody(_controller.text),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: RCColors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text(
+                    state.minuteBodySaving ? 'Saving…' : 'Save minutes',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 13.5)),
+              ),
+            ),
+          ],
         ],
       ),
     );
