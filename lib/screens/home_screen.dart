@@ -292,6 +292,40 @@ class _Header extends StatelessWidget {
   final AppState state;
   const _Header({required this.state});
 
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Sign out?',
+            style: TextStyle(
+                color: RCColors.textDark,
+                fontSize: 17,
+                fontWeight: FontWeight.w800)),
+        content: const Text(
+            'You will need your member number and PIN to sign back in.',
+            style: TextStyle(color: RCColors.textMuted, fontSize: 13.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel',
+                style: TextStyle(
+                    color: RCColors.textMuted, fontWeight: FontWeight.w700)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Sign out',
+                style: TextStyle(
+                    color: RCColors.blue, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) state.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -333,20 +367,28 @@ class _Header extends StatelessWidget {
                         ),
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .14),
-                  border: Border.all(color: Colors.white.withValues(alpha: .3)),
-                  borderRadius: BorderRadius.circular(999),
+              // Tapping the role badge is the app's sign-out affordance —
+              // confirmed first, since login needs the one-time PIN again.
+              PressableScale(
+                child: GestureDetector(
+                  onTap: () => _confirmSignOut(context),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .14),
+                      border:
+                          Border.all(color: Colors.white.withValues(alpha: .3)),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(state.roleBadge,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: .5)),
+                  ),
                 ),
-                child: Text(state.roleBadge,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: .5)),
               ),
             ],
           ),

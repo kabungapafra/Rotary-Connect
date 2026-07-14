@@ -231,6 +231,10 @@ class AppState extends ChangeNotifier {
   /// removed): wipe just their session. Club branding (name/logo/id) is
   /// kept — this device still belongs to that club, it just needs someone
   /// to log in again.
+  /// User-chosen sign-out (role badge on the Home header). Same cleanup as
+  /// an auth failure: wipe the persisted session and every club cache.
+  void signOut() => unawaited(_clearSession());
+
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
