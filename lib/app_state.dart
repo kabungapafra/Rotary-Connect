@@ -3,55 +3,19 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:gal/gal.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
+import 'gallery_controller.dart';
 import 'push_service.dart';
 import 'secretary_controller.dart';
 import 'theme.dart';
 import 'treasury_controller.dart';
 
-class PhotoInfo {
-  final String label;
-  final String activity;
-  final String date;
-  // Public R2 URL — gallery photos are fetched over the network, not held
-  // as local bytes.
-  final String? imageUrl;
-  // Backend gallery photo id — set only when this photo came from the
-  // club gallery, which is what lets the viewer offer to delete it.
-  final int? id;
-  const PhotoInfo(this.label, this.activity, this.date,
-      {this.imageUrl, this.id});
-}
-
 class CertInfo {
   final String title;
   final String body;
   const CertInfo(this.title, this.body);
-}
-
-/// A photo in a gallery album, fetched from the backend. `image` is the
-/// public R2 URL the app displays directly with Image.network.
-class GalleryUpload {
-  final int id;
-  final String album;
-  final String image;
-  // Small WebP URL for grid tiles; null on rows without a generated
-  // thumbnail, where the grid falls back to the full image.
-  final String? thumb;
-  const GalleryUpload(this.id, this.album, this.image, this.thumb);
-}
-
-/// State of the gallery "Upload photos" bottom sheet while it is open.
-class UploadSheet {
-  String album;
-  final List<Uint8List> srcs = [];
-  bool saving = false;
-  String? error;
-  UploadSheet(this.album);
 }
 
 /// Working copy of the "Send apology" bottom sheet fields.
@@ -97,6 +61,8 @@ class AppState extends ChangeNotifier {
     ..addListener(notifyListeners);
   late final SecretaryController secretary =
       SecretaryController(_api, () => authToken)..addListener(notifyListeners);
+  late final GalleryController gallery =
+      GalleryController(_api, () => authToken)..addListener(notifyListeners);
 
   AppState() {
     // Wake the free-tier backend while the user is still on the splash
@@ -246,10 +212,9 @@ class AppState extends ChangeNotifier {
     apologies = [];
     treasury.reset();
     secretary.reset();
+    gallery.reset();
     projects.clear();
     projectsLoaded = false;
-    galleryUploads.clear();
-    galleryLoaded = false;
   }
 
   /// Remembered once a walk-in visitor has checked in anywhere, so a QR
@@ -282,7 +247,6 @@ class AppState extends ChangeNotifier {
   String guestType = 'Prospective member';
   bool guestFormError = false;
 
-  PhotoInfo? photo;
   CertInfo? cert;
 
   String search = '';
@@ -590,26 +554,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> loadGallery() async {
-    final token = authToken;
-    if (token == null) return;
-    _update(() => galleryLoading = true);
-    try {
-      final list = await _api.fetchGalleryPhotos(token);
-      _update(() {
-        galleryUploads
-          ..clear()
-          ..addAll([
-            for (final p in list)
-              GalleryUpload(p.id, p.album, p.image, p.thumb),
-          ]);
-        galleryLoaded = true;
-        galleryLoading = false;
-      });
-    } on ApiException {
-      _update(() => galleryLoading = false);
-    }
-  }
+  Future<void> loadGallery() => gallery.load();
 
   Future<void> loadProjects() async {
     final token = authToken;
@@ -697,13 +642,16 @@ class AppState extends ChangeNotifier {
   bool reportToast = false;
   Timer? _reportTimer;
 
-  // gallery — real club data, loaded from the backend after login
-  UploadSheet? uploadSheet;
-  final List<GalleryUpload> galleryUploads = [];
-  bool galleryLoaded = false;
-  bool galleryLoading = false;
-  String? downloadToast;
-  Timer? _downloadToastTimer;
+  // ── gallery ──────────────────────────────────────────────────────────
+  // State and logic live in [gallery]; these forward to it so every
+  // screen that already reads `state.galleryUploads` etc. keeps working
+  // unchanged (see GalleryController for the actual implementation).
+  UploadSheet? get uploadSheet => gallery.uploadSheet;
+  List<GalleryUpload> get galleryUploads => gallery.uploads;
+  bool get galleryLoaded => gallery.loaded;
+  bool get galleryLoading => gallery.loading;
+  String? get downloadToast => gallery.downloadToast;
+  PhotoInfo? get photo => gallery.photo;
 
   void _update(VoidCallback fn) {
     fn();
@@ -1351,31 +1299,13 @@ class AppState extends ChangeNotifier {
   }
 
   // ── overlays ───────────────────────────────────────────────────────────
-  /// Which album the open photo belongs to — lets the viewer swipe between
-  /// the rest of that album's photos. Null when opened from somewhere that
-  /// isn't a gallery grid (e.g. a placeholder tile with no real photos).
-  String? photoAlbum;
+  /// Which album the open photo belongs to — forwards to [gallery], the
+  /// only place that opens this viewer.
+  String? get photoAlbum => gallery.photoAlbum;
 
-  void openPhoto(PhotoInfo p, {String? album}) => _update(() {
-        photo = p;
-        photoAlbum = album;
-      });
-  void closePhoto() => _update(() {
-        photo = null;
-        photoAlbum = null;
-      });
-
-  /// Swiping the full-screen viewer to a different photo in the same
-  /// album — keeps download/delete pointed at whatever's on screen.
-  void showAlbumPhotoAt(int index) {
-    final album = photoAlbum;
-    if (album == null) return;
-    final photos = uploadsFor(album);
-    if (index < 0 || index >= photos.length) return;
-    final p = photos[index];
-    _update(
-        () => photo = PhotoInfo('', album, '', imageUrl: p.image, id: p.id));
-  }
+  void openPhoto(PhotoInfo p, {String? album}) => gallery.openPhoto(p, album: album);
+  void closePhoto() => gallery.closePhoto();
+  void showAlbumPhotoAt(int index) => gallery.showAlbumPhotoAt(index);
 
   void openCert(CertInfo c) => _update(() => cert = c);
   void closeCert() => _update(() => cert = null);
@@ -1862,97 +1792,29 @@ class AppState extends ChangeNotifier {
   }
 
   // ── gallery ────────────────────────────────────────────────────────────
-  void openUpload() => _update(() => uploadSheet = UploadSheet('Club album'));
-  void closeUpload() => _update(() => uploadSheet = null);
-  void pickUploadAlbum(String album) =>
-      _update(() => uploadSheet?.album = album);
+  // Thin forwards to [gallery] — kept here so every screen's existing
+  // `state.openUpload()` / `state.downloadPhoto()` etc. call sites don't
+  // need to change.
+  void openUpload() => gallery.openUpload();
+  void closeUpload() => gallery.closeUpload();
+  void pickUploadAlbum(String album) => gallery.pickUploadAlbum(album);
   void addUploadPhotos(List<Uint8List> photos) =>
-      _update(() => uploadSheet?.srcs.addAll(photos));
-
-  Future<void> saveUpload() async {
-    final u = uploadSheet;
-    final token = authToken;
-    if (u == null || u.srcs.isEmpty || token == null) return;
-    _update(() {
-      u.saving = true;
-      u.error = null;
-    });
-    try {
-      final dataUrls = [
-        for (final src in u.srcs) 'data:image/jpeg;base64,${base64Encode(src)}',
-      ];
-      final uploaded = await _api.uploadGalleryPhotos(token, u.album, dataUrls);
-      _update(() {
-        galleryUploads.insertAll(0, [
-          for (final p in uploaded)
-            GalleryUpload(p.id, p.album, p.image, p.thumb),
-        ]);
-        uploadSheet = null;
-      });
-    } on ApiException catch (e) {
-      _update(() {
-        u.saving = false;
-        u.error = e.message;
-      });
-    }
-  }
-
-  List<GalleryUpload> uploadsFor(String album) =>
-      galleryUploads.where((g) => g.album == album).toList();
-
-  /// Saves the currently-open full-screen photo to the device's own photo
-  /// gallery (separate from the club's in-app gallery).
-  Future<void> downloadPhoto() async {
-    final url = photo?.imageUrl;
-    if (url == null) return;
-    String message;
-    try {
-      final res =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-      if (res.statusCode >= 400) throw ApiException('Download failed');
-      await Gal.putImageBytes(res.bodyBytes,
-          name: 'rotary_connect_${DateTime.now().millisecondsSinceEpoch}');
-      message = 'Saved to your photos';
-    } catch (_) {
-      message = 'Could not save photo';
-    }
-    _downloadToastTimer?.cancel();
-    _update(() => downloadToast = message);
-    _downloadToastTimer = Timer(const Duration(seconds: 2), () {
-      _update(() => downloadToast = null);
-    });
-  }
-
-  /// Removes the currently-open photo from the club gallery (backend +
-  /// local list) and closes the viewer.
-  Future<void> deletePhoto() async {
-    final id = photo?.id;
-    final token = authToken;
-    if (id == null || token == null) return;
-    try {
-      await _api.deleteGalleryPhoto(token, id);
-      _update(() {
-        galleryUploads.removeWhere((g) => g.id == id);
-        photo = null;
-      });
-    } on ApiException {
-      _downloadToastTimer?.cancel();
-      _update(() => downloadToast = 'Could not delete photo');
-      _downloadToastTimer = Timer(const Duration(seconds: 2), () {
-        _update(() => downloadToast = null);
-      });
-    }
-  }
+      gallery.addUploadPhotos(photos);
+  Future<void> saveUpload() => gallery.saveUpload();
+  List<GalleryUpload> uploadsFor(String album) => gallery.uploadsFor(album);
+  Future<void> downloadPhoto() => gallery.downloadPhoto();
+  Future<void> deletePhoto() => gallery.deletePhoto();
 
   @override
   void dispose() {
     _reportTimer?.cancel();
     _qrCopyTimer?.cancel();
-    _downloadToastTimer?.cancel();
     treasury.removeListener(notifyListeners);
     treasury.dispose();
     secretary.removeListener(notifyListeners);
     secretary.dispose();
+    gallery.removeListener(notifyListeners);
+    gallery.dispose();
     super.dispose();
   }
 }
