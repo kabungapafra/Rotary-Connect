@@ -8,6 +8,7 @@ import 'data.dart';
 import 'date_labels.dart';
 import 'events_controller.dart';
 import 'gallery_controller.dart';
+import 'members_controller.dart';
 import 'poll_controller.dart';
 import 'push_service.dart';
 import 'secretary_controller.dart';
@@ -25,18 +26,6 @@ class ApologyDraft {
   String reason = '';
   bool saving = false;
   String? error;
-}
-
-/// Working copy of the "Add member" bottom sheet fields.
-class MemberDraft {
-  String name = '';
-  String role = '';
-  String email = '';
-  String phone = '';
-  String dob = '';
-  bool isBoard = false;
-  String? error; // validation / save error shown inside the sheet
-  bool saving = false;
 }
 
 /// Single shared app state, mirroring the design's one-component `state`
@@ -58,6 +47,9 @@ class AppState extends ChangeNotifier {
     ..addListener(notifyListeners);
   late final EventsController eventsController =
       EventsController(_api, () => authToken)..addListener(notifyListeners);
+  late final MembersController membersController = MembersController(
+      _api, () => authToken, () => canManageClub)
+    ..addListener(notifyListeners);
 
   AppState() {
     // Wake the free-tier backend while the user is still on the splash
@@ -196,9 +188,7 @@ class AppState extends ChangeNotifier {
     summary = null;
     polls.reset();
     eventsController.reset();
-    clubMembers = [];
-    clubMembersLoaded = false;
-    clubMembersError = null;
+    membersController.reset();
     clubMeetings.clear();
     meetingsLoaded = false;
     apologies = [];
@@ -240,8 +230,6 @@ class AppState extends ChangeNotifier {
   bool guestFormError = false;
 
   CertInfo? cert;
-
-  String search = '';
 
   // Greeting and role badge reflect the logged-in member; the design's
   // "Rtn. Peter / TREASURER" preview values remain only as the pre-login
@@ -413,18 +401,20 @@ class AppState extends ChangeNotifier {
   bool get nextMeetingLoading => eventsController.nextMeetingLoading;
   String get nextMeetingBadge => eventsController.nextMeetingBadge;
 
-  // members
-  String memberFilter = 'all'; // all | board | gen
-  final List<Member> extraMembers = [];
-  MemberDraft? memberEditor;
-  Member? memberProfile;
-
-  // Real club roster, fetched from the backend once logged in. The static
-  // design list remains only as the pre-login/demo fallback.
-  List<Member> clubMembers = [];
-  bool clubMembersLoaded = false;
-  bool clubMembersLoading = false;
-  String? clubMembersError;
+  // ── members ──────────────────────────────────────────────────────────
+  // State and logic live in [membersController]; these forward to it so
+  // every screen that already reads `state.clubMembers` etc. keeps
+  // working unchanged (see MembersController for the actual
+  // implementation).
+  String get search => membersController.search;
+  String get memberFilter => membersController.filter;
+  List<Member> get extraMembers => membersController.extraMembers;
+  MemberDraft? get memberEditor => membersController.editor;
+  Member? get memberProfile => membersController.profile;
+  List<Member> get clubMembers => membersController.roster;
+  bool get clubMembersLoaded => membersController.loaded;
+  bool get clubMembersLoading => membersController.loading;
+  String? get clubMembersError => membersController.error;
 
   // ── real club data loaders ─────────────────────────────────────────
   MemberSummary? summary;
@@ -535,31 +525,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> loadClubMembers() async {
-    final token = authToken;
-    if (token == null) return;
-    _update(() {
-      clubMembersLoading = true;
-      clubMembersError = null;
-    });
-    try {
-      final list = await _api.fetchClubMembers(token);
-      _update(() {
-        clubMembers = [
-          for (final m in list)
-            Member(m.name, m.role, m.isBoard,
-                email: m.email, phone: m.phone, dob: m.dob),
-        ];
-        clubMembersLoaded = true;
-        clubMembersLoading = false;
-      });
-    } on ApiException catch (e) {
-      _update(() {
-        clubMembersLoading = false;
-        clubMembersError = e.message;
-      });
-    }
-  }
+  Future<void> loadClubMembers() => membersController.load();
 
   // projects — real club data, loaded from the backend after login
   final List<Project> projects = [];
@@ -1147,89 +1113,28 @@ class AppState extends ChangeNotifier {
   void closeCert() => _update(() => cert = null);
 
   // ── members ────────────────────────────────────────────────────────────
-  void setSearch(String v) => _update(() => search = v);
-  void setMemberFilter(String v) => _update(() => memberFilter = v);
+  // Thin forwards to [membersController] — kept here so every screen's
+  // existing `state.setSearch()` / `state.saveMember()` etc. call sites
+  // don't need to change.
+  void setSearch(String v) => membersController.setSearch(v);
+  void setMemberFilter(String v) => membersController.setFilter(v);
 
   /// Logged in → the real club roster from the backend; otherwise the
   /// static design list (pre-login preview only).
-  List<Member> get allMembers => authToken != null ? clubMembers : const [];
+  List<Member> get allMembers =>
+      membersController.membersFor(authToken != null);
 
-  void openAddMember() => _update(() => memberEditor = MemberDraft());
-  void closeMemberEditor() => _update(() => memberEditor = null);
-  void setMemberName(String v) => _update(() {
-        memberEditor?.name = v;
-        memberEditor?.error = null;
-      });
-  void setMemberRole(String v) => _update(() => memberEditor?.role = v);
-  void setMemberEmail(String v) => _update(() => memberEditor?.email = v);
-  void setMemberPhone(String v) => _update(() {
-        memberEditor?.phone = v;
-        memberEditor?.error = null;
-      });
-  void setMemberIsBoard(bool v) => _update(() => memberEditor?.isBoard = v);
-  void setMemberDob(String v) => _update(() => memberEditor?.dob = v);
-
-  /// Saves the new member. When the logged-in user is the Club President,
-  /// the member is persisted through the backend (which generates their
-  /// member number and one-time PIN, returned here for the president to
-  /// hand over); the local list is updated either way so the UI matches.
-  Future<AddedClubMember?> saveMember() async {
-    final m = memberEditor;
-    if (m == null) return null;
-    if (m.name.trim().isEmpty) {
-      _update(() => m.error = 'Enter the member\'s name.');
-      return null;
-    }
-
-    AddedClubMember? added;
-    final token = authToken;
-    if (token != null && canManageClub) {
-      if (m.phone.trim().isEmpty) {
-        _update(() => m.error = 'Phone number is required.');
-        return null;
-      }
-      _update(() {
-        m.saving = true;
-        m.error = null;
-      });
-      try {
-        added = await _api.addClubMember(
-          token,
-          name: m.name.trim(),
-          role: m.role.trim().isEmpty ? 'Member' : m.role.trim(),
-          email: m.email.trim(),
-          phone: m.phone.trim(),
-          dob: m.dob.trim(),
-          isBoard: m.isBoard,
-        );
-      } on ApiException catch (e) {
-        _update(() {
-          m.saving = false;
-          m.error = e.message;
-        });
-        return null;
-      }
-      _update(() => memberEditor = null);
-      await loadClubMembers(); // roster now includes the new member
-      return added;
-    }
-
-    _update(() {
-      extraMembers.add(Member(
-        m.name.trim(),
-        m.role.trim().isEmpty ? 'Member' : m.role.trim(),
-        m.isBoard,
-        email: m.email.trim(),
-        phone: m.phone.trim(),
-        dob: m.dob.trim(),
-      ));
-      memberEditor = null;
-    });
-    return added;
-  }
-
-  void openMemberProfile(Member m) => _update(() => memberProfile = m);
-  void closeMemberProfile() => _update(() => memberProfile = null);
+  void openAddMember() => membersController.openAddMember();
+  void closeMemberEditor() => membersController.closeMemberEditor();
+  void setMemberName(String v) => membersController.setMemberName(v);
+  void setMemberRole(String v) => membersController.setMemberRole(v);
+  void setMemberEmail(String v) => membersController.setMemberEmail(v);
+  void setMemberPhone(String v) => membersController.setMemberPhone(v);
+  void setMemberIsBoard(bool v) => membersController.setMemberIsBoard(v);
+  void setMemberDob(String v) => membersController.setMemberDob(v);
+  Future<AddedClubMember?> saveMember() => membersController.saveMember();
+  void openMemberProfile(Member m) => membersController.openMemberProfile(m);
+  void closeMemberProfile() => membersController.closeMemberProfile();
 
   // ── projects ───────────────────────────────────────────────────────────
   void openAddProject() => _update(() {
@@ -1458,6 +1363,8 @@ class AppState extends ChangeNotifier {
     polls.dispose();
     eventsController.removeListener(notifyListeners);
     eventsController.dispose();
+    membersController.removeListener(notifyListeners);
+    membersController.dispose();
     super.dispose();
   }
 }
