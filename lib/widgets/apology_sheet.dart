@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import 'pressable.dart';
+import 'synced_text_field.dart';
 
 /// "Can't attend? Send apology" bottom sheet — opened from the Home
 /// screen's next-meeting card; the apology lands on the register for the
@@ -80,35 +81,36 @@ class ApologySheet extends StatelessWidget {
                           letterSpacing: 1,
                           color: Color(0xFF8B96A8))),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: TextEditingController(text: sheet.reason)
-                      ..selection =
-                          TextSelection.collapsed(offset: sheet.reason.length),
-                    onChanged: state.onApologyReason,
-                    minLines: 2,
-                    maxLines: 4,
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: RCColors.textDark),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'e.g. Travelling upcountry for work',
-                      hintStyle: const TextStyle(
-                          fontSize: 13, color: Color(0xFF8B96A8)),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 11),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD4DBE8))),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD4DBE8))),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: RCColors.blue)),
+                  SyncedTextField(
+                    value: sheet.reason,
+                    builder: (context, controller) => TextField(
+                      controller: controller,
+                      onChanged: state.onApologyReason,
+                      minLines: 2,
+                      maxLines: 4,
+                      style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: RCColors.textDark),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'e.g. Travelling upcountry for work',
+                        hintStyle: const TextStyle(
+                            fontSize: 13, color: Color(0xFF8B96A8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 11),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD4DBE8))),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD4DBE8))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: RCColors.blue)),
+                      ),
                     ),
                   ),
                   if (sheet.error != null) ...[

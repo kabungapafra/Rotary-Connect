@@ -7,6 +7,7 @@ import '../widgets/club_logo.dart';
 import '../widgets/common.dart';
 import '../widgets/poll_card.dart';
 import '../widgets/pressable.dart';
+import '../widgets/wordmark.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppState state;
@@ -317,11 +318,19 @@ class _Header extends StatelessWidget {
                 child: SizedBox(
                   width: 96,
                   height: 40,
-                  child: OverflowBox(
-                    maxWidth: 140,
-                    maxHeight: 64,
-                    child: ClubLogoImage(state: state, height: 64),
-                  ),
+                  // The spill treatment only suits real logo artwork; the
+                  // wordmark fallback (no uploaded logo) must stay inside
+                  // the card or its club line bleeds onto the blue header.
+                  child: state.clubLogo == null
+                      ? FittedBox(
+                          fit: BoxFit.contain,
+                          child: Wordmark(state: state),
+                        )
+                      : OverflowBox(
+                          maxWidth: 140,
+                          maxHeight: 64,
+                          child: ClubLogoImage(state: state, height: 64),
+                        ),
                 ),
               ),
               Container(

@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
 import '../widgets/wordmark.dart';
+import '../widgets/synced_text_field.dart';
 
 class LoginScreen extends StatelessWidget {
   final AppState state;
@@ -241,25 +242,27 @@ class _LoginInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color, width: 1.5),
         );
-    return TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      onChanged: onChanged,
-      obscureText: obscure,
-      style: TextStyle(
-        color: RCColors.textDark,
-        fontSize: 14,
-        letterSpacing: obscure ? 3 : 0,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: border(const Color(0xFFD4DBE8)),
-        enabledBorder: border(const Color(0xFFD4DBE8)),
-        focusedBorder: border(RCColors.blue),
-      ),
-    );
+    return SyncedTextField(
+      value: value,
+      builder: (context, controller) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        obscureText: obscure,
+        style: TextStyle(
+          color: RCColors.textDark,
+          fontSize: 14,
+          letterSpacing: obscure ? 3 : 0,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          border: border(const Color(0xFFD4DBE8)),
+          enabledBorder: border(const Color(0xFFD4DBE8)),
+          focusedBorder: border(RCColors.blue),
+        ),
+    ),
+           );
   }
 }

@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 class GalleryScreen extends StatelessWidget {
   final AppState state;
@@ -278,33 +279,34 @@ class _UploadSheet extends StatelessWidget {
                             letterSpacing: 1,
                             color: Color(0xFF8B96A8))),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: sheet.album)
-                        ..selection =
-                            TextSelection.collapsed(offset: sheet.album.length),
-                      onChanged: state.pickUploadAlbum,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'e.g. Community Health Camp',
-                        hintStyle: const TextStyle(
-                            fontSize: 13, color: Color(0xFF8B96A8)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 11),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: RCColors.blue)),
+                    SyncedTextField(
+                      value: sheet.album,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.pickUploadAlbum,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: RCColors.textDark),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'e.g. Community Health Camp',
+                          hintStyle: const TextStyle(
+                              fontSize: 13, color: Color(0xFF8B96A8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 11),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFD4DBE8))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFD4DBE8))),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: RCColors.blue)),
+                        ),
                       ),
                     ),
                     if (sheet.srcs.isNotEmpty) ...[

@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 class ScanScreen extends StatelessWidget {
   final AppState state;
@@ -711,35 +712,37 @@ class _ScanInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: RCColors.scanMuted),
-        filled: true,
-        fillColor: RCColors.scanCard,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
+    return SyncedTextField(
+      value: value,
+      builder: (context, controller) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: RCColors.scanMuted),
+          filled: true,
+          fillColor: RCColors.scanCard,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: accent ? RCColors.scanAccent : RCColors.scanBorder),
-        ),
-      ),
-    );
+    ),
+           );
   }
 }
 

@@ -244,8 +244,43 @@ class AppState extends ChangeNotifier {
       currentMemberRole = '';
       currentMemberPhone = '';
       currentMemberIsBoard = false;
+      _resetClubData();
       tab = 'splash';
     });
+  }
+
+  /// Drops every club-scoped cache so nothing from one session can leak
+  /// into the next — the *Loaded flags otherwise stop the loaders from
+  /// refetching, showing the previous club's data to a member of another
+  /// club who signs in on the same device.
+  void _resetClubData() {
+    summary = null;
+    activePoll = null;
+    events.clear();
+    eventsLoaded = false;
+    clubMembers = [];
+    clubMembersLoaded = false;
+    clubMembersError = null;
+    clubMeetings.clear();
+    meetingsLoaded = false;
+    nextMeeting = null;
+    nextMeetingLoaded = false;
+    apologies = [];
+    treasurySummary = null;
+    duesList = [];
+    transactions = [];
+    treasuryLoaded = false;
+    minutes = [];
+    milestones = [];
+    monthlyReport = null;
+    annualReport = null;
+    clubDocuments = [];
+    minuteOpen = null;
+    secretaryLoaded = false;
+    projects.clear();
+    projectsLoaded = false;
+    galleryUploads.clear();
+    galleryLoaded = false;
   }
 
   /// Remembered once a walk-in visitor has checked in anywhere, so a QR
@@ -1024,20 +1059,20 @@ class AppState extends ChangeNotifier {
   }
 
   // ── login ──────────────────────────────────────────────────────────────
-  void enterMember() => _update(() {
-        // Login credentials are asked for only once: with a live session
-        // "Continue as Member" goes straight to the dashboard, skipping
-        // the login form. The splash itself never auto-advances.
-        if (authToken != null) {
-          tab = 'home';
-          loadSummary();
-          loadActivePoll();
-          return;
-        }
-        tab = 'login';
-        scanMode = 'member';
-        loginError = false;
-      });
+  void enterMember() {
+    // Login credentials are asked for only once: with a live session
+    // "Continue as Member" goes straight to the dashboard, skipping
+    // the login form. The splash itself never auto-advances.
+    if (authToken != null) {
+      goHome();
+      return;
+    }
+    _update(() {
+      tab = 'login';
+      scanMode = 'member';
+      loginError = false;
+    });
+  }
 
   void setLoginId(String v) => _update(() {
         loginId = v;
@@ -1076,8 +1111,7 @@ class AppState extends ChangeNotifier {
         RCColors.setClubType(clubType);
         clubStatus = result.clubStatus;
         clubBrandingKnown = true;
-        clubMembers = [];
-        clubMembersLoaded = false;
+        _resetClubData();
         tab = clubStatus == 'suspended' ? 'suspended' : 'home';
         loginError = false;
         loginLoading = false;
@@ -1091,6 +1125,8 @@ class AppState extends ChangeNotifier {
       unawaited(loadMeetings());
       unawaited(_sendPushToken());
       unawaited(loadActivePoll());
+      unawaited(loadNextMeeting());
+      unawaited(loadGallery());
     } on ApiException catch (e) {
       _update(() {
         loginError = true;

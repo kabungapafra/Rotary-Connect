@@ -7,6 +7,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 String _ugx(int amount) {
   final s = amount.abs().toString();
@@ -602,30 +603,33 @@ class _TxEntrySheet extends StatelessWidget {
           const SizedBox(height: 14),
           _fieldLabel('LABEL'),
           const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: entry.label)
-              ..selection = TextSelection.collapsed(offset: entry.label.length),
-            onChanged: state.setTxLabel,
-            style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. Venue hire'),
+          SyncedTextField(
+            value: entry.label,
+            builder: (context, controller) => TextField(
+              controller: controller,
+              onChanged: state.setTxLabel,
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: RCColors.textDark),
+              decoration: _fieldDecoration('e.g. Venue hire'),
+            ),
           ),
           const SizedBox(height: 12),
           _fieldLabel('AMOUNT (UGX)'),
           const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: entry.amount)
-              ..selection =
-                  TextSelection.collapsed(offset: entry.amount.length),
-            onChanged: state.setTxAmount,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. 200000'),
+          SyncedTextField(
+            value: entry.amount,
+            builder: (context, controller) => TextField(
+              controller: controller,
+              onChanged: state.setTxAmount,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: RCColors.textDark),
+              decoration: _fieldDecoration('e.g. 200000'),
+            ),
           ),
           if (entry.error != null) ...[
             const SizedBox(height: 10),
@@ -673,17 +677,18 @@ class _DuesSettingsSheet extends StatelessWidget {
           const SizedBox(height: 14),
           _fieldLabel('AMOUNT PER MEMBER (UGX)'),
           const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: draft.amount)
-              ..selection =
-                  TextSelection.collapsed(offset: draft.amount.length),
-            onChanged: state.setDuesAmount,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. 150000'),
+          SyncedTextField(
+            value: draft.amount,
+            builder: (context, controller) => TextField(
+              controller: controller,
+              onChanged: state.setDuesAmount,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: RCColors.textDark),
+              decoration: _fieldDecoration('e.g. 150000'),
+            ),
           ),
           const SizedBox(height: 12),
           _fieldLabel('PERIOD'),

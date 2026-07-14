@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 const _milestoneCategories = [
   'Milestones',
@@ -291,31 +292,33 @@ class _MilestoneEditorSheet extends StatelessWidget {
                     const SizedBox(height: 14),
                     _fieldLabel('YEAR'),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: draft.year)
-                        ..selection =
-                            TextSelection.collapsed(offset: draft.year.length),
-                      onChanged: state.setMilestoneYear,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: _fieldDecoration('e.g. 2026'),
+                    SyncedTextField(
+                      value: draft.year,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.setMilestoneYear,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: RCColors.textDark),
+                        decoration: _fieldDecoration('e.g. 2026'),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _fieldLabel('TITLE'),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: draft.title)
-                        ..selection =
-                            TextSelection.collapsed(offset: draft.title.length),
-                      onChanged: state.setMilestoneTitle,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: _fieldDecoration('e.g. Club chartered'),
+                    SyncedTextField(
+                      value: draft.title,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.setMilestoneTitle,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: RCColors.textDark),
+                        decoration: _fieldDecoration('e.g. Club chartered'),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _fieldLabel('CATEGORY'),
@@ -335,18 +338,19 @@ class _MilestoneEditorSheet extends StatelessWidget {
                     const SizedBox(height: 12),
                     _fieldLabel('DETAILS (OPTIONAL)'),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: draft.text)
-                        ..selection =
-                            TextSelection.collapsed(offset: draft.text.length),
-                      onChanged: state.setMilestoneText,
-                      minLines: 2,
-                      maxLines: 4,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: _fieldDecoration('What happened?'),
+                    SyncedTextField(
+                      value: draft.text,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.setMilestoneText,
+                        minLines: 2,
+                        maxLines: 4,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: RCColors.textDark),
+                        decoration: _fieldDecoration('What happened?'),
+                      ),
                     ),
                     if (draft.error != null) ...[
                       const SizedBox(height: 10),

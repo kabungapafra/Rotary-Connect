@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import 'common.dart';
 import 'pressable.dart';
+import 'synced_text_field.dart';
 
 /// The club's current vote — motion/election ballot or random draw.
 /// Shown on Home so every member sees it.
@@ -347,37 +348,38 @@ class VoteEditorSheet extends StatelessWidget {
                             letterSpacing: 1,
                             color: Color(0xFF8B96A8))),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: draft.title)
-                        ..selection =
-                            TextSelection.collapsed(offset: draft.title.length),
-                      onChanged: state.setVoteTitle,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: draft.type == 'motion'
-                            ? 'e.g. Adopt UGX 12M budget for Solar Lights'
-                            : draft.type == 'election'
-                                ? 'e.g. Next Secretary'
-                                : 'e.g. Raffle draw',
-                        hintStyle: const TextStyle(
-                            fontSize: 13, color: Color(0xFF8B96A8)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 11),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: RCColors.blue)),
+                    SyncedTextField(
+                      value: draft.title,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.setVoteTitle,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: RCColors.textDark),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: draft.type == 'motion'
+                              ? 'e.g. Adopt UGX 12M budget for Solar Lights'
+                              : draft.type == 'election'
+                                  ? 'e.g. Next Secretary'
+                                  : 'e.g. Raffle draw',
+                          hintStyle: const TextStyle(
+                              fontSize: 13, color: Color(0xFF8B96A8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 11),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFD4DBE8))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFD4DBE8))),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: RCColors.blue)),
+                        ),
                       ),
                     ),
                     if (draft.type == 'draw') ...[
@@ -399,20 +401,60 @@ class VoteEditorSheet extends StatelessWidget {
                               letterSpacing: .5,
                               color: Color(0xFF8B96A8))),
                       const SizedBox(height: 6),
-                      TextField(
-                        controller: TextEditingController(text: draft.options)
-                          ..selection = TextSelection.collapsed(
-                              offset: draft.options.length),
-                        onChanged: state.setVoteOptions,
-                        minLines: 2,
-                        maxLines: 4,
+                      SyncedTextField(
+                        value: draft.options,
+                        builder: (context, controller) => TextField(
+                          controller: controller,
+                          onChanged: state.setVoteOptions,
+                          minLines: 2,
+                          maxLines: 4,
+                          style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: RCColors.textDark),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: 'One per line',
+                            hintStyle: const TextStyle(
+                                fontSize: 13, color: Color(0xFF8B96A8)),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 11),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: Color(0xFFD4DBE8))),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: Color(0xFFD4DBE8))),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(color: RCColors.blue)),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text('CLOSES (OPTIONAL)',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: .5,
+                            color: Color(0xFF8B96A8))),
+                    const SizedBox(height: 6),
+                    SyncedTextField(
+                      value: draft.closes,
+                      builder: (context, controller) => TextField(
+                        controller: controller,
+                        onChanged: state.setVoteCloses,
                         style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                             color: RCColors.textDark),
                         decoration: InputDecoration(
                           isDense: true,
-                          hintText: 'One per line',
+                          hintText: 'e.g. Fri 19 Jul',
                           hintStyle: const TextStyle(
                               fontSize: 13, color: Color(0xFF8B96A8)),
                           contentPadding: const EdgeInsets.symmetric(
@@ -427,46 +469,8 @@ class VoteEditorSheet extends StatelessWidget {
                                   const BorderSide(color: Color(0xFFD4DBE8))),
                           focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  BorderSide(color: RCColors.blue)),
+                              borderSide: BorderSide(color: RCColors.blue)),
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    const Text('CLOSES (OPTIONAL)',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: .5,
-                            color: Color(0xFF8B96A8))),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: TextEditingController(text: draft.closes)
-                        ..selection = TextSelection.collapsed(
-                            offset: draft.closes.length),
-                      onChanged: state.setVoteCloses,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: RCColors.textDark),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'e.g. Fri 19 Jul',
-                        hintStyle: const TextStyle(
-                            fontSize: 13, color: Color(0xFF8B96A8)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 11),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFD4DBE8))),
-                        focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: RCColors.blue)),
                       ),
                     ),
                     if (draft.error != null) ...[

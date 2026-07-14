@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 class MembersScreen extends StatelessWidget {
   final AppState state;
@@ -80,34 +81,35 @@ class MembersScreen extends StatelessWidget {
                           color: Colors.white.withValues(alpha: .8),
                           fontSize: 12)),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: TextEditingController(text: state.search)
-                      ..selection =
-                          TextSelection.collapsed(offset: state.search.length),
-                    onChanged: state.setSearch,
-                    style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                    decoration: InputDecoration(
-                      hintText: 'Search name or role…',
-                      hintStyle:
-                          TextStyle(color: Colors.white.withValues(alpha: .7)),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: .14),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 11),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: .25)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: .25)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: .25)),
+                  SyncedTextField(
+                    value: state.search,
+                    builder: (context, controller) => TextField(
+                      controller: controller,
+                      onChanged: state.setSearch,
+                      style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                      decoration: InputDecoration(
+                        hintText: 'Search name or role…',
+                        hintStyle:
+                            TextStyle(color: Colors.white.withValues(alpha: .7)),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: .14),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 11),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .25)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .25)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .25)),
+                        ),
                       ),
                     ),
                   ),
@@ -648,26 +650,28 @@ class _EditorInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color, width: 1.5),
         );
-    return TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      onChanged: onChanged,
-      readOnly: readOnly,
-      onTap: onTap,
-      style: const TextStyle(color: RCColors.textDark, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
-        suffixIcon: icon == null
-            ? null
-            : Icon(icon, size: 18, color: RCColors.blue),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: border(const Color(0xFFD4DBE8)),
-        enabledBorder: border(const Color(0xFFD4DBE8)),
-        focusedBorder: border(RCColors.blue),
-      ),
-    );
+    return SyncedTextField(
+      value: value,
+      builder: (context, controller) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        readOnly: readOnly,
+        onTap: onTap,
+        style: const TextStyle(color: RCColors.textDark, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+          suffixIcon: icon == null
+              ? null
+              : Icon(icon, size: 18, color: RCColors.blue),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: border(const Color(0xFFD4DBE8)),
+          enabledBorder: border(const Color(0xFFD4DBE8)),
+          focusedBorder: border(RCColors.blue),
+        ),
+    ),
+           );
   }
 }
 

@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 Future<void> _exportReportPdf(String clubName, ReportInfo report) async {
   final doc = pw.Document();
@@ -863,42 +864,45 @@ class _MinuteEditorSheet extends StatelessWidget {
           const SizedBox(height: 14),
           _fieldLabel('TITLE'),
           const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: draft.title)
-              ..selection = TextSelection.collapsed(offset: draft.title.length),
-            onChanged: state.setMinuteTitle,
-            style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. Weekly Fellowship Meeting'),
+          SyncedTextField(
+            value: draft.title,
+            builder: (context, controller) => TextField(
+              controller: controller,
+              onChanged: state.setMinuteTitle,
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: RCColors.textDark),
+              decoration: _fieldDecoration('e.g. Weekly Fellowship Meeting'),
+            ),
           ),
           const SizedBox(height: 12),
           _fieldLabel('MEETING DATE'),
           const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: draft.meetingDate)
-              ..selection =
-                  TextSelection.collapsed(offset: draft.meetingDate.length),
-            onChanged: state.setMinuteDate,
-            readOnly: true,
-            onTap: () async {
-              final picked = await pickRCDate(
-                context,
-                initialDate:
-                    DateTime.tryParse(draft.meetingDate) ?? DateTime.now(),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) {
-                state.setMinuteDate(formatDateYmd(picked));
-              }
-            },
-            style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: RCColors.textDark),
-            decoration: _fieldDecoration('e.g. 2026-07-08',
-                icon: Icons.calendar_today_outlined),
+          SyncedTextField(
+            value: draft.meetingDate,
+            builder: (context, controller) => TextField(
+              controller: controller,
+              onChanged: state.setMinuteDate,
+              readOnly: true,
+              onTap: () async {
+                final picked = await pickRCDate(
+                  context,
+                  initialDate:
+                      DateTime.tryParse(draft.meetingDate) ?? DateTime.now(),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  state.setMinuteDate(formatDateYmd(picked));
+                }
+              },
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: RCColors.textDark),
+              decoration: _fieldDecoration('e.g. 2026-07-08',
+                  icon: Icons.calendar_today_outlined),
+            ),
           ),
           if (draft.error != null) ...[
             const SizedBox(height: 10),

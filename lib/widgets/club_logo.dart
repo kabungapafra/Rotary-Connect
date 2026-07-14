@@ -3,14 +3,24 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import 'wordmark.dart';
 
 /// The logged-in member's club logo (uploaded by the system admin at
-/// onboarding), falling back to the bundled Mbalwa artwork when the club
-/// has no uploaded logo — which keeps the pre-login screens unchanged.
+/// onboarding), falling back to the club's own wordmark lockup ("Rotary" +
+/// club line + wheel) when no logo is uploaded — never another club's
+/// bundled artwork.
 class ClubLogoImage extends StatelessWidget {
   final AppState state;
   final double height;
   const ClubLogoImage({super.key, required this.state, required this.height});
+
+  Widget _fallback() => SizedBox(
+        height: height,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: Wordmark(state: state),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +32,7 @@ class ClubLogoImage extends StatelessWidget {
         logo,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (_, error, stackTrace) =>
-            Image.asset('assets/images/rotary_mbalwa_logo.png', height: height),
+        errorBuilder: (_, error, stackTrace) => _fallback(),
       );
     }
     if (logo != null && logo.contains(',')) {
@@ -31,10 +40,9 @@ class ClubLogoImage extends StatelessWidget {
         base64Decode(logo.split(',').last),
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (_, error, stackTrace) =>
-            Image.asset('assets/images/rotary_mbalwa_logo.png', height: height),
+        errorBuilder: (_, error, stackTrace) => _fallback(),
       );
     }
-    return Image.asset('assets/images/rotary_mbalwa_logo.png', height: height);
+    return _fallback();
   }
 }

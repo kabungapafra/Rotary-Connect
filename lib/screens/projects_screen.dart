@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
+import '../widgets/synced_text_field.dart';
 
 class ProjectsScreen extends StatelessWidget {
   final AppState state;
@@ -510,26 +511,28 @@ class _EditorInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color, width: 1.5),
         );
-    return TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      onChanged: onChanged,
-      maxLines: maxLines,
-      readOnly: readOnly,
-      onTap: onTap,
-      style: const TextStyle(color: RCColors.textDark, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
-        suffixIcon: icon == null
-            ? null
-            : Icon(icon, size: 18, color: RCColors.blue),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: border(const Color(0xFFD4DBE8)),
-        enabledBorder: border(const Color(0xFFD4DBE8)),
-        focusedBorder: border(RCColors.blue),
-      ),
-    );
+    return SyncedTextField(
+      value: value,
+      builder: (context, controller) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        maxLines: maxLines,
+        readOnly: readOnly,
+        onTap: onTap,
+        style: const TextStyle(color: RCColors.textDark, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+          suffixIcon: icon == null
+              ? null
+              : Icon(icon, size: 18, color: RCColors.blue),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: border(const Color(0xFFD4DBE8)),
+          enabledBorder: border(const Color(0xFFD4DBE8)),
+          focusedBorder: border(RCColors.blue),
+        ),
+    ),
+           );
   }
 }
