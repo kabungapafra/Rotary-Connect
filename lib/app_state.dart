@@ -10,6 +10,7 @@ import 'api_client.dart';
 import 'data.dart';
 import 'push_service.dart';
 import 'theme.dart';
+import 'treasury_controller.dart';
 
 class PhotoInfo {
   final String label;
@@ -59,24 +60,6 @@ class ApologyDraft {
   String? error;
 }
 
-/// Working copy of the "Record entry" (income/expense) bottom sheet fields.
-class TxDraft {
-  String kind = 'income'; // income | expense
-  String label = '';
-  String amount = '';
-  bool saving = false;
-  String? error;
-}
-
-/// Working copy of the Treasurer's "Dues settings" bottom sheet fields.
-class DuesSettingDraft {
-  String amount;
-  String period; // quarterly | monthly | annual
-  bool saving = false;
-  String? error;
-  DuesSettingDraft({required this.amount, required this.period});
-}
-
 /// Working copy of the "New vote" bottom sheet fields.
 class PollDraft {
   String type = 'motion'; // motion | election | draw
@@ -123,6 +106,12 @@ class MemberDraft {
 /// sets `tab` to a fixed target screen, exactly as authored).
 class AppState extends ChangeNotifier {
   final ApiClient _api = ApiClient();
+
+  // Treasury's data and logic live in their own single-responsibility
+  // class; AppState just composes it in and re-broadcasts its changes,
+  // rather than owning treasury state directly alongside everything else.
+  late final TreasuryController treasury = TreasuryController(_api, () => authToken)
+    ..addListener(notifyListeners);
 
   AppState() {
     // Wake the free-tier backend while the user is still on the splash
@@ -270,10 +259,7 @@ class AppState extends ChangeNotifier {
     nextMeeting = null;
     nextMeetingLoaded = false;
     apologies = [];
-    treasurySummary = null;
-    duesList = [];
-    transactions = [];
-    treasuryLoaded = false;
+    treasury.reset();
     minutes = [];
     milestones = [];
     monthlyReport = null;
@@ -512,13 +498,16 @@ class AppState extends ChangeNotifier {
   bool nextMeetingLoading = false;
 
   // ── treasury ─────────────────────────────────────────────────────────
-  TreasurySummary? treasurySummary;
-  List<DuesMemberInfo> duesList = [];
-  List<TransactionInfo> transactions = [];
-  bool treasuryLoaded = false;
-  bool treasuryLoading = false;
-  TxDraft? txEntry;
-  DuesSettingDraft? duesSettingEditor;
+  // State and logic live in [treasury]; these forward to it so every
+  // screen that already reads `state.treasurySummary` etc. keeps working
+  // unchanged (see TreasuryController for the actual implementation).
+  TreasurySummary? get treasurySummary => treasury.summary;
+  List<DuesMemberInfo> get duesList => treasury.duesList;
+  List<TransactionInfo> get transactions => treasury.transactions;
+  bool get treasuryLoaded => treasury.loaded;
+  bool get treasuryLoading => treasury.loading;
+  TxDraft? get txEntry => treasury.txEntry;
+  DuesSettingDraft? get duesSettingEditor => treasury.duesSettingEditor;
 
   // ── secretary workspace ─────────────────────────────────────────────
   List<MinuteInfo> minutes = [];
@@ -1580,119 +1569,23 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // ── treasury ───────────────────────────────────────────────────────────
-  Future<void> loadTreasury() async {
-    final token = authToken;
-    if (token == null) return;
-    _update(() => treasuryLoading = true);
-    try {
-      final results = await Future.wait([
-        _api.fetchTreasurySummary(token),
-        _api.fetchDues(token),
-        _api.fetchTransactions(token),
-      ]);
-      _update(() {
-        treasurySummary = results[0] as TreasurySummary;
-        duesList = results[1] as List<DuesMemberInfo>;
-        transactions = results[2] as List<TransactionInfo>;
-        treasuryLoaded = true;
-        treasuryLoading = false;
-      });
-    } on ApiException {
-      _update(() => treasuryLoading = false);
-    }
-  }
-
-  Future<void> markDuesPaid(int memberId) async {
-    final token = authToken;
-    if (token == null) return;
-    try {
-      final updated = await _api.markDuesPaid(token, memberId);
-      _update(() {
-        duesList = [
-          for (final d in duesList)
-            if (d.memberId == memberId) updated else d,
-        ];
-      });
-      await loadTreasury();
-    } on ApiException {
-      // Leave the list as-is — the row's "Mark paid" button stays tappable
-      // so the treasurer can retry.
-    }
-  }
-
-  void openTxEntry() => _update(() => txEntry = TxDraft());
-  void closeTxEntry() => _update(() => txEntry = null);
-  void setTxKind(String kind) => _update(() => txEntry?.kind = kind);
-  void setTxLabel(String v) => _update(() => txEntry?.label = v);
-  void setTxAmount(String v) => _update(() => txEntry?.amount = v);
-
-  Future<void> saveTxEntry() async {
-    final entry = txEntry;
-    final token = authToken;
-    if (entry == null || token == null) return;
-    final amount =
-        int.tryParse(entry.amount.trim().replaceAll(RegExp(r'[^0-9]'), ''));
-    if (entry.label.trim().isEmpty || amount == null || amount <= 0) {
-      _update(() => entry.error = 'Enter a label and a valid amount.');
-      return;
-    }
-    _update(() {
-      entry.saving = true;
-      entry.error = null;
-    });
-    try {
-      final tx = await _api.recordTransaction(
-          token, entry.kind, entry.label.trim(), amount);
-      _update(() {
-        transactions.insert(0, tx);
-        txEntry = null;
-      });
-      await loadTreasury();
-    } on ApiException catch (e) {
-      _update(() {
-        entry.saving = false;
-        entry.error = e.message;
-      });
-    }
-  }
-
-  void openDuesSettings() => _update(() => duesSettingEditor = DuesSettingDraft(
-        amount: treasurySummary?.duesAmount.toString() ?? '',
-        period: treasurySummary?.duesPeriod ?? 'quarterly',
-      ));
-  void closeDuesSettings() => _update(() => duesSettingEditor = null);
-  void setDuesAmount(String v) => _update(() => duesSettingEditor?.amount = v);
-  void setDuesPeriod(String v) => _update(() => duesSettingEditor?.period = v);
-
-  Future<void> saveDuesSettings() async {
-    final draft = duesSettingEditor;
-    final token = authToken;
-    if (draft == null || token == null) return;
-    final amount =
-        int.tryParse(draft.amount.trim().replaceAll(RegExp(r'[^0-9]'), ''));
-    if (amount == null || amount < 0) {
-      _update(() => draft.error = 'Enter a valid amount.');
-      return;
-    }
-    _update(() {
-      draft.saving = true;
-      draft.error = null;
-    });
-    try {
-      final summary = await _api.saveDuesSettings(token, amount, draft.period);
-      _update(() {
-        treasurySummary = summary;
-        duesSettingEditor = null;
-      });
-      await loadTreasury();
-    } on ApiException catch (e) {
-      _update(() {
-        draft.saving = false;
-        draft.error = e.message;
-      });
-    }
-  }
+  // ── treasury ─────────────────────────────────────────────────────────
+  // Thin forwards to [treasury] — kept here so every screen's existing
+  // `state.loadTreasury()` / `state.saveTxEntry()` etc. call sites don't
+  // need to change.
+  Future<void> loadTreasury() => treasury.load();
+  Future<void> markDuesPaid(int memberId) => treasury.markDuesPaid(memberId);
+  void openTxEntry() => treasury.openTxEntry();
+  void closeTxEntry() => treasury.closeTxEntry();
+  void setTxKind(String kind) => treasury.setTxKind(kind);
+  void setTxLabel(String v) => treasury.setTxLabel(v);
+  void setTxAmount(String v) => treasury.setTxAmount(v);
+  Future<void> saveTxEntry() => treasury.saveTxEntry();
+  void openDuesSettings() => treasury.openDuesSettings();
+  void closeDuesSettings() => treasury.closeDuesSettings();
+  void setDuesAmount(String v) => treasury.setDuesAmount(v);
+  void setDuesPeriod(String v) => treasury.setDuesPeriod(v);
+  Future<void> saveDuesSettings() => treasury.saveDuesSettings();
 
   // ── secretary workspace ───────────────────────────────────────────────
   /// Milestones alone — the Club history screen is open to every member,
@@ -2317,6 +2210,8 @@ class AppState extends ChangeNotifier {
     _reportTimer?.cancel();
     _qrCopyTimer?.cancel();
     _downloadToastTimer?.cancel();
+    treasury.removeListener(notifyListeners);
+    treasury.dispose();
     super.dispose();
   }
 }
