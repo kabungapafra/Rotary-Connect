@@ -5,7 +5,10 @@ library;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const String apiBaseUrl = 'https://rotaryapi.digiflecttech.dev';
+// Overridable for local testing:
+//   flutter build web --debug --dart-define=API_BASE_URL=http://localhost:8000
+const String apiBaseUrl = String.fromEnvironment('API_BASE_URL',
+    defaultValue: 'https://rotaryapi.digiflecttech.dev');
 
 const Duration _requestTimeout = Duration(seconds: 30);
 

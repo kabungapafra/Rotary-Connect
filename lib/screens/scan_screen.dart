@@ -48,18 +48,47 @@ class ScanScreen extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.fromLTRB(
                     20, 18 + MediaQuery.of(context).padding.top, 20, 8),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text('Meeting check-in',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800)),
-                    SizedBox(height: 2),
-                    Text('Scan the club QR code displayed at the venue',
-                        style:
-                            TextStyle(color: Colors.white70, fontSize: 12.5)),
+                    // The bottom nav is hidden on this screen, so this chip
+                    // is the only on-screen way out (hardware back also
+                    // works on Android, via the root PopScope -> goBack).
+                    PressableScale(
+                      child: Material(
+                        color: RCColors.scanCard,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: state.goBack,
+                          child: const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: Center(
+                              child: Text('‹',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 16)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Meeting check-in',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800)),
+                          SizedBox(height: 2),
+                          Text('Scan the club QR code displayed at the venue',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 12.5)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
