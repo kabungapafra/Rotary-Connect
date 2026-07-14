@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
 import 'gallery_controller.dart';
+import 'poll_controller.dart';
 import 'push_service.dart';
 import 'secretary_controller.dart';
 import 'theme.dart';
@@ -21,17 +21,6 @@ class CertInfo {
 /// Working copy of the "Send apology" bottom sheet fields.
 class ApologyDraft {
   String reason = '';
-  bool saving = false;
-  String? error;
-}
-
-/// Working copy of the "New vote" bottom sheet fields.
-class PollDraft {
-  String type = 'motion'; // motion | election | draw
-  String title = '';
-  String sub = '';
-  String closes = '';
-  String options = ''; // newline/comma separated, election & draw only
   bool saving = false;
   String? error;
 }
@@ -63,6 +52,8 @@ class AppState extends ChangeNotifier {
       SecretaryController(_api, () => authToken)..addListener(notifyListeners);
   late final GalleryController gallery =
       GalleryController(_api, () => authToken)..addListener(notifyListeners);
+  late final PollController polls = PollController(_api, () => authToken)
+    ..addListener(notifyListeners);
 
   AppState() {
     // Wake the free-tier backend while the user is still on the splash
@@ -199,7 +190,7 @@ class AppState extends ChangeNotifier {
   /// club who signs in on the same device.
   void _resetClubData() {
     summary = null;
-    activePoll = null;
+    polls.reset();
     events.clear();
     eventsLoaded = false;
     clubMembers = [];
@@ -384,13 +375,15 @@ class AppState extends ChangeNotifier {
   bool apologiesLoading = false;
   List<ApologyInfo> apologies = [];
 
-  // polls — the club's current (or most recently closed) vote
-  PollInfo? activePoll;
-  bool pollLoading = false;
-  PollDraft? voteEditor;
-  bool drawSpinning = false;
-  String drawSpinName = '';
-  Timer? _drawTimer;
+  // ── polls ────────────────────────────────────────────────────────────
+  // State and logic live in [polls]; these forward to it so every screen
+  // that already reads `state.activePoll` etc. keeps working unchanged
+  // (see PollController for the actual implementation).
+  PollInfo? get activePoll => polls.active;
+  bool get pollLoading => polls.loading;
+  PollDraft? get voteEditor => polls.voteEditor;
+  bool get drawSpinning => polls.drawSpinning;
+  String get drawSpinName => polls.drawSpinName;
 
   // events — real club data, loaded from the backend after login
   final List<EventItem> events = [];
@@ -780,117 +773,20 @@ class AppState extends ChangeNotifier {
   }
 
   // ── polls ────────────────────────────────────────────────────────────
-  Future<void> loadActivePoll() async {
-    final token = authToken;
-    if (token == null) return;
-    _update(() => pollLoading = true);
-    try {
-      final poll = await _api.fetchActivePoll(token);
-      _update(() {
-        activePoll = poll;
-        pollLoading = false;
-      });
-    } on ApiException {
-      _update(() => pollLoading = false);
-    }
-  }
-
-  void openVoteEditor() => _update(() => voteEditor = PollDraft());
-  void closeVoteEditor() => _update(() => voteEditor = null);
-  void setVoteType(String v) => _update(() => voteEditor?.type = v);
-  void setVoteTitle(String v) => _update(() => voteEditor?.title = v);
-  void setVoteSub(String v) => _update(() => voteEditor?.sub = v);
-  void setVoteCloses(String v) => _update(() => voteEditor?.closes = v);
-  void setVoteOptions(String v) => _update(() => voteEditor?.options = v);
-
-  Future<void> saveVoteEditor() async {
-    final draft = voteEditor;
-    final token = authToken;
-    if (draft == null || token == null) return;
-    if (draft.title.trim().isEmpty) {
-      _update(() => draft.error = 'Enter a title.');
-      return;
-    }
-    final options = draft.options
-        .split(RegExp(r'[\n,]'))
-        .map((o) => o.trim())
-        .where((o) => o.isNotEmpty)
-        .toList();
-    if (draft.type == 'election' && options.length < 2) {
-      _update(() => draft.error = 'An election needs at least 2 candidates.');
-      return;
-    }
-    _update(() {
-      draft.saving = true;
-      draft.error = null;
-    });
-    try {
-      final poll = await _api.createPoll(
-        token,
-        type: draft.type,
-        title: draft.title.trim(),
-        sub: draft.sub.trim(),
-        closesLabel: draft.closes.trim(),
-        options: options,
-      );
-      _update(() {
-        activePoll = poll;
-        voteEditor = null;
-      });
-    } on ApiException catch (e) {
-      _update(() {
-        draft.saving = false;
-        draft.error = e.message;
-      });
-    }
-  }
-
-  Future<void> castVote(String choice) async {
-    final poll = activePoll;
-    final token = authToken;
-    if (poll == null || token == null) return;
-    try {
-      final updated = await _api.castVote(token, poll.id, choice);
-      _update(() => activePoll = updated);
-    } on ApiException {
-      // Leave the ballot showing so the member can try again.
-    }
-  }
-
-  /// A few seconds of purely local suspense (mirroring the source design's
-  /// spinning-name animation) before the server-resolved winner lands.
-  void runDraw() {
-    final poll = activePoll;
-    final token = authToken;
-    if (poll == null || token == null || drawSpinning || poll.options.isEmpty) {
-      return;
-    }
-    _drawTimer?.cancel();
-    var tick = 0;
-    _update(() {
-      drawSpinning = true;
-      drawSpinName = poll.options[0];
-    });
-    _drawTimer =
-        Timer.periodic(const Duration(milliseconds: 90), (timer) async {
-      tick++;
-      if (tick > 22) {
-        timer.cancel();
-        try {
-          final updated = await _api.runDraw(token, poll.id);
-          _update(() {
-            activePoll = updated;
-            drawSpinning = false;
-          });
-        } on ApiException {
-          _update(() => drawSpinning = false);
-        }
-      } else {
-        _update(() =>
-            drawSpinName = poll.options[Random().nextInt(poll.options.length)]);
-      }
-    });
-  }
+  // Thin forwards to [polls] — kept here so every screen's existing
+  // `state.loadActivePoll()` / `state.castVote()` etc. call sites don't
+  // need to change.
+  Future<void> loadActivePoll() => polls.load();
+  void openVoteEditor() => polls.openVoteEditor();
+  void closeVoteEditor() => polls.closeVoteEditor();
+  void setVoteType(String v) => polls.setVoteType(v);
+  void setVoteTitle(String v) => polls.setVoteTitle(v);
+  void setVoteSub(String v) => polls.setVoteSub(v);
+  void setVoteCloses(String v) => polls.setVoteCloses(v);
+  void setVoteOptions(String v) => polls.setVoteOptions(v);
+  Future<void> saveVoteEditor() => polls.saveVoteEditor();
+  Future<void> castVote(String choice) => polls.castVote(choice);
+  void runDraw() => polls.runDraw();
 
   void goGallery() {
     go('gallery');
@@ -1815,6 +1711,8 @@ class AppState extends ChangeNotifier {
     secretary.dispose();
     gallery.removeListener(notifyListeners);
     gallery.dispose();
+    polls.removeListener(notifyListeners);
+    polls.dispose();
     super.dispose();
   }
 }
