@@ -878,6 +878,19 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Self-service PIN reset. Returns whether the request actually reached
+  /// the server — the server's own response is always the same generic
+  /// message regardless of whether the identifier matched a real member,
+  /// so there's nothing account-specific to report back here either way.
+  Future<bool> requestPinReset(String identifier) async {
+    try {
+      await _api.forgotPin(identifier);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
   void enterGuest() => _update(() {
         tab = 'scan';
         scanMode = 'guest';
@@ -1310,6 +1323,8 @@ class AppState extends ChangeNotifier {
   // don't need to change.
   void pickDay(String dow) => eventsController.pickDay(dow);
   bool dayHasEvents(String dow) => eventsController.dayHasEvents(dow);
+  bool isNextEventOccurrence(DateTime date) =>
+      eventsController.isNextOccurrence(date);
   void pickCalendarWeek() => eventsController.pickCalendarWeek();
   void pickCalendarMonth() => eventsController.pickCalendarMonth();
   void pickMonthDate(DateTime date, String dow) =>

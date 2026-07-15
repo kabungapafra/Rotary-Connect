@@ -301,6 +301,10 @@ class ApiClient {
     http.get(Uri.parse('$apiBaseUrl/health')).timeout(_requestTimeout).ignore();
   }
 
+  Future<void> forgotPin(String identifier) async {
+    await _post('/auth/forgot-pin', {'identifier': identifier});
+  }
+
   Future<LoginResult> login(String identifier, String pin) async {
     final res =
         await _post('/auth/login', {'identifier': identifier, 'pin': pin});

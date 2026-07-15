@@ -116,6 +116,19 @@ DateTime _mondayOfThisWeek() {
       .subtract(Duration(days: now.weekday - 1));
 }
 
+/// The next date (today or later) that falls on [dow] (e.g. "WED") —
+/// today itself if today already matches. Used by the Month calendar to
+/// mark only the single nearest occurrence of a recurring weekly event,
+/// not every date that shares its weekday.
+DateTime nextOccurrenceOfDow(String dow, DateTime from) {
+  final targetWeekday = weekOrder.indexOf(dow) + 1; // 1=Mon..7=Sun
+  var d = DateTime(from.year, from.month, from.day);
+  while (d.weekday != targetWeekday) {
+    d = d.add(const Duration(days: 1));
+  }
+  return d;
+}
+
 /// Day-of-month for each weekday of the *current* week.
 Map<String, String> get dayNums {
   final monday = _mondayOfThisWeek();

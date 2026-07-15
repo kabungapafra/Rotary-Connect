@@ -158,6 +158,19 @@ class EventsController extends ChangeNotifier {
 
   bool dayHasEvents(String dow) => events.any((e) => e.dow == dow);
 
+  /// True only for the single nearest upcoming date (today or later) that
+  /// matches some event's day-of-week — used by the Month calendar's dot,
+  /// which used to mark every date sharing that weekday (so one weekly
+  /// recurring event lit up the whole month) instead of just the next
+  /// time it actually happens.
+  bool isNextOccurrence(DateTime date) {
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final dows = events.map((e) => e.dow).toSet();
+    return dows.any((dow) => nextOccurrenceOfDow(dow, todayOnly) == dateOnly);
+  }
+
   void pickCalendarWeek() => _update(() => calendarView = 'week');
   void pickCalendarMonth() => _update(() => calendarView = 'month');
 

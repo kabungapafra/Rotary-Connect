@@ -238,9 +238,7 @@ const List<String> _monthNames = [
   'December',
 ];
 
-/// Month grid for whichever year/month is currently selected in [state] —
-/// the app's fixed "today" is Wed 8 July 2026, matching the date used
-/// throughout the rest of the app.
+/// Month grid for whichever year/month is currently selected in [state].
 class _MonthGrid extends StatelessWidget {
   final AppState state;
   const _MonthGrid({required this.state});
@@ -349,8 +347,11 @@ class _MonthCell extends StatelessWidget {
         sel.year == date.year &&
         sel.month == date.month &&
         sel.day == date.day;
-    final isToday = date.year == 2026 && date.month == 7 && date.day == 8;
-    final hasEvents = state.dayHasEvents(dow);
+    final now = DateTime.now();
+    final isToday = date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+    final hasEvents = state.isNextEventOccurrence(date);
     return Material(
       color: selected
           ? RCColors.gold

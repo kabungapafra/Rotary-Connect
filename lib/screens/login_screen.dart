@@ -129,12 +129,15 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ],
                             const SizedBox(height: 12),
-                            Text(
-                              'Forgot PIN?',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: RCColors.blue),
+                            GestureDetector(
+                              onTap: () => _showForgotPinDialog(context),
+                              child: Text(
+                                'Forgot PIN?',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: RCColors.blue),
+                              ),
                             ),
                           ],
                         ),
@@ -202,6 +205,155 @@ class LoginScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showForgotPinDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => _ForgotPinDialog(state: state),
+    );
+  }
+}
+
+/// Self-service PIN reset. Talks to POST /auth/forgot-pin directly — no
+/// admin needs to be involved. Capped server-side at 3 resets per member
+/// per 30 days; the server's response is identical whether the identifier
+/// was real, unknown, or already over its cap, so this dialog can't be
+/// used to tell those cases apart either (that's the whole point — it's
+/// what keeps the endpoint from leaking which member numbers are real).
+class _ForgotPinDialog extends StatefulWidget {
+  final AppState state;
+  const _ForgotPinDialog({required this.state});
+
+  @override
+  State<_ForgotPinDialog> createState() => _ForgotPinDialogState();
+}
+
+class _ForgotPinDialogState extends State<_ForgotPinDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.state.loginId);
+  bool _sending = false;
+  // null = not submitted yet; true = request reached the server (its own
+  // response is always the same generic message, matched or not); false =
+  // couldn't reach the server at all.
+  bool? _sent;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final identifier = _controller.text.trim();
+    if (identifier.isEmpty) return;
+    setState(() => _sending = true);
+    final ok = await widget.state.requestPinReset(identifier);
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _sent = ok;
+    });
+  }
+
+  OutlineInputBorder _border(Color color) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: color),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Forgot your PIN?',
+          style: TextStyle(
+              color: RCColors.textDark,
+              fontSize: 17,
+              fontWeight: FontWeight.w800)),
+      content: _sent == true
+          ? const Text(
+              'If that member number or phone is registered, we\'ve just '
+              'texted a new PIN to it. You can do this up to 3 times every '
+              '30 days.',
+              style: TextStyle(color: RCColors.textMuted, fontSize: 13.5))
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                    'Enter your member number or phone and we\'ll text a '
+                    'new PIN to it.',
+                    style:
+                        TextStyle(color: RCColors.textMuted, fontSize: 13.5)),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _controller,
+                  enabled: !_sending,
+                  autofocus: true,
+                  style: const TextStyle(
+                      color: RCColors.textDark, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. RCM-0042 or 0772 000 000',
+                    hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: _border(const Color(0xFFD4DBE8)),
+                    enabledBorder: _border(const Color(0xFFD4DBE8)),
+                    focusedBorder: _border(RCColors.blue),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                    'Reached your limit or no phone access? Email '
+                    'digiflecttech@gmail.com.',
+                    style: TextStyle(
+                        color: RCColors.textMuted.withValues(alpha: 0.85),
+                        fontSize: 11.5)),
+                if (_sent == false) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                      'Couldn\'t reach the server — check your connection '
+                      'and try again.',
+                      style: TextStyle(
+                          color: RCColors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ],
+            ),
+      actions: _sent == true
+          ? [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Got it',
+                    style: TextStyle(
+                        color: RCColors.blue, fontWeight: FontWeight.w700)),
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed:
+                    _sending ? null : () => Navigator.of(context).pop(),
+                child: const Text('Cancel',
+                    style: TextStyle(
+                        color: RCColors.textMuted,
+                        fontWeight: FontWeight.w700)),
+              ),
+              TextButton(
+                onPressed: _sending ? null : _submit,
+                child: _sending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text('Send new PIN',
+                        style: TextStyle(
+                            color: RCColors.blue,
+                            fontWeight: FontWeight.w700)),
+              ),
+            ],
     );
   }
 }
