@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'app_state.dart';
 import 'firebase_options.dart';
 import 'push_service.dart';
@@ -24,25 +27,52 @@ import 'screens/projects_screen.dart';
 import 'screens/members_screen.dart';
 import 'screens/club_suspended_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // Firebase init can throw (unconfigured platform, broken Play Services):
-  // lose push notifications, not the whole app.
-  try {
-    await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform);
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    debugPrint('Firebase unavailable: $e');
+// Unset by default — this ships as a no-op until a real DSN is passed at
+// build time (`flutter build ... --dart-define=SENTRY_DSN=...`), same
+// "reports itself unavailable when unconfigured" convention the backend
+// uses for SMS/R2/Sentry. No account is required for this to compile/run.
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
+void _reportError(Object error, StackTrace? stack) {
+  debugPrint('Uncaught error: $error');
+  if (_sentryDsn.isNotEmpty) {
+    Sentry.captureException(error, stackTrace: stack);
   }
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  ));
-  runApp(const RotaryMbalwaApp());
+}
+
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    // Previously the only safety net in this app was default Flutter
+    // behavior (a red/gray error screen) — an uncaught error anywhere had
+    // no logging and no visibility. This catches everything the framework
+    // itself raises (build/layout/paint errors); runZonedGuarded above
+    // catches everything else (async errors outside a widget build).
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      _reportError(details.exception, details.stack);
+    };
+    if (_sentryDsn.isNotEmpty) {
+      await Sentry.init((options) => options.dsn = _sentryDsn);
+    }
+    // Firebase init can throw (unconfigured platform, broken Play Services):
+    // lose push notifications, not the whole app.
+    try {
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('Firebase unavailable: $e');
+    }
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
+    runApp(const RotaryMbalwaApp());
+  }, _reportError);
 }
 
 class RotaryMbalwaApp extends StatefulWidget {

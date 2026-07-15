@@ -21,6 +21,8 @@ dependencies:
   url_launcher: ^6.3.0
   cached_network_image: ^3.4.1
   file_picker: ^10.0.0
+  flutter_secure_storage: ^9.2.2
+  sentry_flutter: ^8.11.0
 
 dev_dependencies:
   flutter_test:

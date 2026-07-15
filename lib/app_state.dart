@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'data.dart';
@@ -33,6 +34,11 @@ class ApologyDraft {
 /// sets `tab` to a fixed target screen, exactly as authored).
 class AppState extends ChangeNotifier {
   final ApiClient _api = ApiClient();
+  // The member token is a 365-day-lived bearer credential (see
+  // security.py's create_access_token) — kept in the platform keystore
+  // (Keychain/Keystore), not plain SharedPreferences, so it isn't sitting
+  // in a plaintext file readable via a device backup or a rooted device.
+  static const _secureStorage = FlutterSecureStorage();
 
   // Treasury's data and logic live in their own single-responsibility
   // class; AppState just composes it in and re-broadcasts its changes,
@@ -69,7 +75,18 @@ class AppState extends ChangeNotifier {
       visitorName = prefs.getString('visitor_name');
       visitorPhone = prefs.getString('visitor_phone');
     });
-    final token = prefs.getString('auth_token');
+    var token = await _secureStorage.read(key: 'auth_token');
+    if (token == null) {
+      // One-time migration: everyone signed in before this version kept
+      // their token in plain SharedPreferences — fall back to it once and
+      // move it over, so an update doesn't silently sign every member out.
+      final legacyToken = prefs.getString('auth_token');
+      if (legacyToken != null) {
+        await _secureStorage.write(key: 'auth_token', value: legacyToken);
+        await prefs.remove('auth_token');
+        token = legacyToken;
+      }
+    }
     if (token == null) return;
     _update(() {
       authToken = token;
@@ -100,7 +117,7 @@ class AppState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final token = authToken;
     if (token == null) return;
-    await prefs.setString('auth_token', token);
+    await _secureStorage.write(key: 'auth_token', value: token);
     await prefs.setString('member_name', currentMemberName);
     await prefs.setString('member_role', currentMemberRole);
     await prefs.setString('member_phone', currentMemberPhone);
@@ -164,7 +181,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    await _secureStorage.delete(key: 'auth_token');
     await prefs.remove('member_name');
     await prefs.remove('member_role');
     await prefs.remove('member_phone');
