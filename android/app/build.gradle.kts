@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.digiflecttech.rotaryconnect"
-    compileSdk = flutter.compileSdkVersion
+    // sentry_flutter's package_info_plus dependency requires compileSdk 36+;
+    // the Flutter SDK's own default (flutter.compileSdkVersion) was 34.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
