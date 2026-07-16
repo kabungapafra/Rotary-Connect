@@ -128,6 +128,7 @@ class MemberSummary {
   final int memberCount;
   final String clubStatus; // "active" | "suspended"
   final bool checkedInToday;
+  final int weekStreak;
   const MemberSummary(
       this.checkInCount,
       this.meetingsTotal,
@@ -135,7 +136,8 @@ class MemberSummary {
       this.todayMeetingName,
       this.memberCount,
       this.clubStatus,
-      this.checkedInToday);
+      this.checkedInToday,
+      this.weekStreak);
 }
 
 class CheckInResult {
@@ -532,6 +534,7 @@ class ApiClient {
       res['member_count'] as int,
       res['club_status'] as String? ?? 'active',
       res['checked_in_today'] as bool? ?? false,
+      res['week_streak'] as int? ?? 0,
     );
   }
 

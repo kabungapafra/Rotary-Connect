@@ -556,13 +556,15 @@ class _ScanSuccess extends StatelessWidget {
             Text('${state.checkInMeetingName} · ${state.checkInTimeLabel}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            const SizedBox(height: 8),
-            Text('Week streak now 8 — keep it up!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: RCColors.scanAccent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700)),
+            if ((state.summary?.weekStreak ?? 0) > 0) ...[
+              const SizedBox(height: 8),
+              Text('Week streak now ${state.summary!.weekStreak} — keep it up!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: RCColors.scanAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
