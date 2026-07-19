@@ -67,6 +67,24 @@ class ClubEvent {
   const ClubEvent(this.id, this.dow, this.name, this.meta, this.image);
 }
 
+class GuestCheckInResult {
+  final int clubId;
+  final String clubName;
+  const GuestCheckInResult(this.clubId, this.clubName);
+}
+
+/// Public profile of a club for the visitor dashboard — display data only
+/// (branding + events), fetched without any login.
+class VisitorClubInfo {
+  final int id;
+  final String name;
+  final String? logo;
+  final String clubType; // "rotary" | "rotaract"
+  final List<ClubEvent> events;
+  const VisitorClubInfo(
+      this.id, this.name, this.logo, this.clubType, this.events);
+}
+
 class GalleryPhotoInfo {
   final int id;
   final String album;
@@ -330,8 +348,9 @@ class ApiClient {
   /// logged-in member checks in as a visitor at a club that isn't their
   /// own. Exactly one of [clubId] (this device's own club — the front-desk
   /// case) or [clubName] (a member naming the club they're visiting) is
-  /// given. Returns the resolved club's name for display.
-  Future<String> guestCheckIn({
+  /// given. Returns the resolved club (id + name) for display and for
+  /// remembering which club's visitor dashboard to show.
+  Future<GuestCheckInResult> guestCheckIn({
     int? clubId,
     String? clubName,
     required String name,
@@ -347,7 +366,26 @@ class ApiClient {
       'host_name': hostName,
       'guest_type': guestType,
     });
-    return res['club_name'] as String;
+    return GuestCheckInResult(
+        res['club_id'] as int, res['club_name'] as String);
+  }
+
+  /// Unauthenticated: the visited club's public profile (branding +
+  /// events) shown on the visitor dashboard.
+  Future<VisitorClubInfo> fetchVisitorClub(int clubId) async {
+    final res = await _get('/checkin/club/$clubId');
+    final events = (res['events'] as List<dynamic>)
+        .map((e) => e as Map<String, dynamic>)
+        .map((e) => ClubEvent(e['id'] as int, e['dow'] as String,
+            e['name'] as String, e['meta'] as String, e['image'] as String?))
+        .toList();
+    return VisitorClubInfo(
+      res['club_id'] as int,
+      res['name'] as String,
+      res['logo'] as String?,
+      res['club_type'] as String? ?? 'rotary',
+      events,
+    );
   }
 
   /// The logged-in member's club roster.

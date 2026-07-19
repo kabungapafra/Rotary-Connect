@@ -13,6 +13,7 @@ import 'widgets/bottom_nav.dart';
 import 'widgets/photo_viewer.dart';
 import 'widgets/certificate_modal.dart';
 import 'screens/splash_screen.dart';
+import 'screens/visitor_home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/today_screen.dart';
 import 'screens/home_screen.dart';
@@ -140,6 +141,8 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
         return ClubHistoryScreen(state: state);
       case 'scan':
         return ScanScreen(state: state);
+      case 'visitorHome':
+        return VisitorHomeScreen(state: state);
       case 'attendance':
         return AttendanceScreen(state: state);
       case 'events':

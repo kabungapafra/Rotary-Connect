@@ -74,6 +74,15 @@ class AppState extends ChangeNotifier {
     _update(() {
       visitorName = prefs.getString('visitor_name');
       visitorPhone = prefs.getString('visitor_phone');
+      visitorClubId = prefs.getInt('visitor_club_id');
+      final savedClubName = prefs.getString('visitor_club_name');
+      if (savedClubName != null && savedClubName.isNotEmpty) {
+        visitorClubName = savedClubName;
+      }
+      _visitorRegisteredClubs.addAll(
+          (prefs.getStringList('visitor_registered_clubs') ?? [])
+              .map(int.tryParse)
+              .whereType<int>());
     });
     var token = await _secureStorage.read(key: 'auth_token');
     if (token == null) {
@@ -216,16 +225,46 @@ class AppState extends ChangeNotifier {
     projectsLoaded = false;
   }
 
-  /// Remembered once a walk-in visitor has checked in anywhere, so a QR
-  /// scan at any club (the same one again, or a different one) never asks
-  /// them to re-enter their details.
+  /// Remembered once a walk-in visitor has checked in anywhere, used to
+  /// pre-fill the registration form at each NEW club — but the form is
+  /// still shown once per club (see [_visitorRegisteredClubs]); only a
+  /// club they've already registered at checks them in silently.
   String? visitorName;
   String? visitorPhone;
+
+  /// Clubs this device's visitor has filled the registration form for.
+  /// A club in this set never asks for details again; a club not in it
+  /// always shows the (pre-filled) form first.
+  final Set<int> _visitorRegisteredClubs = {};
+
+  /// The last club this visitor checked in at — its dashboard is what the
+  /// splash guest button opens on every launch, until a different club's
+  /// QR is scanned.
+  int? visitorClubId;
+  String? visitorClubName;
+  String? visitorClubLogo;
+  String visitorClubType = 'rotary';
+  List<ClubEvent> visitorEvents = const [];
+  bool visitorClubLoading = false;
+  String? visitorClubError;
+
+  /// Shows the "you're checked in" banner on the visitor dashboard right
+  /// after a check-in this session; not persisted.
+  bool visitorJustCheckedIn = false;
 
   Future<void> _persistVisitorIdentity(String name, String phone) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('visitor_name', name);
     await prefs.setString('visitor_phone', phone);
+  }
+
+  Future<void> _persistVisitorClub() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = visitorClubId;
+    if (id != null) await prefs.setInt('visitor_club_id', id);
+    await prefs.setString('visitor_club_name', visitorClubName ?? '');
+    await prefs.setStringList('visitor_registered_clubs',
+        _visitorRegisteredClubs.map((c) => c.toString()).toList());
   }
 
   bool _isAuthFailure(ApiException e) => e.message.contains('credentials');
@@ -789,11 +828,17 @@ class AppState extends ChangeNotifier {
       closeMemberProfile();
     } else if (tab == 'login') {
       goSplash();
+    } else if (tab == 'scan' && authToken == null && visitorClubId != null) {
+      // A visitor with a remembered club backs out of the scanner onto
+      // that club's dashboard, mirroring how they got here.
+      _update(() => tab = 'visitorHome');
     } else if (tab == 'scan' && (authToken == null || _scanFromSplash)) {
       // A walk-in visitor (no session) or a logged-in member who chose
       // "I'm visiting as a Guest" both started this from the splash
       // screen's guest button — back should undo that choice, not drop
       // a still-logged-in member onto their own dashboard.
+      goSplash();
+    } else if (tab == 'visitorHome') {
       goSplash();
     } else if (tab != 'home' && tab != 'splash' && tab != 'suspended') {
       goHome();
@@ -891,11 +936,58 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void enterGuest() => _update(() {
+  void enterGuest() {
+    // A returning visitor goes straight back to the dashboard of the last
+    // club they checked in at — they only see the scanner again when they
+    // choose to check in (or scan a different club) from there.
+    if (authToken == null && visitorClubId != null) {
+      _update(() => tab = 'visitorHome');
+      unawaited(loadVisitorClub());
+      return;
+    }
+    _update(() {
+      tab = 'scan';
+      scanMode = 'guest';
+      scanStep = 'idle';
+      _scanFromSplash = true;
+    });
+  }
+
+  /// Fetch (or refresh) the visited club's public profile for the visitor
+  /// dashboard. Stale data is kept on-screen while refreshing.
+  Future<void> loadVisitorClub() async {
+    final id = visitorClubId;
+    if (id == null || visitorClubLoading) return;
+    _update(() {
+      visitorClubLoading = true;
+      visitorClubError = null;
+    });
+    try {
+      final club = await _api.fetchVisitorClub(id);
+      _update(() {
+        visitorClubLoading = false;
+        visitorClubName = club.name;
+        visitorClubLogo = club.logo;
+        visitorClubType = club.clubType;
+        visitorEvents = club.events;
+      });
+      unawaited(_persistVisitorClub());
+    } on ApiException catch (e) {
+      _update(() {
+        visitorClubLoading = false;
+        visitorClubError = e.message;
+      });
+    }
+  }
+
+  /// The visitor dashboard's "Check in" button — opens the scanner in
+  /// guest mode; back from there returns to the dashboard.
+  void visitorScan() => _update(() {
         tab = 'scan';
         scanMode = 'guest';
         scanStep = 'idle';
-        _scanFromSplash = true;
+        _scanFromSplash = false;
+        visitorJustCheckedIn = false;
       });
 
   // ── scan ───────────────────────────────────────────────────────────────
@@ -941,7 +1033,15 @@ class AppState extends ChangeNotifier {
 
     final knownName = authToken != null ? currentMemberName : visitorName;
     final knownPhone = authToken != null ? currentMemberPhone : visitorPhone;
-    if (knownName != null &&
+    // Silent check-in only at a club this identity is already known to:
+    // a member session (their account is the identity), or a walk-in who
+    // has registered at THIS club before. A visitor scanning a NEW club
+    // always fills the form once — pre-filled with their remembered
+    // details, so it's a confirm-and-submit, not a retype.
+    final registeredHere =
+        authToken != null || _visitorRegisteredClubs.contains(clubId);
+    if (registeredHere &&
+        knownName != null &&
         knownName.trim().isNotEmpty &&
         knownPhone != null &&
         knownPhone.trim().isNotEmpty) {
@@ -954,10 +1054,13 @@ class AppState extends ChangeNotifier {
       );
       return;
     }
-    // First time this device has ever checked in as a visitor — collect
-    // name and phone once; every scan after this is silent.
     _update(() {
-      if (authToken != null) guestName = currentMemberName;
+      if (authToken != null) {
+        guestName = currentMemberName;
+      } else {
+        if (guestName.trim().isEmpty) guestName = visitorName ?? '';
+        if (guestPhone.trim().isEmpty) guestPhone = visitorPhone ?? '';
+      }
       scanStep = 'guestForm';
     });
   }
@@ -1081,7 +1184,7 @@ class AppState extends ChangeNotifier {
       guestSubmitError = null;
     });
     try {
-      final visitedClub = await _api.guestCheckIn(
+      final visited = await _api.guestCheckIn(
         clubId: clubId,
         clubName: clubName,
         name: name,
@@ -1101,9 +1204,24 @@ class AppState extends ChangeNotifier {
       }
       _update(() {
         guestSubmitting = false;
-        guestVisitedClubName = visitedClub;
-        scanStep = 'guestDone';
+        guestVisitedClubName = visited.clubName;
       });
+      if (authToken == null) {
+        // Walk-in visitor: this club is now "theirs" — remember it and
+        // land on its dashboard instead of a one-off confirmation.
+        _update(() {
+          _visitorRegisteredClubs.add(visited.clubId);
+          visitorClubId = visited.clubId;
+          visitorClubName = visited.clubName;
+          visitorJustCheckedIn = true;
+          tab = 'visitorHome';
+          scanStep = 'idle';
+        });
+        unawaited(_persistVisitorClub());
+        unawaited(loadVisitorClub());
+      } else {
+        _update(() => scanStep = 'guestDone');
+      }
     } on ApiException catch (e) {
       _update(() {
         guestSubmitting = false;
