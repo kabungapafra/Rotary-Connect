@@ -30,7 +30,6 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_secure_storage_platform_interface: ^1.1.2
   flutter_native_splash: ^2.4.8
-  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -52,20 +51,6 @@ flutter:
           weight: 700
         - asset: assets/fonts/Poppins-ExtraBold.ttf
           weight: 800
-
-# Adaptive launcher icon (Android 8+) — the plain square ic_launcher.png set
-# alone renders unmasked on modern home screens. Foreground is the gear
-# pre-padded to the adaptive safe zone (see ic_launcher_foreground.png);
-# regenerate with `dart run flutter_launcher_icons` after changing either.
-flutter_launcher_icons:
-  android: "ic_launcher"
-  image_path: "assets/images/rotary_wheel_spin.png"
-  adaptive_icon_background: "#FFFFFF"
-  # Same full-bleed gear as image_path — flutter_launcher_icons applies its
-  # own 16% inset when building the adaptive XML, which already lands the
-  # gear inside Android's recommended safe zone without further padding.
-  adaptive_icon_foreground: "assets/images/rotary_wheel_spin.png"
-  min_sdk_android: 24
 
 # Native splash — shown by the OS the instant the app launches, before the
 # Flutter engine loads, so there's never a blank white frame. Regenerate

@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
   // the motto. Starts shortly after the first frame (so it isn't hidden
   // behind the OS launch splash) and runs slowly enough to be seen.
   late final AnimationController _intro = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 2600));
+      vsync: this, duration: const Duration(milliseconds: 1500));
 
   // Gentle continuous breathing on the gold dashes so the screen stays
   // subtly alive after the entrance settles.
@@ -47,13 +47,13 @@ class _SplashScreenState extends State<SplashScreen>
   final GlobalKey _wheelSlotKey = GlobalKey();
   Rect? _flyTarget;
   late final AnimationController _logo = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 6000));
+      vsync: this, duration: const Duration(milliseconds: 3200));
 
   // The flight: white backdrop fades out revealing the welcome screen,
   // the wheel arcs up into the wordmark's slot, and the wordmark text
   // prints itself as the wheel travels.
   late final AnimationController _fly = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100));
+      vsync: this, duration: const Duration(milliseconds: 650));
   late final Animation<double> _wordPrint = CurvedAnimation(
       parent: _fly, curve: const Interval(0.15, 0.95, curve: Curves.easeOut));
 
