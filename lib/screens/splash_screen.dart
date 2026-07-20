@@ -5,6 +5,11 @@ import '../theme.dart';
 import '../widgets/pressable.dart';
 import '../widgets/wordmark.dart';
 
+// The boot overlay's "Rotary Connect" lockup is the app's own name, not the
+// signed-in club's brand — unlike RCColors.blue, it must never shift to
+// Rotaract magenta.
+const _bootBlue = Color(0xFF17458F);
+
 class SplashScreen extends StatefulWidget {
   final AppState state;
   const SplashScreen({super.key, required this.state});
@@ -322,8 +327,8 @@ class _SplashScreenState extends State<SplashScreen>
                                   alignment: Alignment.centerRight,
                                   child: FadeTransition(
                                     opacity: _wordsReveal,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 14),
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(right: 14),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         // Official lockup: lines share a right
@@ -335,7 +340,10 @@ class _SplashScreenState extends State<SplashScreen>
                                             'Rotary',
                                             maxLines: 1,
                                             style: TextStyle(
-                                              color: RCColors.blue,
+                                              // App-name lockup, not the
+                                              // club's brand — stays blue
+                                              // even for Rotaract accounts.
+                                              color: _bootBlue,
                                               fontSize: 42,
                                               fontWeight: FontWeight.w800,
                                               height: 1.2,
@@ -346,7 +354,7 @@ class _SplashScreenState extends State<SplashScreen>
                                             'Connect',
                                             maxLines: 1,
                                             style: TextStyle(
-                                              color: RCColors.blue,
+                                              color: _bootBlue,
                                               fontSize: 24,
                                               fontWeight: FontWeight.w400,
                                               height: 1.25,
