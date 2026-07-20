@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
@@ -196,6 +197,22 @@ class LoginScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => launchUrl(
+                          Uri.parse(
+                              'https://rotary.digiflecttech.dev/privacy.html'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: const Text('Privacy Policy',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: RCColors.textMuted,
+                                decoration: TextDecoration.underline)),
                       ),
                     ),
                   ],
