@@ -7,6 +7,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/pressable.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/synced_text_field.dart';
 
 String _ugx(int amount) {
@@ -161,11 +162,7 @@ class TreasuryScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (state.treasuryLoading && summary == null)
-                    const RCCard(
-                      child: Text('Loading…',
-                          style: TextStyle(
-                              fontSize: 12.5, color: RCColors.textMuted)),
-                    )
+                    const _TreasurySkeleton()
                   else ...[
                     RCSectionHeader(
                       title:
@@ -297,6 +294,65 @@ class _TreasuryStat extends StatelessWidget {
           const SizedBox(height: 2),
           Text(label,
               style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stand-in for the dues section while the summary is still loading — a
+/// header line plus a card of row placeholders, matching [_DuesRow].
+class _TreasurySkeleton extends StatelessWidget {
+  const _TreasurySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return RCShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              RCSkeletonBox(width: 100, height: 15),
+              RCSkeletonBox(width: 60, height: 12),
+            ],
+          ),
+          const SizedBox(height: 10),
+          RCCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < 4; i++)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: i == 3
+                          ? null
+                          : const Border(
+                              bottom: BorderSide(color: RCColors.divider)),
+                    ),
+                    child: const Row(
+                      children: [
+                        RCSkeletonBox.circle(size: 36),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RCSkeletonBox(width: 120, height: 12),
+                              SizedBox(height: 6),
+                              RCSkeletonBox(width: 70, height: 10),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

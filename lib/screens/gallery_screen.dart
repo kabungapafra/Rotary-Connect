@@ -7,6 +7,7 @@ import '../gallery_controller.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/pressable.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/synced_text_field.dart';
 
 class GalleryScreen extends StatelessWidget {
@@ -90,15 +91,7 @@ class GalleryScreen extends StatelessWidget {
                   if (!albumNames.contains(up.album)) albumNames.add(up.album);
                 }
                 if (albumNames.isEmpty && state.galleryLoading) {
-                  return const RCCard(
-                    padding: EdgeInsets.all(28),
-                    child: Center(
-                        child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2.5))),
-                  );
+                  return const _AlbumSkeleton();
                 }
                 if (albumNames.isEmpty) {
                   return const RCCard(
@@ -129,6 +122,44 @@ class GalleryScreen extends StatelessWidget {
         ),
         if (state.uploadSheet != null) _UploadSheet(state: state),
       ],
+    );
+  }
+}
+
+/// Stand-in for an [_Album] section while the first page of uploads is
+/// still loading — same title-bar-plus-3-across-grid shape.
+class _AlbumSkeleton extends StatelessWidget {
+  const _AlbumSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return RCShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              RCSkeletonBox(width: 90, height: 13),
+              RCSkeletonBox(width: 46, height: 10),
+            ],
+          ),
+          const SizedBox(height: 8),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1.0,
+            children: [
+              for (var i = 0; i < 6; i++)
+                const RCSkeletonBox(
+                    borderRadius: BorderRadius.all(Radius.circular(12))),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/synced_text_field.dart';
 
 class MembersScreen extends StatelessWidget {
@@ -141,12 +142,7 @@ class MembersScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (state.clubMembersLoading && !state.clubMembersLoaded)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              color: RCColors.blue, strokeWidth: 2.5)),
-                    )
+                    const _MemberListSkeleton()
                   else if (state.clubMembersError != null &&
                       !state.clubMembersLoaded)
                     RCCard(
@@ -757,6 +753,61 @@ class _SectionLabel extends StatelessWidget {
           fontWeight: FontWeight.w800,
           letterSpacing: 1,
           color: Color(0xFF8B96A8)),
+    );
+  }
+}
+
+/// Stand-in for [_MemberList] while the club roster is still loading —
+/// same row shape (avatar + two lines) so the swap-in doesn't jump around.
+class _MemberListSkeleton extends StatelessWidget {
+  const _MemberListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return RCShimmer(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: RCColors.cardShadow,
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < 6; i++)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  border: i == 5
+                      ? null
+                      : const Border(
+                          bottom: BorderSide(color: RCColors.divider)),
+                ),
+                child: const Row(
+                  children: [
+                    RCSkeletonBox.circle(size: 40),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RCSkeletonBox(width: 120, height: 12),
+                          SizedBox(height: 6),
+                          RCSkeletonBox(width: 70, height: 10),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

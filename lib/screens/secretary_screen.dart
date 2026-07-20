@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/date_time_field.dart';
 import '../widgets/pressable.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/synced_text_field.dart';
 
 Future<void> _exportReportPdf(String clubName, ReportInfo report) async {
@@ -134,11 +135,7 @@ class SecretaryScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: state.secretaryLoading && !state.secretaryLoaded
-                  ? const RCCard(
-                      child: Text('Loading…',
-                          style: TextStyle(
-                              fontSize: 12.5, color: RCColors.textMuted)),
-                    )
+                  ? const _SecretarySkeleton()
                   : switch (state.secretaryTab) {
                       'monthly' => _ReportTab(
                           state: state,
@@ -187,6 +184,62 @@ class _SecTab extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: active ? RCColors.blue : Colors.white)),
         ),
+      ),
+    );
+  }
+}
+
+/// Stand-in for the minutes/report list while it's still loading — a
+/// section header plus a card of row placeholders, matching [_MinuteRow].
+class _SecretarySkeleton extends StatelessWidget {
+  const _SecretarySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return RCShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const RCSkeletonBox(width: 140, height: 15),
+          const SizedBox(height: 14),
+          RCCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < 4; i++)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: i == 3
+                          ? null
+                          : const Border(
+                              bottom: BorderSide(color: RCColors.divider)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RCSkeletonBox(width: 160, height: 12),
+                              SizedBox(height: 6),
+                              RCSkeletonBox(width: 90, height: 10),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        RCSkeletonBox(
+                            width: 64,
+                            height: 20,
+                            borderRadius: BorderRadius.circular(999)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

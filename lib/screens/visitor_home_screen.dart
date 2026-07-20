@@ -6,6 +6,7 @@ import '../api_client.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
+import '../widgets/skeleton.dart';
 
 /// The visited club's dashboard for a walk-in visitor — what the splash
 /// guest button opens once this device has checked in somewhere, and where
@@ -112,17 +113,7 @@ class VisitorHomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
                 if (state.visitorClubLoading && state.visitorEvents.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white70),
-                      ),
-                    ),
-                  )
+                  const _EventTileSkeleton()
                 else if (state.visitorClubError != null &&
                     state.visitorEvents.isEmpty) ...[
                   Text(state.visitorClubError!,
@@ -212,6 +203,57 @@ class _ClubLogo extends StatelessWidget {
       );
     }
     return fallback();
+  }
+}
+
+/// Stand-in for a couple of [_EventTile]s while the club's events are still
+/// loading — same dark card shape, with a lighter shimmer tone since these
+/// sit on the dark scan background.
+class _EventTileSkeleton extends StatelessWidget {
+  const _EventTileSkeleton();
+
+  static const _tone = Color(0xFF2A3854);
+
+  @override
+  Widget build(BuildContext context) {
+    return RCShimmer(
+      child: Column(
+        children: [
+          for (var i = 0; i < 2; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: RCColors.scanCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: RCColors.scanBorder),
+              ),
+              child: const Row(
+                children: [
+                  RCSkeletonBox(
+                      width: 40,
+                      height: 26,
+                      color: _tone,
+                      borderRadius: BorderRadius.all(Radius.circular(8))),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RCSkeletonBox(
+                            width: 140, height: 12, color: _tone),
+                        SizedBox(height: 6),
+                        RCSkeletonBox(width: 90, height: 10, color: _tone),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
