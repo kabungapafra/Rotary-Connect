@@ -187,4 +187,40 @@ class MembersController extends ChangeNotifier {
       if (updated != null) _update(() => profile = updated);
     }
   }
+
+  // ── edit an existing member's position ─────────────────────────────
+  Member? roleEditTarget;
+  String roleEditRole = '';
+  bool roleEditIsBoard = false;
+
+  void openRoleEditor(Member m) => _update(() {
+        roleEditTarget = m;
+        roleEditRole = m.role;
+        roleEditIsBoard = m.isBoard;
+      });
+  void closeRoleEditor() => _update(() => roleEditTarget = null);
+  void setRoleEditRole(String v) => _update(() => roleEditRole = v);
+  void setRoleEditIsBoard(bool v) => _update(() => roleEditIsBoard = v);
+
+  /// President/Secretary only. Reloads the roster and, if the profile
+  /// sheet is open on this same member, refreshes it in place — same
+  /// pattern as [setMemberStatus]. Lets [ApiException] propagate.
+  Future<void> saveRoleEdit() async {
+    final target = roleEditTarget;
+    final token = _getToken();
+    if (target == null || token == null) return;
+    await _api.updateMemberRole(token, target.id, roleEditRole, roleEditIsBoard);
+    _update(() => roleEditTarget = null);
+    await load();
+    if (profile?.id == target.id) {
+      Member? updated;
+      for (final m in roster) {
+        if (m.id == target.id) {
+          updated = m;
+          break;
+        }
+      }
+      if (updated != null) _update(() => profile = updated);
+    }
+  }
 }

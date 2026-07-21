@@ -1341,6 +1341,15 @@ class AppState extends ChangeNotifier {
   Future<AddedClubMember?> saveMember() => membersController.saveMember();
   void openMemberProfile(Member m) => membersController.openMemberProfile(m);
   void closeMemberProfile() => membersController.closeMemberProfile();
+
+  Member? get roleEditTarget => membersController.roleEditTarget;
+  String get roleEditRole => membersController.roleEditRole;
+  bool get roleEditIsBoard => membersController.roleEditIsBoard;
+  void openRoleEditor(Member m) => membersController.openRoleEditor(m);
+  void closeRoleEditor() => membersController.closeRoleEditor();
+  void setRoleEditRole(String v) => membersController.setRoleEditRole(v);
+  void setRoleEditIsBoard(bool v) => membersController.setRoleEditIsBoard(v);
+  Future<void> saveRoleEdit() => membersController.saveRoleEdit();
   Future<void> setMemberStatus(int memberId, String status) =>
       membersController.setMemberStatus(memberId, status);
 

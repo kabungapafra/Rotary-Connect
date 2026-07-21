@@ -201,6 +201,7 @@ class MembersScreen extends StatelessWidget {
         ),
         if (state.memberEditor != null) _MemberEditorSheet(state: state),
         if (state.memberProfile != null) _MemberProfileSheet(state: state),
+        if (state.roleEditTarget != null) _RoleEditSheet(state: state),
       ],
     );
   }
@@ -294,10 +295,28 @@ class _MemberProfileSheet extends StatelessWidget {
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       color: RCColors.textDark)),
-                              Text(m.role,
-                                  style: const TextStyle(
-                                      fontSize: 12.5,
-                                      color: RCColors.textMuted)),
+                              if (state.canManageClub && m.id != 0)
+                                GestureDetector(
+                                  onTap: () => state.openRoleEditor(m),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(m.role,
+                                          style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: RCColors.blue)),
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.edit,
+                                          size: 12, color: RCColors.blue),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Text(m.role,
+                                    style: const TextStyle(
+                                        fontSize: 12.5,
+                                        color: RCColors.textMuted)),
                             ],
                           ),
                         ),
@@ -403,6 +422,119 @@ class _MemberProfileSheet extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleEditSheet extends StatelessWidget {
+  final AppState state;
+  const _RoleEditSheet({required this.state});
+
+  Future<void> _save(BuildContext context) async {
+    try {
+      await state.saveRoleEdit();
+    } on ApiException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = state.roleEditTarget!;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: state.closeRoleEditor,
+            child: Container(color: const Color(0x8C0A1223)),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4DBE8),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text("Edit ${m.name}'s position",
+                        style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: RCColors.textDark)),
+                    const SizedBox(height: 14),
+                    const _FieldLabel('ROLE'),
+                    const SizedBox(height: 6),
+                    _RoleDropdown(
+                      value: state.roleEditRole,
+                      clubType: state.clubType,
+                      onChanged: state.setRoleEditRole,
+                    ),
+                    const SizedBox(height: 14),
+                    const _FieldLabel('CATEGORY'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CategoryChip(
+                            label: 'Member',
+                            active: !state.roleEditIsBoard,
+                            onTap: () => state.setRoleEditIsBoard(false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CategoryChip(
+                            label: 'Board & officers',
+                            active: state.roleEditIsBoard,
+                            onTap: () => state.setRoleEditIsBoard(true),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    PressableScale(
+                      child: ElevatedButton(
+                        onPressed: () => _save(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Save position',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14)),
+                      ),
+                    ),
                   ],
                 ),
               ),

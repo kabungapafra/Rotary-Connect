@@ -463,6 +463,16 @@ class ApiClient {
     await _patch('/club/members/$memberId', {'status': status}, token: token);
   }
 
+  /// President/Secretary only: reassign an existing member's position —
+  /// e.g. promoting someone to President-Elect, or clearing/filling a
+  /// board seat after the July 1 leadership handover.
+  Future<void> updateMemberRole(
+      String token, int memberId, String role, bool isBoard) async {
+    await _patch('/club/members/$memberId',
+        {'role': role, 'is_board': isBoard},
+        token: token);
+  }
+
   /// Dismisses the "assign board positions" prompt shown to whoever the
   /// leadership sweep just promoted to President.
   Future<void> dismissBoardSetup(String token) async {
