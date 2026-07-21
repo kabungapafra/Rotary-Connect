@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -13,55 +17,122 @@ import '../widgets/pressable.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/synced_text_field.dart';
 
-Future<void> _exportReportPdf(String clubName, ReportInfo report) async {
-  final doc = pw.Document();
+// A field's value can run much longer than its label ("UGX 4,500,000" vs
+// "Income") — a fixed column count would either crowd long values or waste
+// space on short ones, so each card sizes to its own content and wraps to
+// the next line once a row fills up, like the source design's field grid.
+pw.Widget _reportFieldCard(String label, String value) => pw.Container(
+      constraints: const pw.BoxConstraints(minWidth: 140),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(label.toUpperCase(),
+              style: const pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: .5,
+                  color: PdfColors.grey600)),
+          pw.SizedBox(height: 3),
+          pw.Text(value,
+              style: const pw.TextStyle(
+                  fontSize: 12, fontWeight: pw.FontWeight.bold)),
+        ],
+      ),
+    );
+
+// The pdf package's default base14 font can't render an em dash — and
+// every report title has one ("Monthly Report — July 2026") — so it
+// otherwise renders as a broken-glyph box. Poppins is already bundled for
+// the app's own UI; reusing it here also matches the report's typography
+// to the rest of the app.
+Future<pw.ThemeData> _reportPdfTheme() async {
+  final regular =
+      pw.Font.ttf(await rootBundle.load('assets/fonts/Poppins-Regular.ttf'));
+  final bold =
+      pw.Font.ttf(await rootBundle.load('assets/fonts/Poppins-Bold.ttf'));
+  return pw.ThemeData.withFont(base: regular, bold: bold);
+}
+
+Future<void> _exportReportPdf(
+    String clubName, String? clubLogoUrl, ReportInfo report) async {
+  final doc = pw.Document(theme: await _reportPdfTheme());
+  pw.MemoryImage? logoImage;
+  if (clubLogoUrl != null && clubLogoUrl.isNotEmpty) {
+    try {
+      if (clubLogoUrl.startsWith('data:')) {
+        logoImage = pw.MemoryImage(base64Decode(clubLogoUrl.split(',').last));
+      } else {
+        final res = await http.get(Uri.parse(clubLogoUrl));
+        if (res.statusCode == 200) logoImage = pw.MemoryImage(res.bodyBytes);
+      }
+    } catch (_) {
+      // The report still works without a logo — just skip it.
+    }
+  }
   doc.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
       build: (context) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: const pw.BoxDecoration(
-              color: PdfColor.fromInt(0xFF17458F),
-              borderRadius: pw.BorderRadius.all(pw.Radius.circular(999)),
-            ),
-            child: pw.Text(clubName.toUpperCase(),
-                style: const pw.TextStyle(
-                    color: PdfColors.white,
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 11)),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              if (logoImage != null)
+                pw.Image(logoImage, width: 60, height: 60)
+              else
+                pw.Text(clubName,
+                    style: const pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColor.fromInt(0xFF17458F))),
+              pw.Expanded(
+                child: pw.Text(report.title.toUpperCase(),
+                    textAlign: pw.TextAlign.right,
+                    style: const pw.TextStyle(
+                        fontSize: 19,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColor.fromInt(0xFF17458F))),
+              ),
+            ],
           ),
-          pw.SizedBox(height: 16),
-          pw.Text(report.title,
-              style: const pw.TextStyle(
-                  fontSize: 22, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           pw.Text(report.subtitle,
               style:
-                  const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+                  const pw.TextStyle(fontSize: 10.5, color: PdfColors.grey700)),
           pw.SizedBox(height: 20),
           for (final section in report.sections) ...[
-            pw.Text(section.section.toUpperCase(),
-                style:
-                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+            pw.Text(section.section,
+                style: const pw.TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColor.fromInt(0xFF17458F))),
             pw.SizedBox(height: 4),
-            for (final row in section.rows)
-              pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 3),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(row.label, style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text(row.value,
-                        style: const pw.TextStyle(
-                            fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-              ),
-            pw.SizedBox(height: 16),
+            pw.Container(height: 1, color: PdfColors.blue100),
+            pw.SizedBox(height: 10),
+            pw.Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final row in section.rows)
+                  _reportFieldCard(row.label, row.value),
+              ],
+            ),
+            pw.SizedBox(height: 18),
           ],
+          pw.Container(height: 1, color: PdfColors.grey300),
+          pw.SizedBox(height: 8),
+          pw.Text(
+              'Generated by Rotary Connect on '
+              '${DateTime.now().toLocal().toString().split('.').first}',
+              style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey500)),
         ],
       ),
     ),
@@ -791,7 +862,8 @@ class _ReportTab extends StatelessWidget {
           ),
         PressableScale(
           child: ElevatedButton(
-            onPressed: () => _exportReportPdf(state.displayClubName, r),
+            onPressed: () =>
+                _exportReportPdf(state.displayClubName, state.clubLogo, r),
             style: ElevatedButton.styleFrom(
               backgroundColor: RCColors.blue,
               foregroundColor: Colors.white,
