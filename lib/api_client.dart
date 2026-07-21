@@ -105,8 +105,9 @@ class NextMeeting {
   final String venue;
   final String timeLabel;
   final String dateIso;
-  const NextMeeting(
-      this.eventId, this.name, this.venue, this.timeLabel, this.dateIso);
+  final bool ongoing;
+  const NextMeeting(this.eventId, this.name, this.venue, this.timeLabel,
+      this.dateIso, this.ongoing);
 }
 
 class ClubProject {
@@ -653,6 +654,7 @@ class ApiClient {
       data['venue'] as String,
       data['time_label'] as String,
       data['date_iso'] as String,
+      data['ongoing'] as bool? ?? false,
     );
   }
 

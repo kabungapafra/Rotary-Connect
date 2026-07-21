@@ -100,12 +100,14 @@ class EventsController extends ChangeNotifier {
     }
   }
 
-  /// "TODAY · 8 JUL" / "TOMORROW · 9 JUL" / "WED · 15 JUL" for the Next
-  /// meeting card, computed from the real date the backend returned —
-  /// never assumes the next fellowship is today.
+  /// "ONGOING" while the backend says the meeting's check-in window is
+  /// still open, else "TODAY · 8 JUL" / "TOMORROW · 9 JUL" / "WED · 15 JUL"
+  /// for the Next meeting card, computed from the real date the backend
+  /// returned — never assumes the next fellowship is today.
   String get nextMeetingBadge {
     final nm = nextMeeting;
     if (nm == null) return '';
+    if (nm.ongoing) return 'ONGOING';
     final date = DateTime.parse(nm.dateIso);
     final today = DateTime.now();
     final diffDays = DateTime(date.year, date.month, date.day)
