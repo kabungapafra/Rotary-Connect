@@ -439,6 +439,7 @@ class AppState extends ChangeNotifier {
   String todayMeetingName = 'Weekly Fellowship Meeting';
   int todayCheckedInCount = 0;
   List<TodayCheckedInMember> todayCheckedIn = [];
+  List<MeetingGuest> todayGuests = [];
 
   // apologies — who's apologised for today's meeting
   ApologyDraft? apologySheet;
@@ -746,6 +747,7 @@ class AppState extends ChangeNotifier {
         todayMeetingName = summary.meetingName;
         todayCheckedInCount = summary.memberCount;
         todayCheckedIn = summary.members;
+        todayGuests = summary.guests;
         todayLoading = false;
       });
     } on ApiException {

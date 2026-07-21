@@ -84,6 +84,26 @@ class TodayScreen extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 20),
+                  const RCSectionHeader(title: 'Visiting Rotarians'),
+                  const SizedBox(height: 10),
+                  _GuestList(
+                    guests: state.todayGuests
+                        .where((g) => g.type == 'Visiting Rotarian')
+                        .toList(),
+                    loading: state.todayLoading,
+                    emptyText: 'No visiting Rotarians today.',
+                  ),
+                  const SizedBox(height: 20),
+                  const RCSectionHeader(title: 'Guests & web registrations'),
+                  const SizedBox(height: 10),
+                  _GuestList(
+                    guests: state.todayGuests
+                        .where((g) => g.type != 'Visiting Rotarian')
+                        .toList(),
+                    loading: state.todayLoading,
+                    emptyText: 'No guests or web registrations yet.',
+                  ),
+                  const SizedBox(height: 20),
                   const RCSectionHeader(title: 'Apologies'),
                   const SizedBox(height: 10),
                   if (state.apologies.isEmpty)
@@ -117,6 +137,88 @@ class TodayScreen extends StatelessWidget {
         ),
         if (state.apologySheet != null) ApologySheet(state: state),
       ],
+    );
+  }
+}
+
+class _GuestList extends StatelessWidget {
+  final List<MeetingGuest> guests;
+  final bool loading;
+  final String emptyText;
+  const _GuestList(
+      {required this.guests, required this.loading, required this.emptyText});
+
+  @override
+  Widget build(BuildContext context) {
+    if (guests.isEmpty) {
+      return RCCard(
+        child: Text(
+          loading ? 'Loading…' : emptyText,
+          style: const TextStyle(fontSize: 12.5, color: RCColors.textMuted),
+        ),
+      );
+    }
+    return RCCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < guests.length; i++)
+            _GuestRow(
+              guest: guests[i],
+              color: RCColors.avatarColor(i),
+              isLast: i == guests.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuestRow extends StatelessWidget {
+  final MeetingGuest guest;
+  final Color color;
+  final bool isLast;
+  const _GuestRow(
+      {required this.guest, required this.color, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = guest.clubName.isEmpty
+        ? guest.type
+        : '${guest.type} · ${guest.clubName}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: RCColors.divider)),
+      ),
+      child: Row(
+        children: [
+          RCAvatar(color: color, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(guest.name,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textDark)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: RCColors.textMuted)),
+              ],
+            ),
+          ),
+          Text(guest.via == 'web' ? 'Web · ${guest.time}' : guest.time,
+              style: const TextStyle(
+                  fontSize: 11,
+                  color: RCColors.green,
+                  fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 }

@@ -224,7 +224,9 @@ class TodaySummary {
   final String meetingName;
   final int memberCount;
   final List<TodayCheckedInMember> members;
-  const TodaySummary(this.meetingName, this.memberCount, this.members);
+  final List<MeetingGuest> guests;
+  const TodaySummary(
+      this.meetingName, this.memberCount, this.members, this.guests);
 }
 
 class ApologyInfo {
@@ -1100,8 +1102,18 @@ class ApiClient {
               DateTime.parse(m['checked_in_at'] as String),
             ))
         .toList();
-    return TodaySummary(
-        res['meeting_name'] as String, res['member_count'] as int, members);
+    final guests = [
+      for (final g
+          in ((res['guests'] as List?) ?? const []).cast<Map<String, dynamic>>())
+        MeetingGuest(
+            g['name'] as String,
+            g['type'] as String,
+            g['club_name'] as String? ?? '',
+            g['time'] as String? ?? '',
+            g['via'] as String? ?? 'scan'),
+    ];
+    return TodaySummary(res['meeting_name'] as String,
+        res['member_count'] as int, members, guests);
   }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic>? body,

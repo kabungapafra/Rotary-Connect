@@ -383,21 +383,20 @@ class _ClubRegister extends StatelessWidget {
                       attendee: sel.attendees[i],
                       index: i,
                     ),
-                if (sel.guests.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text('Guests & web registrations · ${sel.guests.length}',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: RCColors.blue)),
-                  const SizedBox(height: 4),
-                  for (var i = 0; i < sel.guests.length; i++)
-                    _GuestRow(
-                      isLast: i == sel.guests.length - 1,
-                      guest: sel.guests[i],
-                      index: sel.attendees.length + i,
-                    ),
-                ],
+                ..._guestSection(
+                  'Visiting Rotarians',
+                  sel.guests
+                      .where((g) => g.type == 'Visiting Rotarian')
+                      .toList(),
+                  indexOffset: sel.attendees.length,
+                ),
+                ..._guestSection(
+                  'Guests & web registrations',
+                  sel.guests
+                      .where((g) => g.type != 'Visiting Rotarian')
+                      .toList(),
+                  indexOffset: sel.attendees.length + sel.guests.length,
+                ),
               ],
             ),
           ),
@@ -468,6 +467,24 @@ class _RegRow extends StatelessWidget {
       ),
     );
   }
+}
+
+List<Widget> _guestSection(String title, List<MeetingGuest> guests,
+    {required int indexOffset}) {
+  if (guests.isEmpty) return const [];
+  return [
+    const SizedBox(height: 14),
+    Text('$title · ${guests.length}',
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w800, color: RCColors.blue)),
+    const SizedBox(height: 4),
+    for (var i = 0; i < guests.length; i++)
+      _GuestRow(
+        isLast: i == guests.length - 1,
+        guest: guests[i],
+        index: indexOffset + i,
+      ),
+  ];
 }
 
 class _GuestRow extends StatelessWidget {
