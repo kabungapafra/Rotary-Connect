@@ -75,8 +75,11 @@ class ClubEvent {
   // False once today's occurrence is within 15 minutes of its end time —
   // the Register/QR button hides. Always true without an end time.
   final bool registrationOpen;
+  // False once today's occurrence has fully ended — editing locks.
+  // Always true without an end time.
+  final bool editable;
   const ClubEvent(this.id, this.dow, this.name, this.meta, this.image,
-      this.registrationOpen);
+      this.registrationOpen, this.editable);
 }
 
 class GuestCheckInResult {
@@ -450,7 +453,8 @@ class ApiClient {
             e['name'] as String,
             e['meta'] as String,
             e['image'] as String?,
-            e['registration_open'] as bool? ?? true))
+            e['registration_open'] as bool? ?? true,
+            e['editable'] as bool? ?? true))
         .toList();
     return VisitorClubInfo(
       res['club_id'] as int,
@@ -564,7 +568,8 @@ class ApiClient {
       for (final e in list.cast<Map<String, dynamic>>())
         ClubEvent(e['id'] as int, e['dow'] as String, e['name'] as String,
             e['meta'] as String, e['image'] as String?,
-            e['registration_open'] as bool? ?? true),
+            e['registration_open'] as bool? ?? true,
+            e['editable'] as bool? ?? true),
     ];
   }
 
@@ -592,7 +597,8 @@ class ApiClient {
         res['name'] as String,
         res['meta'] as String,
         res['image'] as String?,
-        res['registration_open'] as bool? ?? true);
+        res['registration_open'] as bool? ?? true,
+        res['editable'] as bool? ?? true);
   }
 
   Future<void> deleteEvent(String token, int id) =>

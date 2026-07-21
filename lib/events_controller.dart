@@ -75,6 +75,7 @@ class EventsController extends ChangeNotifier {
                   name: e.name,
                   meta: e.meta,
                   registrationOpen: e.registrationOpen,
+                  editable: e.editable,
                   photo: e.image),
           ]);
         loaded = true;

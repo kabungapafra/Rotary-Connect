@@ -216,6 +216,9 @@ class EventItem {
   // False once today's occurrence is within 15 minutes of its end time —
   // the Register/QR button hides (mirrors the backend's gate).
   bool registrationOpen;
+  // False once today's occurrence has fully ended — editing locks
+  // (mirrors the backend's gate).
+  bool editable;
   // The saved banner's public URL (from the backend/R2), null until one is
   // uploaded. Distinct from [pendingPhotoBytes], which holds a freshly
   // picked-but-not-yet-saved photo on the editor's working copy.
@@ -231,6 +234,7 @@ class EventItem {
       this.endTime = '',
       this.venue = '',
       this.registrationOpen = true,
+      this.editable = true,
       this.photo});
 
   String get num => dayNums[dow] ?? '';
@@ -245,6 +249,7 @@ class EventItem {
       required String name,
       required String meta,
       bool registrationOpen = true,
+      bool editable = true,
       String? photo}) {
     final parts = meta.split(RegExp(r'[-–—·,]'));
     final head = parts.isNotEmpty ? parts[0].trim() : '';
@@ -269,6 +274,7 @@ class EventItem {
         endTime: endTime,
         venue: venue,
         registrationOpen: registrationOpen,
+        editable: editable,
         photo: photo);
   }
 
@@ -281,6 +287,7 @@ class EventItem {
       endTime: endTime,
       venue: venue,
       registrationOpen: registrationOpen,
+      editable: editable,
       photo: photo);
 }
 

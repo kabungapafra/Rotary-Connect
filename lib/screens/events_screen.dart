@@ -467,7 +467,10 @@ class _EventCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => state.openEditEvent(event),
+        // Locked once today's occurrence has fully ended — an event that
+        // already happened shouldn't have its name/time/venue rewritten
+        // after the fact (mirrors the backend's gate).
+        onTap: event.editable ? () => state.openEditEvent(event) : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -539,6 +542,20 @@ class _EventCard extends StatelessWidget {
                             style: TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 11)),
                       ),
+                    )
+                  else if (!event.editable)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: RCColors.chipBg,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text('ENDED',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: RCColors.textMuted)),
                     ),
                 ],
               ),

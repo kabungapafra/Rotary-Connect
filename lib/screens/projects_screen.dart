@@ -105,12 +105,13 @@ class _ProjectCard extends StatelessWidget {
     // Managers post progress updates (the common, repeated action) with a
     // tap on the card; the full details (name/area/desc/deadline) are
     // edited far less often, so they sit behind the small pencil icon
-    // instead of taking over the main tap target. Everyone else just
-    // views — the card already shows everything.
+    // instead of taking over the main tap target. Everyone else can still
+    // tap to see the description, progress %, and update history — the
+    // same sheet, just without the posting controls.
     final canEdit = state.canManageClub;
     return RCCard(
       padding: const EdgeInsets.all(16),
-      onTap: canEdit ? () => state.openProjectUpdate(project) : null,
+      onTap: () => state.openProjectUpdate(project),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -190,6 +191,45 @@ class _ProjectCard extends StatelessWidget {
           Text(project.desc,
               style: const TextStyle(
                   fontSize: 12, color: Color(0xFF4A5670), height: 1.5)),
+          if (project.areaOfFocus != null ||
+              project.beneficiariesReached > 0) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (project.areaOfFocus != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: RCColors.chipBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(project.areaOfFocus!,
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: RCColors.blue)),
+                  ),
+                if (project.beneficiariesReached > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: RCColors.chipBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                        '👥 ${project.beneficiariesReached} reached',
+                        style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4A5670))),
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,6 +280,7 @@ class _ProjectUpdateSheet extends StatelessWidget {
     final project =
         state.projects.where((p) => p.id == draft.projectId).firstOrNull;
     if (project == null) return const SizedBox.shrink();
+    final canEdit = state.canManageClub;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -280,8 +321,11 @@ class _ProjectUpdateSheet extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Add progress update',
-                                  style: TextStyle(
+                              Text(
+                                  canEdit
+                                      ? 'Add progress update'
+                                      : 'Project progress',
+                                  style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       color: RCColors.textDark)),
@@ -311,49 +355,77 @@ class _ProjectUpdateSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    _FieldLabel(
-                        'CURRENT PROGRESS · ${draft.pct}%${draft.pct >= 100 ? ' · Done' : ''}'),
-                    Slider(
-                      value: draft.pct.toDouble(),
-                      min: 0,
-                      max: 100,
-                      activeColor: RCColors.blue,
-                      onChanged: (v) => state.setProjectUpdatePct(v.round()),
-                    ),
-                    const SizedBox(height: 8),
-                    const _FieldLabel('WHAT HAVE YOU DONE?'),
-                    const SizedBox(height: 6),
-                    _EditorInput(
-                      hint: 'e.g. Drilling rig arrived on site.',
-                      value: draft.note,
-                      onChanged: state.setProjectUpdateNote,
-                      maxLines: 3,
-                    ),
-                    if (draft.error != null) ...[
-                      const SizedBox(height: 10),
-                      Text(draft.error!,
-                          style:
-                              const TextStyle(fontSize: 12, color: RCColors.red)),
+                    if (project.desc.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      const _FieldLabel('DESCRIPTION'),
+                      const SizedBox(height: 6),
+                      Text(project.desc,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: RCColors.textDark,
+                              height: 1.4)),
                     ],
                     const SizedBox(height: 14),
-                    PressableScale(
-                      child: ElevatedButton(
-                        onPressed:
-                            draft.saving ? null : state.submitProjectUpdate,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: RCColors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.all(13),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        child: Text(draft.saving ? 'Posting…' : 'Post update',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 14)),
+                    if (canEdit) ...[
+                      _FieldLabel(
+                          'CURRENT PROGRESS · ${draft.pct}%${draft.pct >= 100 ? ' · Done' : ''}'),
+                      Slider(
+                        value: draft.pct.toDouble(),
+                        min: 0,
+                        max: 100,
+                        activeColor: RCColors.blue,
+                        onChanged: (v) => state.setProjectUpdatePct(v.round()),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      const _FieldLabel('WHAT HAVE YOU DONE?'),
+                      const SizedBox(height: 6),
+                      _EditorInput(
+                        hint: 'e.g. Drilling rig arrived on site.',
+                        value: draft.note,
+                        onChanged: state.setProjectUpdateNote,
+                        maxLines: 3,
+                      ),
+                      if (draft.error != null) ...[
+                        const SizedBox(height: 10),
+                        Text(draft.error!,
+                            style: const TextStyle(
+                                fontSize: 12, color: RCColors.red)),
+                      ],
+                      const SizedBox(height: 14),
+                      PressableScale(
+                        child: ElevatedButton(
+                          onPressed:
+                              draft.saving ? null : state.submitProjectUpdate,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: RCColors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.all(13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                              draft.saving ? 'Posting…' : 'Post update',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 14)),
+                        ),
+                      ),
+                    ] else ...[
+                      _FieldLabel(
+                          'PROGRESS · ${project.pct}%${project.isDone ? ' · Done' : ''}'),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: project.pct / 100,
+                          minHeight: 8,
+                          backgroundColor: RCColors.divider,
+                          valueColor: AlwaysStoppedAnimation(project.isDone
+                              ? RCColors.green
+                              : RCColors.blue),
+                        ),
+                      ),
+                    ],
                     if (project.updates.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       const _FieldLabel('PROGRESS HISTORY'),
