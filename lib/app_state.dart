@@ -394,6 +394,8 @@ class AppState extends ChangeNotifier {
     'President-Elect',
     'Secretary',
     'Immediate Past President',
+    'Treasurer',
+    'Board Director',
   };
   bool get canGenerateEventQr =>
       _eventRegistrationRoles.contains(currentMemberRole.trim());
