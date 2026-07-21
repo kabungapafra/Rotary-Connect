@@ -1064,8 +1064,10 @@ class ApiClient {
     return _reportFromJson(res);
   }
 
-  Future<TodaySummary> fetchToday() async {
-    final res = await _get('/checkin/today');
+  Future<TodaySummary> fetchToday({String? token}) async {
+    final res = token == null
+        ? await _get('/checkin/today')
+        : await _getAuthed('/checkin/today', token);
     final members = (res['members'] as List)
         .map((m) => TodayCheckedInMember(
               m['name'] as String,

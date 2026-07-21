@@ -741,7 +741,7 @@ class AppState extends ChangeNotifier {
   Future<void> loadToday() async {
     _update(() => todayLoading = true);
     try {
-      final summary = await _api.fetchToday();
+      final summary = await _api.fetchToday(token: authToken);
       _update(() {
         todayMeetingName = summary.meetingName;
         todayCheckedInCount = summary.memberCount;
