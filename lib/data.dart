@@ -36,14 +36,21 @@ List<String> clubPositions(String clubType) => [
     ];
 
 class Member {
+  final int id;
   final String name;
   final String role;
   final bool isBoard;
+  final String status; // active | suspended | terminated
   final String email;
   final String phone;
   final String dob;
-  const Member(this.name, this.role, this.isBoard,
-      {this.email = '', this.phone = '', this.dob = ''});
+  final String? terminatedAt;
+  const Member(this.id, this.name, this.role, this.isBoard,
+      {this.status = 'active',
+      this.email = '',
+      this.phone = '',
+      this.dob = '',
+      this.terminatedAt});
 
   /// "phone · email", omitting whichever is empty — shown under the role.
   String get contact => [phone, email].where((s) => s.isNotEmpty).join(' · ');
@@ -63,6 +70,12 @@ class Project {
   String? photo;
   Uint8List? pendingPhotoBytes;
   bool photoRemoved = false;
+  // Report-only fields — one of Rotary's 7 official areas of focus (see
+  // rotaryAreasOfFocus in api_client.dart), or null ("Uncategorized" in
+  // reports); separate from the free-text [area] above.
+  String? areaOfFocus;
+  int hoursVolunteered;
+  int beneficiariesReached;
   Project({
     required this.id,
     required this.name,
@@ -72,6 +85,9 @@ class Project {
     required this.desc,
     required this.deadline,
     this.photo,
+    this.areaOfFocus,
+    this.hoursVolunteered = 0,
+    this.beneficiariesReached = 0,
   });
 
   String get pctLabel => '$pct%';
@@ -85,7 +101,10 @@ class Project {
       pct: pct,
       desc: desc,
       deadline: deadline,
-      photo: photo);
+      photo: photo,
+      areaOfFocus: areaOfFocus,
+      hoursVolunteered: hoursVolunteered,
+      beneficiariesReached: beneficiariesReached);
 }
 
 // ── calendar helpers (real current week, not a fixed demo week) ─────────

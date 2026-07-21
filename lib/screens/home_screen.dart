@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
                     _TreasuryCard(state: state),
                     const SizedBox(height: 20),
                   ],
-                  if (state.isSecretary) ...[
+                  if (state.isSecretary || state.isPresident) ...[
                     _SecretaryCard(state: state),
                     const SizedBox(height: 20),
                   ],
@@ -707,12 +707,15 @@ class _SecretaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Secretary workspace',
-                        style: TextStyle(
+                    Text(state.isSecretary ? 'Secretary workspace' : 'Club reports',
+                        style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
-                    Text('Minutes, club history & reports',
+                    Text(
+                        state.isSecretary
+                            ? 'Minutes, club history & reports'
+                            : 'Monthly & annual reports',
                         style:
                             TextStyle(fontSize: 11, color: RCColors.blueMuted)),
                   ],

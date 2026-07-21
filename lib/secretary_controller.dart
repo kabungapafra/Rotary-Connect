@@ -31,7 +31,8 @@ class MilestoneDraft {
 class SecretaryController extends ChangeNotifier {
   final ApiClient _api;
   final String? Function() _getToken;
-  SecretaryController(this._api, this._getToken);
+  final bool Function() _isSecretary;
+  SecretaryController(this._api, this._getToken, this._isSecretary);
 
   List<MinuteInfo> minutes = [];
   List<MilestoneInfo> milestones = [];
@@ -90,19 +91,24 @@ class SecretaryController extends ChangeNotifier {
     if (token == null) return;
     _update(() => loading = true);
     try {
+      // Documents are the Secretary's alone (GET 403s for anyone else) —
+      // skip that call entirely for a President, rather than let one
+      // guaranteed 403 sink the whole Future.wait and leave them with no
+      // reports either.
+      final isSecretary = _isSecretary();
       final results = await Future.wait([
         _api.fetchMinutes(token),
         _api.fetchMilestones(token),
         _api.fetchMonthlyReport(token),
         _api.fetchAnnualReport(token),
-        _api.fetchClubDocuments(token),
+        if (isSecretary) _api.fetchClubDocuments(token),
       ]);
       _update(() {
         minutes = results[0] as List<MinuteInfo>;
         milestones = results[1] as List<MilestoneInfo>;
         monthlyReport = results[2] as ReportInfo;
         annualReport = results[3] as ReportInfo;
-        clubDocuments = results[4] as List<ClubDocumentInfo>;
+        if (isSecretary) clubDocuments = results[4] as List<ClubDocumentInfo>;
         loaded = true;
         loading = false;
       });

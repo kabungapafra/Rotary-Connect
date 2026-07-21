@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../api_client.dart';
 import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
@@ -77,7 +78,8 @@ class MembersScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('${all.length} active · RY 2026/27',
+                  Text(
+                      '${all.where((m) => m.status == 'active').length} active · RY 2026/27',
                       style: TextStyle(
                           color: Colors.white.withValues(alpha: .8),
                           fontSize: 12)),
@@ -208,6 +210,41 @@ class _MemberProfileSheet extends StatelessWidget {
   final AppState state;
   const _MemberProfileSheet({required this.state});
 
+  Future<void> _setStatus(BuildContext context, Member m, String status) async {
+    try {
+      await state.setMemberStatus(m.id, status);
+    } on ApiException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  Future<void> _endMembership(BuildContext context, Member m) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End membership?'),
+        content: Text(
+            '${m.name} will be marked terminated and can no longer sign in. '
+            'This can be undone from here later.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('End membership',
+                  style: TextStyle(color: RCColors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await _setStatus(context, m, 'terminated');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = state.memberProfile!;
@@ -264,6 +301,20 @@ class _MemberProfileSheet extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (m.status == 'terminated')
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                                color: RCColors.red.withValues(alpha: .12),
+                                borderRadius: BorderRadius.circular(999)),
+                            child: const Text('TERMINATED',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: RCColors.red)),
+                          ),
                         if (m.isBoard)
                           Container(
                             margin: const EdgeInsets.only(right: 8),
@@ -324,6 +375,34 @@ class _MemberProfileSheet extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (state.canManageClub && m.id != 0) ...[
+                      const SizedBox(height: 16),
+                      PressableScale(
+                        child: ElevatedButton(
+                          onPressed: () => m.status == 'terminated'
+                              ? _setStatus(context, m, 'active')
+                              : _endMembership(context, m),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: m.status == 'terminated'
+                                ? RCColors.blue
+                                : RCColors.chipBg,
+                            foregroundColor: m.status == 'terminated'
+                                ? Colors.white
+                                : RCColors.red,
+                            padding: const EdgeInsets.all(13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                              m.status == 'terminated'
+                                  ? 'Reactivate membership'
+                                  : 'End membership',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

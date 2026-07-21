@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../api_client.dart';
 import '../app_state.dart';
 import '../data.dart';
 import '../theme.dart';
@@ -375,6 +376,58 @@ class _ProjectEditorSheet extends StatelessWidget {
                       onChanged: state.setProjectArea,
                     ),
                     const SizedBox(height: 14),
+                    const _FieldLabel('AREA OF FOCUS (FOR DISTRICT REPORTS)'),
+                    const SizedBox(height: 6),
+                    _AreaOfFocusDropdown(
+                      value: ed.areaOfFocus,
+                      onChanged: state.setProjectAreaOfFocus,
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _FieldLabel('VOLUNTEER HOURS'),
+                              const SizedBox(height: 6),
+                              _EditorInput(
+                                hint: '0',
+                                value: ed.hoursVolunteered == 0
+                                    ? ''
+                                    : '${ed.hoursVolunteered}',
+                                keyboardType: TextInputType.number,
+                                onChanged: (v) => state
+                                    .setProjectHoursVolunteered(
+                                        int.tryParse(v) ?? 0),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _FieldLabel('BENEFICIARIES REACHED'),
+                              const SizedBox(height: 6),
+                              _EditorInput(
+                                hint: '0',
+                                value: ed.beneficiariesReached == 0
+                                    ? ''
+                                    : '${ed.beneficiariesReached}',
+                                keyboardType: TextInputType.number,
+                                onChanged: (v) => state
+                                    .setProjectBeneficiariesReached(
+                                        int.tryParse(v) ?? 0),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     const _FieldLabel('DESCRIPTION'),
                     const SizedBox(height: 6),
                     _EditorInput(
@@ -496,6 +549,7 @@ class _EditorInput extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final IconData? icon;
+  final TextInputType? keyboardType;
   const _EditorInput(
       {required this.hint,
       required this.value,
@@ -503,7 +557,8 @@ class _EditorInput extends StatelessWidget {
       this.maxLines = 1,
       this.readOnly = false,
       this.onTap,
-      this.icon});
+      this.icon,
+      this.keyboardType});
 
   @override
   Widget build(BuildContext context) {
@@ -519,6 +574,7 @@ class _EditorInput extends StatelessWidget {
         maxLines: maxLines,
         readOnly: readOnly,
         onTap: onTap,
+        keyboardType: keyboardType,
         style: const TextStyle(color: RCColors.textDark, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
@@ -534,5 +590,44 @@ class _EditorInput extends StatelessWidget {
         ),
     ),
            );
+  }
+}
+
+/// Rotary's 7 official areas of focus, for District-report categorization
+/// — separate from the free-text "focus area & location" field above.
+/// Optional: left unset, a project shows as "Uncategorized" in reports
+/// rather than forcing a guess.
+class _AreaOfFocusDropdown extends StatelessWidget {
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  const _AreaOfFocusDropdown({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        );
+    return DropdownButtonFormField<String?>(
+      initialValue: value,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down, color: RCColors.textMuted),
+      style: const TextStyle(color: RCColors.textDark, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: 'Uncategorized',
+        hintStyle: const TextStyle(color: Color(0xFF8B96A8)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: border(const Color(0xFFD4DBE8)),
+        enabledBorder: border(const Color(0xFFD4DBE8)),
+        focusedBorder: border(RCColors.blue),
+      ),
+      items: [
+        const DropdownMenuItem(value: null, child: Text('Uncategorized')),
+        for (final area in rotaryAreasOfFocus)
+          DropdownMenuItem(value: area, child: Text(area)),
+      ],
+      onChanged: onChanged,
+    );
   }
 }

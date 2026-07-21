@@ -62,8 +62,12 @@ class MembersController extends ChangeNotifier {
       _update(() {
         roster = [
           for (final m in list)
-            Member(m.name, m.role, m.isBoard,
-                email: m.email, phone: m.phone, dob: m.dob),
+            Member(m.id, m.name, m.role, m.isBoard,
+                status: m.status,
+                email: m.email,
+                phone: m.phone,
+                dob: m.dob,
+                terminatedAt: m.terminatedAt),
         ];
         loaded = true;
         loading = false;
@@ -145,6 +149,7 @@ class MembersController extends ChangeNotifier {
 
     _update(() {
       extraMembers.add(Member(
+        0, // not persisted to the backend — pre-login/demo-only entry
         m.name.trim(),
         m.role.trim().isEmpty ? 'Member' : m.role.trim(),
         m.isBoard,
@@ -159,4 +164,26 @@ class MembersController extends ChangeNotifier {
 
   void openMemberProfile(Member m) => _update(() => profile = m);
   void closeMemberProfile() => _update(() => profile = null);
+
+  /// President/Secretary only: end (`'terminated'`) or restore
+  /// (`'active'`) a member's membership. Reloads the roster and, if the
+  /// profile sheet is open on this same member, refreshes it in place
+  /// rather than leaving it showing stale status. Lets [ApiException]
+  /// propagate — the caller shows it.
+  Future<void> setMemberStatus(int memberId, String status) async {
+    final token = _getToken();
+    if (token == null) return;
+    await _api.updateMemberStatus(token, memberId, status);
+    await load();
+    if (profile?.id == memberId) {
+      Member? updated;
+      for (final m in roster) {
+        if (m.id == memberId) {
+          updated = m;
+          break;
+        }
+      }
+      if (updated != null) _update(() => profile = updated);
+    }
+  }
 }

@@ -47,6 +47,7 @@ class AddedClubMember {
 }
 
 class ClubMemberInfo {
+  final int id;
   final String name;
   final String role;
   final bool isBoard;
@@ -54,8 +55,9 @@ class ClubMemberInfo {
   final String email;
   final String phone;
   final String dob;
-  const ClubMemberInfo(this.name, this.role, this.isBoard, this.status,
-      this.email, this.phone, this.dob);
+  final String? terminatedAt;
+  const ClubMemberInfo(this.id, this.name, this.role, this.isBoard,
+      this.status, this.email, this.phone, this.dob, this.terminatedAt);
 }
 
 class ClubEvent {
@@ -110,6 +112,19 @@ class NextMeeting {
       this.dateIso, this.ongoing);
 }
 
+// Rotary International's 7 official areas of focus — mirrors the
+// backend's schemas.ROTARY_AREAS_OF_FOCUS, used for the project editor's
+// area-of-focus dropdown and validated again server-side.
+const List<String> rotaryAreasOfFocus = [
+  'Peacebuilding and Conflict Prevention',
+  'Disease Prevention and Treatment',
+  'Water, Sanitation, and Hygiene',
+  'Maternal and Child Health',
+  'Basic Education and Literacy',
+  'Community Economic Development',
+  'Environment',
+];
+
 class ClubProject {
   final int id;
   final String name;
@@ -118,8 +133,20 @@ class ClubProject {
   final String desc;
   final String deadline;
   final String? image; // public R2 URL, null until a photo is uploaded
-  const ClubProject(this.id, this.name, this.area, this.pct, this.desc,
-      this.deadline, this.image);
+  final String? areaOfFocus;
+  final int hoursVolunteered;
+  final int beneficiariesReached;
+  const ClubProject(
+      this.id,
+      this.name,
+      this.area,
+      this.pct,
+      this.desc,
+      this.deadline,
+      this.image,
+      this.areaOfFocus,
+      this.hoursVolunteered,
+      this.beneficiariesReached);
 }
 
 class MeetingAttendee {
@@ -408,6 +435,7 @@ class ApiClient {
     return [
       for (final m in list.cast<Map<String, dynamic>>())
         ClubMemberInfo(
+          m['id'] as int,
           m['name'] as String,
           m['role'] as String,
           m['is_board'] as bool,
@@ -415,8 +443,16 @@ class ApiClient {
           m['email'] as String,
           m['phone'] as String,
           m['dob'] as String,
+          m['terminated_at'] as String?,
         ),
     ];
+  }
+
+  /// President/Secretary only: end (or restore) a member's membership.
+  /// `status` is 'active' | 'suspended' | 'terminated'.
+  Future<void> updateMemberStatus(
+      String token, int memberId, String status) async {
+    await _patch('/club/members/$memberId', {'status': status}, token: token);
   }
 
   /// Registers (or re-registers) this device's FCM token against the
@@ -505,13 +541,17 @@ class ApiClient {
             p['pct'] as int,
             p['desc'] as String,
             p['deadline'] as String,
-            p['image'] as String?),
+            p['image'] as String?,
+            p['area_of_focus'] as String?,
+            p['hours_volunteered'] as int? ?? 0,
+            p['beneficiaries_reached'] as int? ?? 0),
     ];
   }
 
   /// [image] is a "data:image/...;base64,..." URL to set/replace the
   /// photo, the sentinel "__remove__" to clear it, or null to leave it
-  /// as-is.
+  /// as-is. [areaOfFocus] must be one of [rotaryAreasOfFocus] or null
+  /// ("Uncategorized" in reports).
   Future<ClubProject> saveProject(String token,
       {int? id,
       required String name,
@@ -519,7 +559,10 @@ class ApiClient {
       required int pct,
       required String desc,
       required String deadline,
-      String? image}) async {
+      String? image,
+      String? areaOfFocus,
+      int hoursVolunteered = 0,
+      int beneficiariesReached = 0}) async {
     final body = {
       'name': name,
       'area': area,
@@ -527,6 +570,9 @@ class ApiClient {
       'desc': desc,
       'deadline': deadline,
       if (image != null) 'image': image,
+      'area_of_focus': areaOfFocus,
+      'hours_volunteered': hoursVolunteered,
+      'beneficiaries_reached': beneficiariesReached,
     };
     final res = id == null
         ? await _post('/club/projects', body, token: token)
@@ -538,7 +584,10 @@ class ApiClient {
         res['pct'] as int,
         res['desc'] as String,
         res['deadline'] as String,
-        res['image'] as String?);
+        res['image'] as String?,
+        res['area_of_focus'] as String?,
+        res['hours_volunteered'] as int? ?? 0,
+        res['beneficiaries_reached'] as int? ?? 0);
   }
 
   Future<void> deleteProject(String token, int id) =>

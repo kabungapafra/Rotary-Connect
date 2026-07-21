@@ -46,7 +46,8 @@ class AppState extends ChangeNotifier {
   late final TreasuryController treasury = TreasuryController(_api, () => authToken)
     ..addListener(notifyListeners);
   late final SecretaryController secretary =
-      SecretaryController(_api, () => authToken)..addListener(notifyListeners);
+      SecretaryController(_api, () => authToken, () => isSecretary)
+        ..addListener(notifyListeners);
   late final GalleryController gallery =
       GalleryController(_api, () => authToken)..addListener(notifyListeners);
   late final PollController polls = PollController(_api, () => authToken)
@@ -555,6 +556,9 @@ class AppState extends ChangeNotifier {
                 desc: p.desc,
                 deadline: p.deadline,
                 photo: p.image,
+                areaOfFocus: p.areaOfFocus,
+                hoursVolunteered: p.hoursVolunteered,
+                beneficiariesReached: p.beneficiariesReached,
               ),
           ]);
         projectsLoaded = true;
@@ -764,6 +768,14 @@ class AppState extends ChangeNotifier {
 
   void goSecretary() {
     go('secretary');
+    // The President can view/export reports here too, but Minutes/Docs
+    // stay Secretary-only (their mutation endpoints 403 for anyone else)
+    // — never land a non-Secretary viewer on a tab they can't see.
+    if (!isSecretary &&
+        secretary.tab != 'monthly' &&
+        secretary.tab != 'annual') {
+      secretary.pickTab('monthly');
+    }
     if (authToken != null && !secretaryLoaded && !secretaryLoading) {
       loadSecretaryWorkspace();
     }
@@ -1283,6 +1295,8 @@ class AppState extends ChangeNotifier {
   Future<AddedClubMember?> saveMember() => membersController.saveMember();
   void openMemberProfile(Member m) => membersController.openMemberProfile(m);
   void closeMemberProfile() => membersController.closeMemberProfile();
+  Future<void> setMemberStatus(int memberId, String status) =>
+      membersController.setMemberStatus(memberId, status);
 
   // ── projects ───────────────────────────────────────────────────────────
   void openAddProject() => _update(() {
@@ -1310,10 +1324,16 @@ class AppState extends ChangeNotifier {
       });
 
   void setProjectArea(String v) => _update(() => projectEditor?.area = v);
+  void setProjectAreaOfFocus(String? v) =>
+      _update(() => projectEditor?.areaOfFocus = v);
   void setProjectDesc(String v) => _update(() => projectEditor?.desc = v);
   void setProjectDeadline(String v) =>
       _update(() => projectEditor?.deadline = v);
   void setProjectPct(int v) => _update(() => projectEditor?.pct = v);
+  void setProjectHoursVolunteered(int v) =>
+      _update(() => projectEditor?.hoursVolunteered = v);
+  void setProjectBeneficiariesReached(int v) =>
+      _update(() => projectEditor?.beneficiariesReached = v);
   void setProjectPhoto(Uint8List bytes) => _update(() {
         projectEditor?.pendingPhotoBytes = bytes;
         projectEditor?.photoRemoved = false;
@@ -1362,7 +1382,10 @@ class AppState extends ChangeNotifier {
           pct: p.pct,
           desc: desc,
           deadline: deadline,
-          image: image);
+          image: image,
+          areaOfFocus: p.areaOfFocus,
+          hoursVolunteered: p.hoursVolunteered,
+          beneficiariesReached: p.beneficiariesReached);
       _update(() => projectEditor = null);
       await loadProjects();
     } on ApiException {

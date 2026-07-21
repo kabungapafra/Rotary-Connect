@@ -93,8 +93,11 @@ class SecretaryScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Secretary workspace',
-                            style: TextStyle(
+                        Text(
+                            state.isSecretary
+                                ? 'Secretary workspace'
+                                : 'Club reports',
+                            style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800)),
@@ -113,12 +116,21 @@ class SecretaryScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        for (final t in const [
-                          ['minutes', 'Minutes'],
-                          ['monthly', 'Monthly'],
-                          ['annual', 'Annual'],
-                          ['docs', 'Docs'],
-                        ])
+                        // Minutes/Docs are the Secretary's alone (their
+                        // mutation endpoints 403 for anyone else) — a
+                        // President viewing this screen only ever sees the
+                        // reports they can actually act on.
+                        for (final t in (state.isSecretary
+                            ? const [
+                                ['minutes', 'Minutes'],
+                                ['monthly', 'Monthly'],
+                                ['annual', 'Annual'],
+                                ['docs', 'Docs'],
+                              ]
+                            : const [
+                                ['monthly', 'Monthly'],
+                                ['annual', 'Annual'],
+                              ]))
                           Expanded(
                             child: _SecTab(
                               label: t[1],
