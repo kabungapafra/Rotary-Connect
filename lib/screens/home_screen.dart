@@ -523,7 +523,17 @@ class _Header extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (state.nextMeeting != null) ...[
+                // No apology option once checked in to the meeting shown —
+                // "can't attend" from someone already in the room. Only for
+                // today's meeting: an apology for a FUTURE meeting is still
+                // fine after today's check-in.
+                if (state.nextMeeting != null &&
+                    !(state.checkedInToday &&
+                        state.nextMeeting!.dateIso ==
+                            DateTime.now()
+                                .toLocal()
+                                .toIso8601String()
+                                .substring(0, 10))) ...[
                   const SizedBox(height: 10),
                   Center(
                     child: GestureDetector(
