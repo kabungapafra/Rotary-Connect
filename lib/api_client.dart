@@ -24,7 +24,11 @@ class LoggedInMember {
   final String role;
   final String phone;
   final bool isBoard;
-  const LoggedInMember(this.name, this.role, this.phone, this.isBoard);
+  // True right after the Rotary-year leadership sweep promotes this member
+  // to President — prompts the "assign board positions" banner.
+  final bool needsBoardSetup;
+  const LoggedInMember(
+      this.name, this.role, this.phone, this.isBoard, this.needsBoardSetup);
 }
 
 class LoginResult {
@@ -56,8 +60,10 @@ class ClubMemberInfo {
   final String phone;
   final String dob;
   final String? terminatedAt;
+  final bool needsBoardSetup;
   const ClubMemberInfo(this.id, this.name, this.role, this.isBoard,
-      this.status, this.email, this.phone, this.dob, this.terminatedAt);
+      this.status, this.email, this.phone, this.dob, this.terminatedAt,
+      {this.needsBoardSetup = false});
 }
 
 class ClubEvent {
@@ -363,7 +369,8 @@ class ApiClient {
           member['name'] as String,
           member['role'] as String,
           member['phone'] as String? ?? '',
-          member['is_board'] as bool? ?? false),
+          member['is_board'] as bool? ?? false,
+          member['needs_board_setup'] as bool? ?? false),
       res['club_id'] as int,
       res['club_name'] as String? ?? 'Rotary Club of Mbalwa',
       res['club_logo'] as String?,
@@ -444,6 +451,7 @@ class ApiClient {
           m['phone'] as String,
           m['dob'] as String,
           m['terminated_at'] as String?,
+          needsBoardSetup: m['needs_board_setup'] as bool? ?? false,
         ),
     ];
   }
@@ -453,6 +461,12 @@ class ApiClient {
   Future<void> updateMemberStatus(
       String token, int memberId, String status) async {
     await _patch('/club/members/$memberId', {'status': status}, token: token);
+  }
+
+  /// Dismisses the "assign board positions" prompt shown to whoever the
+  /// leadership sweep just promoted to President.
+  Future<void> dismissBoardSetup(String token) async {
+    await _post('/club/members/dismiss-board-setup', null, token: token);
   }
 
   /// Registers (or re-registers) this device's FCM token against the

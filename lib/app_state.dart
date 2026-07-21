@@ -104,6 +104,7 @@ class AppState extends ChangeNotifier {
       currentMemberRole = prefs.getString('member_role') ?? '';
       currentMemberPhone = prefs.getString('member_phone') ?? '';
       currentMemberIsBoard = prefs.getBool('member_is_board') ?? false;
+      needsBoardSetup = prefs.getBool('needs_board_setup') ?? false;
       clubId = prefs.getInt('club_id');
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
@@ -132,6 +133,7 @@ class AppState extends ChangeNotifier {
     await prefs.setString('member_role', currentMemberRole);
     await prefs.setString('member_phone', currentMemberPhone);
     await prefs.setBool('member_is_board', currentMemberIsBoard);
+    await prefs.setBool('needs_board_setup', needsBoardSetup);
     final id = clubId;
     if (id != null) await prefs.setInt('club_id', id);
     await prefs.setString('club_name', clubName);
@@ -196,12 +198,14 @@ class AppState extends ChangeNotifier {
     await prefs.remove('member_role');
     await prefs.remove('member_phone');
     await prefs.remove('member_is_board');
+    await prefs.remove('needs_board_setup');
     _update(() {
       authToken = null;
       currentMemberName = '';
       currentMemberRole = '';
       currentMemberPhone = '';
       currentMemberIsBoard = false;
+      needsBoardSetup = false;
       _resetClubData();
       tab = 'splash';
     });
@@ -320,6 +324,11 @@ class AppState extends ChangeNotifier {
   String currentMemberRole = '';
   String currentMemberPhone = '';
   bool currentMemberIsBoard = false;
+  // True right after the July 1 leadership sweep promotes this member to
+  // President — shows the dismissible "assign board positions" banner.
+  // Refreshed from the roster (see loadClubMembers) as well as at login,
+  // so it self-heals even if the transition happens mid-session.
+  bool needsBoardSetup = false;
 
   // Branding for the logged-in member's club, provided by the backend at
   // login. Until then the app brands itself as "Rotary Connect". clubId
@@ -587,7 +596,41 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> loadClubMembers() => membersController.load();
+  Future<void> loadClubMembers() async {
+    await membersController.load();
+    // Self-heal from the fresh roster (matched by phone, since the app
+    // doesn't otherwise track its own member id) — catches a leadership
+    // transition that happened server-side while this session stayed
+    // logged in, not just what login returned at sign-in time.
+    final phone = currentMemberPhone.trim();
+    if (phone.isEmpty) return;
+    final matches = membersController.roster.where((m) => m.phone == phone);
+    if (matches.isEmpty) return;
+    final self = matches.first;
+    if (self.needsBoardSetup != needsBoardSetup ||
+        self.role != currentMemberRole ||
+        self.isBoard != currentMemberIsBoard) {
+      _update(() {
+        needsBoardSetup = self.needsBoardSetup;
+        currentMemberRole = self.role;
+        currentMemberIsBoard = self.isBoard;
+      });
+      unawaited(_persistSession());
+    }
+  }
+
+  Future<void> dismissBoardSetup() async {
+    final token = authToken;
+    if (token == null) return;
+    _update(() => needsBoardSetup = false);
+    unawaited(_persistSession());
+    try {
+      await _api.dismissBoardSetup(token);
+    } catch (_) {
+      // Best-effort — worst case the banner reappears next roster sync,
+      // which is a mild annoyance, not a correctness problem.
+    }
+  }
 
   // projects — real club data, loaded from the backend after login
   final List<Project> projects = [];
@@ -905,6 +948,7 @@ class AppState extends ChangeNotifier {
         currentMemberRole = result.member.role;
         currentMemberPhone = result.member.phone;
         currentMemberIsBoard = result.member.isBoard;
+        needsBoardSetup = result.member.needsBoardSetup;
         clubId = result.clubId;
         clubName = result.clubName;
         clubLogo = result.clubLogo;

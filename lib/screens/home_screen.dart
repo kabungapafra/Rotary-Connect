@@ -26,6 +26,10 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (state.needsBoardSetup) ...[
+                    _BoardSetupBanner(state: state),
+                    const SizedBox(height: 20),
+                  ],
                   _StatsCard(state: state),
                   const SizedBox(height: 20),
                   if (state.isTreasurer) ...[
@@ -612,6 +616,63 @@ class _Stat extends StatelessWidget {
                   color: valueColor ?? RCColors.blue)),
           Text(label,
               style: const TextStyle(fontSize: 11, color: RCColors.textMuted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _BoardSetupBanner extends StatelessWidget {
+  final AppState state;
+  const _BoardSetupBanner({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: RCColors.amberBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: RCColors.amber.withValues(alpha: 0.25)),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Your term as President has begun',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: RCColors.textDark)),
+                const SizedBox(height: 3),
+                const Text(
+                    'The board was cleared for the new year — assign positions and a President-Elect from Members.',
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        color: RCColors.textMuted,
+                        height: 1.35)),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: state.goMembers,
+                  child: const Text('Assign positions →',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: RCColors.amber)),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => state.dismissBoardSetup(),
+            icon: const Icon(Icons.close, size: 18, color: RCColors.textMuted),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            visualDensity: VisualDensity.compact,
+          ),
         ],
       ),
     );

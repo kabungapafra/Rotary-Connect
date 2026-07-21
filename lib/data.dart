@@ -45,12 +45,14 @@ class Member {
   final String phone;
   final String dob;
   final String? terminatedAt;
+  final bool needsBoardSetup;
   const Member(this.id, this.name, this.role, this.isBoard,
       {this.status = 'active',
       this.email = '',
       this.phone = '',
       this.dob = '',
-      this.terminatedAt});
+      this.terminatedAt,
+      this.needsBoardSetup = false});
 
   /// "phone · email", omitting whichever is empty — shown under the role.
   String get contact => [phone, email].where((s) => s.isNotEmpty).join(' · ');

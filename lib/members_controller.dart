@@ -67,7 +67,8 @@ class MembersController extends ChangeNotifier {
                 email: m.email,
                 phone: m.phone,
                 dob: m.dob,
-                terminatedAt: m.terminatedAt),
+                terminatedAt: m.terminatedAt,
+                needsBoardSetup: m.needsBoardSetup),
         ];
         loaded = true;
         loading = false;
