@@ -517,7 +517,10 @@ class _EventCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (state.canGenerateEventQr)
+                  // Hidden once today's occurrence is ending (15 min
+                  // before its end time) — registration is closed, so
+                  // there's nothing left to generate a QR for.
+                  if (state.canGenerateEventQr && event.registrationOpen)
                     PressableScale(
                       child: OutlinedButton(
                         onPressed: () => state.openQR(event),
@@ -722,22 +725,62 @@ class _EditorSheet extends StatelessWidget {
                       onChanged: state.setEditorTitle,
                     ),
                     const SizedBox(height: 14),
-                    const _FieldLabel('TIME'),
-                    const SizedBox(height: 6),
-                    _EditorInput(
-                      hint: 'e.g. 6:00 PM',
-                      value: ed.time,
-                      onChanged: state.setEditorTime,
-                      readOnly: true,
-                      icon: Icons.access_time,
-                      onTap: () async {
-                        final picked = await pickRCTime(context,
-                            initialTime:
-                                tryParseTimeOfDay(ed.time) ?? TimeOfDay.now());
-                        if (picked != null) {
-                          state.setEditorTime(formatTimeOfDay(picked));
-                        }
-                      },
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _FieldLabel('FROM'),
+                              const SizedBox(height: 6),
+                              _EditorInput(
+                                hint: 'e.g. 6:00 PM',
+                                value: ed.time,
+                                onChanged: state.setEditorTime,
+                                readOnly: true,
+                                icon: Icons.access_time,
+                                onTap: () async {
+                                  final picked = await pickRCTime(context,
+                                      initialTime: tryParseTimeOfDay(ed.time) ??
+                                          TimeOfDay.now());
+                                  if (picked != null) {
+                                    state.setEditorTime(
+                                        formatTimeOfDay(picked));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _FieldLabel('TO'),
+                              const SizedBox(height: 6),
+                              _EditorInput(
+                                hint: 'e.g. 8:00 PM',
+                                value: ed.endTime,
+                                onChanged: state.setEditorEndTime,
+                                readOnly: true,
+                                icon: Icons.access_time,
+                                onTap: () async {
+                                  final picked = await pickRCTime(context,
+                                      initialTime:
+                                          tryParseTimeOfDay(ed.endTime) ??
+                                              tryParseTimeOfDay(ed.time) ??
+                                              TimeOfDay.now());
+                                  if (picked != null) {
+                                    state.setEditorEndTime(
+                                        formatTimeOfDay(picked));
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
                     const _FieldLabel('VENUE'),

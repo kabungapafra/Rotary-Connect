@@ -72,7 +72,11 @@ class ClubEvent {
   final String name;
   final String meta;
   final String? image; // public R2 URL, null until a banner is uploaded
-  const ClubEvent(this.id, this.dow, this.name, this.meta, this.image);
+  // False once today's occurrence is within 15 minutes of its end time —
+  // the Register/QR button hides. Always true without an end time.
+  final bool registrationOpen;
+  const ClubEvent(this.id, this.dow, this.name, this.meta, this.image,
+      this.registrationOpen);
 }
 
 class GuestCheckInResult {
@@ -428,8 +432,13 @@ class ApiClient {
     final res = await _get('/checkin/club/$clubId');
     final events = (res['events'] as List<dynamic>)
         .map((e) => e as Map<String, dynamic>)
-        .map((e) => ClubEvent(e['id'] as int, e['dow'] as String,
-            e['name'] as String, e['meta'] as String, e['image'] as String?))
+        .map((e) => ClubEvent(
+            e['id'] as int,
+            e['dow'] as String,
+            e['name'] as String,
+            e['meta'] as String,
+            e['image'] as String?,
+            e['registration_open'] as bool? ?? true))
         .toList();
     return VisitorClubInfo(
       res['club_id'] as int,
@@ -542,7 +551,8 @@ class ApiClient {
     return [
       for (final e in list.cast<Map<String, dynamic>>())
         ClubEvent(e['id'] as int, e['dow'] as String, e['name'] as String,
-            e['meta'] as String, e['image'] as String?),
+            e['meta'] as String, e['image'] as String?,
+            e['registration_open'] as bool? ?? true),
     ];
   }
 
@@ -564,8 +574,13 @@ class ApiClient {
     final res = id == null
         ? await _post('/club/events', body, token: token)
         : await _patch('/club/events/$id', body, token: token);
-    return ClubEvent(res['id'] as int, res['dow'] as String,
-        res['name'] as String, res['meta'] as String, res['image'] as String?);
+    return ClubEvent(
+        res['id'] as int,
+        res['dow'] as String,
+        res['name'] as String,
+        res['meta'] as String,
+        res['image'] as String?,
+        res['registration_open'] as bool? ?? true);
   }
 
   Future<void> deleteEvent(String token, int id) =>

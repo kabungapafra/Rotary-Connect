@@ -178,14 +178,20 @@ class EventItem {
   final int id;
   String dow;
   String name;
-  // `meta` is the single "6:00 PM · Gardens Hall" string the backend
-  // stores and every list/card display already reads. `time`/`venue` only
-  // exist on the *editor's* working copy, so the Add Event sheet can offer
-  // two separate fields — they're combined back into `meta` on save (see
-  // AppState.setEditorTime/setEditorVenue and saveEvent).
+  // `meta` is the single "6:00 PM to 8:00 PM · Gardens Hall" string the
+  // backend stores and every list/card display already reads.
+  // `time`/`endTime`/`venue` only exist on the *editor's* working copy, so
+  // the Add Event sheet can offer separate fields — they're combined back
+  // into `meta` on save (see setEditorTime/setEditorEndTime/setEditorVenue
+  // and saveEvent). "to" joins the times on purpose: the dash is already
+  // the legacy time/venue separator ("6:00 PM - Hall").
   String meta;
   String time;
+  String endTime;
   String venue;
+  // False once today's occurrence is within 15 minutes of its end time —
+  // the Register/QR button hides (mirrors the backend's gate).
+  bool registrationOpen;
   // The saved banner's public URL (from the backend/R2), null until one is
   // uploaded. Distinct from [pendingPhotoBytes], which holds a freshly
   // picked-but-not-yet-saved photo on the editor's working copy.
@@ -198,24 +204,35 @@ class EventItem {
       required this.name,
       required this.meta,
       this.time = '',
+      this.endTime = '',
       this.venue = '',
+      this.registrationOpen = true,
       this.photo});
 
   String get num => dayNums[dow] ?? '';
 
-  /// Splits `meta` into (time, venue) for the editor fields — mirrors the
-  /// backend's parse_event_time/venue_from_meta so a re-opened event shows
-  /// the same split it was announced/reminded with.
+  /// Splits `meta` into (time, endTime, venue) for the editor fields —
+  /// mirrors the backend's parse_event_time/parse_event_end_time/
+  /// venue_from_meta so a re-opened event shows the same split it was
+  /// announced/reminded with.
   factory EventItem.fromMeta(
       {required int id,
       required String dow,
       required String name,
       required String meta,
+      bool registrationOpen = true,
       String? photo}) {
     final parts = meta.split(RegExp(r'[-–—·,]'));
-    final looksLikeTime = parts.isNotEmpty &&
-        RegExp(r'^\d{1,2}(:\d{2})?\s*([AaPp][Mm])?$').hasMatch(parts[0].trim());
-    final time = parts.length >= 2 && looksLikeTime ? parts[0].trim() : '';
+    final head = parts.isNotEmpty ? parts[0].trim() : '';
+    final range = head.split(RegExp(r'\s+to\s+', caseSensitive: false));
+    final timeRe = RegExp(r'^\d{1,2}(:\d{2})?\s*([AaPp][Mm])?$');
+    final looksLikeTime = timeRe.hasMatch(range[0].trim());
+    final hasEnd = looksLikeTime &&
+        range.length >= 2 &&
+        timeRe.hasMatch(range[1].trim());
+    final time = parts.length >= 2 && looksLikeTime ? range[0].trim() : '';
+    final endTime =
+        parts.length >= 2 && hasEnd ? range[1].trim() : '';
     final venue = parts.length >= 2 && looksLikeTime
         ? parts.sublist(1).join(',').trim()
         : meta.trim();
@@ -225,7 +242,9 @@ class EventItem {
         name: name,
         meta: meta,
         time: time,
+        endTime: endTime,
         venue: venue,
+        registrationOpen: registrationOpen,
         photo: photo);
   }
 
@@ -235,7 +254,9 @@ class EventItem {
       name: name,
       meta: meta,
       time: time,
+      endTime: endTime,
       venue: venue,
+      registrationOpen: registrationOpen,
       photo: photo);
 }
 

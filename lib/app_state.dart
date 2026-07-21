@@ -1562,6 +1562,7 @@ class AppState extends ChangeNotifier {
   void openEditEvent(EventItem e) => eventsController.openEditEvent(e);
   void setEditorTitle(String v) => eventsController.setEditorTitle(v);
   void setEditorTime(String v) => eventsController.setEditorTime(v);
+  void setEditorEndTime(String v) => eventsController.setEditorEndTime(v);
   void setEditorVenue(String v) => eventsController.setEditorVenue(v);
   void setEditorDay(String dow) => eventsController.setEditorDay(dow);
   void setEditorPhoto(Uint8List bytes) => eventsController.setEditorPhoto(bytes);

@@ -69,11 +69,12 @@ class EventsController extends ChangeNotifier {
           ..clear()
           ..addAll([
             for (final e in list)
-              EventItem(
+              EventItem.fromMeta(
                   id: e.id,
                   dow: e.dow,
                   name: e.name,
                   meta: e.meta,
+                  registrationOpen: e.registrationOpen,
                   photo: e.image),
           ]);
         loaded = true;
@@ -227,6 +228,7 @@ class EventsController extends ChangeNotifier {
 
   void setEditorTitle(String v) => _update(() => editor?.name = v);
   void setEditorTime(String v) => _update(() => editor?.time = v);
+  void setEditorEndTime(String v) => _update(() => editor?.endTime = v);
   void setEditorVenue(String v) => _update(() => editor?.venue = v);
   void setEditorDay(String dow) => _update(() => editor?.dow = dow);
   void setEditorPhoto(Uint8List bytes) => _update(() {
@@ -246,11 +248,14 @@ class EventsController extends ChangeNotifier {
     final token = _getToken();
     if (cur == null || cur.name.trim().isEmpty || token == null) return;
     // The backend (and every list/card display) still reads one "TIME ·
-    // VENUE" string — the editor just offers it as two fields and joins
-    // them back together here.
-    final meta = [cur.time.trim(), cur.venue.trim()]
-        .where((s) => s.isNotEmpty)
-        .join(' · ');
+    // VENUE" string — the editor just offers separate fields and joins
+    // them back together here. Times join with "to" ("6:00 PM to 8:00
+    // PM"), never a dash: the dash is the legacy time/venue separator.
+    final timePart = cur.endTime.trim().isEmpty
+        ? cur.time.trim()
+        : '${cur.time.trim()} to ${cur.endTime.trim()}';
+    final meta =
+        [timePart, cur.venue.trim()].where((s) => s.isNotEmpty).join(' · ');
     // null leaves the banner untouched; a data URL sets/replaces it; the
     // "__remove__" sentinel clears it.
     final String? image = cur.pendingPhotoBytes != null
