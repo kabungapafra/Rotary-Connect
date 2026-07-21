@@ -690,7 +690,11 @@ class AppState extends ChangeNotifier {
       loadSummary();
       loadActivePoll();
       if (!galleryLoaded && !galleryLoading) loadGallery();
-      if (!nextMeetingLoaded && !nextMeetingLoading) loadNextMeeting();
+      // Unlike gallery (static until someone uploads), the next meeting is
+      // time-sensitive — its check-in window closes and the "next" one
+      // rolls over to next week while the session is still open, so this
+      // always refetches rather than trusting a stale cached value.
+      if (!nextMeetingLoading) loadNextMeeting();
     }
   }
 
