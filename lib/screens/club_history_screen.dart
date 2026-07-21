@@ -16,7 +16,8 @@ const _milestoneCategories = [
 ];
 
 /// The club's history timeline — open to every member; only the
-/// Secretary can add or remove entries.
+/// President, Immediate Past President, and Secretary can add or remove
+/// entries.
 class ClubHistoryScreen extends StatelessWidget {
   final AppState state;
   const ClubHistoryScreen({super.key, required this.state});
@@ -57,9 +58,11 @@ class ClubHistoryScreen extends StatelessWidget {
                 children: [
                   RCSectionHeader(
                     title: 'Milestones',
-                    actionLabel: state.isSecretary ? '+ Add entry' : null,
-                    onAction:
-                        state.isSecretary ? state.openMilestoneEditor : null,
+                    actionLabel:
+                        state.canEditClubHistory ? '+ Add entry' : null,
+                    onAction: state.canEditClubHistory
+                        ? state.openMilestoneEditor
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -101,7 +104,7 @@ class ClubHistoryScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _MilestoneCard(
                           milestone: m,
-                          canDelete: state.isSecretary,
+                          canDelete: state.canEditClubHistory,
                           onDelete: () => state.deleteMilestone(m.id),
                         ),
                       ),

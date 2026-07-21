@@ -409,6 +409,19 @@ class AppState extends ChangeNotifier {
   bool get canGenerateEventQr =>
       _eventRegistrationRoles.contains(currentMemberRole.trim());
 
+  /// Club history (milestones) is normally the Secretary's alone to edit,
+  /// but the President and Immediate Past President — who'd know the
+  /// club's own history best — can too. Matches the backend's
+  /// `HISTORY_EDITOR_ROLES` gate.
+  static const Set<String> _historyEditorRoles = {
+    'Club President',
+    'President',
+    'Immediate Past President',
+    'Secretary',
+  };
+  bool get canEditClubHistory =>
+      _historyEditorRoles.contains(currentMemberRole.trim());
+
   /// Creating and resolving club votes is limited to the President and
   /// Secretary — plain board members can't. Matches the backend's
   /// `_require_manager` gate in polls.py.

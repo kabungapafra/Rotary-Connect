@@ -910,6 +910,14 @@ class _RoleDropdown extends StatelessWidget {
         focusedBorder: border(RCColors.blue),
       ),
       items: [
+        // An existing member can hold a role outside the standard list —
+        // e.g. "Club President", the auto-created title at club creation,
+        // isn't itself one of the Add Member dropdown options ("President"
+        // is). Without this, editing that member crashes: a
+        // DropdownButtonFormField requires its value to match exactly one
+        // item.
+        if (value.isNotEmpty && !clubPositions(clubType).contains(value))
+          DropdownMenuItem(value: value, child: Text(value)),
         for (final position in clubPositions(clubType))
           DropdownMenuItem(value: position, child: Text(position)),
       ],

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -825,51 +826,110 @@ class _QRSheet extends StatelessWidget {
 
   // Embeds the backend's own QR PNG (decoded from its data URL) rather
   // than rendering a second, separate QR locally — one source of truth
-  // for the image, matching what's shown on screen.
-  Future<void> _exportPdf(EventItem event, String clubName, String link,
-      Uint8List qrPngBytes) async {
+  // for the image, matching what's shown on screen. clubLogoUrl is either
+  // an R2 https URL or (older deployments) a data: URL — either way it's
+  // fetched into bytes here since pw.Image needs an in-memory image, not
+  // a URL.
+  Future<void> _exportPdf(EventItem event, String clubName,
+      String? clubLogoUrl, String link, Uint8List qrPngBytes) async {
     final doc = pw.Document();
     final qrImage = pw.MemoryImage(qrPngBytes);
+    pw.MemoryImage? logoImage;
+    if (clubLogoUrl != null && clubLogoUrl.isNotEmpty) {
+      try {
+        if (clubLogoUrl.startsWith('data:')) {
+          logoImage = pw.MemoryImage(base64Decode(clubLogoUrl.split(',').last));
+        } else {
+          final res = await http.get(Uri.parse(clubLogoUrl));
+          if (res.statusCode == 200) logoImage = pw.MemoryImage(res.bodyBytes);
+        }
+      } catch (_) {
+        // The flyer still works without a logo — just skip it.
+      }
+    }
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a5,
-        build: (context) => pw.Center(
-          child: pw.Column(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
-            children: [
-              pw.Container(
-                padding:
-                    const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                decoration: const pw.BoxDecoration(
-                  color: PdfColor.fromInt(0xFF17458F),
-                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(999)),
-                ),
-                child: pw.Text(clubName.toUpperCase(),
-                    style: const pw.TextStyle(
-                        color: PdfColors.white,
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11)),
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.SizedBox(height: 16),
+            pw.Text('Scan the QR code and register for',
+                textAlign: pw.TextAlign.center,
+                style:
+                    const pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
+            pw.SizedBox(height: 6),
+            pw.Text(event.name,
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(
+                    fontSize: 26,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColor.fromInt(0xFF17458F))),
+            pw.SizedBox(height: 4),
+            pw.Text(event.meta,
+                style:
+                    const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+            pw.SizedBox(height: 22),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(14),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFFF7A81B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(18)),
               ),
-              pw.SizedBox(height: 18),
-              pw.Text(event.name,
-                  style: const pw.TextStyle(
-                      fontSize: 22, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 4),
-              pw.Text(event.meta,
-                  style: const pw.TextStyle(
-                      fontSize: 12, color: PdfColors.grey700)),
-              pw.SizedBox(height: 24),
-              pw.Image(qrImage, width: 200, height: 200),
-              pw.SizedBox(height: 20),
-              pw.Text(link,
-                  style: const pw.TextStyle(
-                      fontSize: 10, color: PdfColors.grey700)),
-              pw.SizedBox(height: 24),
-              pw.Text('Scan to RSVP, or visit the link above.',
-                  style: const pw.TextStyle(
-                      fontSize: 9, color: PdfColors.grey500)),
-            ],
-          ),
+              child: pw.Column(
+                children: [
+                  pw.Text('scan me',
+                      style: const pw.TextStyle(
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          fontStyle: pw.FontStyle.italic,
+                          color: PdfColors.white)),
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(10),
+                    color: PdfColors.white,
+                    child: pw.Image(qrImage, width: 170, height: 170),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Text('See you there!',
+                style: const pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColor.fromInt(0xFF17458F))),
+            pw.SizedBox(height: 4),
+            pw.Text(link,
+                style:
+                    const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.Spacer(),
+            pw.Container(
+              width: double.infinity,
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration:
+                  const pw.BoxDecoration(color: PdfColor.fromInt(0xFF17458F)),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  if (logoImage != null) ...[
+                    pw.ClipRRect(
+                      horizontalRadius: 16,
+                      verticalRadius: 16,
+                      child: pw.Image(logoImage, width: 32, height: 32),
+                    ),
+                    pw.SizedBox(width: 10),
+                  ],
+                  pw.Text(clubName,
+                      style: const pw.TextStyle(
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1056,6 +1116,7 @@ class _QRSheet extends StatelessWidget {
                             : () => _exportPdf(
                                 event,
                                 state.displayClubName,
+                                state.clubLogo,
                                 link,
                                 base64Decode(
                                     registration.qrImage.split(',').last)),
