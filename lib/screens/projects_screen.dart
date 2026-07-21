@@ -88,6 +88,8 @@ class ProjectsScreen extends StatelessWidget {
           ],
         ),
         if (state.projectEditor != null) _ProjectEditorSheet(state: state),
+        if (state.projectUpdateSheet != null)
+          _ProjectUpdateSheet(state: state),
       ],
     );
   }
@@ -100,9 +102,15 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Managers post progress updates (the common, repeated action) with a
+    // tap on the card; the full details (name/area/desc/deadline) are
+    // edited far less often, so they sit behind the small pencil icon
+    // instead of taking over the main tap target. Everyone else just
+    // views — the card already shows everything.
+    final canEdit = state.canManageClub;
     return RCCard(
       padding: const EdgeInsets.all(16),
-      onTap: () => state.openEditProject(project),
+      onTap: canEdit ? () => state.openProjectUpdate(project) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -150,6 +158,21 @@ class _ProjectCard extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: RCColors.blue)),
+              if (canEdit) ...[
+                const SizedBox(width: 4),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => state.openEditProject(project),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.edit_outlined,
+                          size: 16, color: RCColors.textMuted),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 10),
@@ -189,6 +212,193 @@ class _ProjectCard extends StatelessWidget {
                           color: RCColors.green)),
                 ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One-line relative-ish stamp for an update row — "21 Jul 2026" is plenty
+/// for a progress log; no need for a full date/time picker's precision.
+String _updateDateLabel(DateTime dt) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final local = dt.toLocal();
+  return '${local.day} ${months[local.month - 1]} ${local.year}';
+}
+
+class _ProjectUpdateSheet extends StatelessWidget {
+  final AppState state;
+  const _ProjectUpdateSheet({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = state.projectUpdateSheet!;
+    final project =
+        state.projects.where((p) => p.id == draft.projectId).firstOrNull;
+    if (project == null) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: state.closeProjectUpdate,
+            child: Container(color: const Color(0x8C0A1223)),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * .86),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4DBE8),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Add progress update',
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: RCColors.textDark)),
+                              Text(project.name,
+                                  style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: RCColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                        Material(
+                          color: RCColors.chipBg,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: state.closeProjectUpdate,
+                            child: const SizedBox(
+                              width: 30,
+                              height: 30,
+                              child: Center(
+                                  child: Text('✕',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF5A6A85)))),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _FieldLabel(
+                        'CURRENT PROGRESS · ${draft.pct}%${draft.pct >= 100 ? ' · Done' : ''}'),
+                    Slider(
+                      value: draft.pct.toDouble(),
+                      min: 0,
+                      max: 100,
+                      activeColor: RCColors.blue,
+                      onChanged: (v) => state.setProjectUpdatePct(v.round()),
+                    ),
+                    const SizedBox(height: 8),
+                    const _FieldLabel('WHAT HAVE YOU DONE?'),
+                    const SizedBox(height: 6),
+                    _EditorInput(
+                      hint: 'e.g. Drilling rig arrived on site.',
+                      value: draft.note,
+                      onChanged: state.setProjectUpdateNote,
+                      maxLines: 3,
+                    ),
+                    if (draft.error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(draft.error!,
+                          style:
+                              const TextStyle(fontSize: 12, color: RCColors.red)),
+                    ],
+                    const SizedBox(height: 14),
+                    PressableScale(
+                      child: ElevatedButton(
+                        onPressed:
+                            draft.saving ? null : state.submitProjectUpdate,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: RCColors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: Text(draft.saving ? 'Posting…' : 'Post update',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14)),
+                      ),
+                    ),
+                    if (project.updates.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      const _FieldLabel('PROGRESS HISTORY'),
+                      const SizedBox(height: 8),
+                      for (final u in project.updates)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: RCCard(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('${u.pct}%',
+                                        style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: RCColors.blue)),
+                                    Text(
+                                        '${u.authorName} · ${_updateDateLabel(u.createdAt)}',
+                                        style: const TextStyle(
+                                            fontSize: 10.5,
+                                            color: RCColors.textMuted)),
+                                  ],
+                                ),
+                                if (u.note.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(u.note,
+                                      style: const TextStyle(
+                                          fontSize: 12.5,
+                                          color: RCColors.textDark,
+                                          height: 1.4)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -383,49 +593,16 @@ class _ProjectEditorSheet extends StatelessWidget {
                       onChanged: state.setProjectAreaOfFocus,
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _FieldLabel('VOLUNTEER HOURS'),
-                              const SizedBox(height: 6),
-                              _EditorInput(
-                                hint: '0',
-                                value: ed.hoursVolunteered == 0
-                                    ? ''
-                                    : '${ed.hoursVolunteered}',
-                                keyboardType: TextInputType.number,
-                                onChanged: (v) => state
-                                    .setProjectHoursVolunteered(
-                                        int.tryParse(v) ?? 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _FieldLabel('BENEFICIARIES REACHED'),
-                              const SizedBox(height: 6),
-                              _EditorInput(
-                                hint: '0',
-                                value: ed.beneficiariesReached == 0
-                                    ? ''
-                                    : '${ed.beneficiariesReached}',
-                                keyboardType: TextInputType.number,
-                                onChanged: (v) => state
-                                    .setProjectBeneficiariesReached(
-                                        int.tryParse(v) ?? 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const _FieldLabel('BENEFICIARIES REACHED'),
+                    const SizedBox(height: 6),
+                    _EditorInput(
+                      hint: '0',
+                      value: ed.beneficiariesReached == 0
+                          ? ''
+                          : '${ed.beneficiariesReached}',
+                      keyboardType: TextInputType.number,
+                      onChanged: (v) => state.setProjectBeneficiariesReached(
+                          int.tryParse(v) ?? 0),
                     ),
                     const SizedBox(height: 14),
                     const _FieldLabel('DESCRIPTION'),

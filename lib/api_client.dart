@@ -135,6 +135,18 @@ const List<String> rotaryAreasOfFocus = [
   'Environment',
 ];
 
+/// A progress log entry on a project — what was done and the completion %
+/// as of that update.
+class ProjectUpdateOut {
+  final int id;
+  final int pct;
+  final String note;
+  final String authorName;
+  final DateTime createdAt;
+  const ProjectUpdateOut(
+      this.id, this.pct, this.note, this.authorName, this.createdAt);
+}
+
 class ClubProject {
   final int id;
   final String name;
@@ -144,8 +156,8 @@ class ClubProject {
   final String deadline;
   final String? image; // public R2 URL, null until a photo is uploaded
   final String? areaOfFocus;
-  final int hoursVolunteered;
   final int beneficiariesReached;
+  final List<ProjectUpdateOut> updates;
   const ClubProject(
       this.id,
       this.name,
@@ -155,8 +167,8 @@ class ClubProject {
       this.deadline,
       this.image,
       this.areaOfFocus,
-      this.hoursVolunteered,
-      this.beneficiariesReached);
+      this.beneficiariesReached,
+      this.updates);
 }
 
 class MeetingAttendee {
@@ -586,21 +598,32 @@ class ApiClient {
   Future<void> deleteEvent(String token, int id) =>
       _delete('/club/events/$id', token);
 
+  List<ProjectUpdateOut> _parseProjectUpdates(dynamic raw) => [
+        for (final u in ((raw as List?) ?? const []).cast<Map<String, dynamic>>())
+          ProjectUpdateOut(
+              u['id'] as int,
+              u['pct'] as int,
+              u['note'] as String,
+              u['author_name'] as String,
+              DateTime.parse(u['created_at'] as String)),
+      ];
+
+  ClubProject _projectFromJson(Map<String, dynamic> p) => ClubProject(
+      p['id'] as int,
+      p['name'] as String,
+      p['area'] as String,
+      p['pct'] as int,
+      p['desc'] as String,
+      p['deadline'] as String,
+      p['image'] as String?,
+      p['area_of_focus'] as String?,
+      p['beneficiaries_reached'] as int? ?? 0,
+      _parseProjectUpdates(p['updates']));
+
   Future<List<ClubProject>> fetchProjects(String token) async {
     final list = await _getList('/club/projects', token);
     return [
-      for (final p in list.cast<Map<String, dynamic>>())
-        ClubProject(
-            p['id'] as int,
-            p['name'] as String,
-            p['area'] as String,
-            p['pct'] as int,
-            p['desc'] as String,
-            p['deadline'] as String,
-            p['image'] as String?,
-            p['area_of_focus'] as String?,
-            p['hours_volunteered'] as int? ?? 0,
-            p['beneficiaries_reached'] as int? ?? 0),
+      for (final p in list.cast<Map<String, dynamic>>()) _projectFromJson(p),
     ];
   }
 
@@ -617,7 +640,6 @@ class ApiClient {
       required String deadline,
       String? image,
       String? areaOfFocus,
-      int hoursVolunteered = 0,
       int beneficiariesReached = 0}) async {
     final body = {
       'name': name,
@@ -627,23 +649,22 @@ class ApiClient {
       'deadline': deadline,
       if (image != null) 'image': image,
       'area_of_focus': areaOfFocus,
-      'hours_volunteered': hoursVolunteered,
       'beneficiaries_reached': beneficiariesReached,
     };
     final res = id == null
         ? await _post('/club/projects', body, token: token)
         : await _patch('/club/projects/$id', body, token: token);
-    return ClubProject(
-        res['id'] as int,
-        res['name'] as String,
-        res['area'] as String,
-        res['pct'] as int,
-        res['desc'] as String,
-        res['deadline'] as String,
-        res['image'] as String?,
-        res['area_of_focus'] as String?,
-        res['hours_volunteered'] as int? ?? 0,
-        res['beneficiaries_reached'] as int? ?? 0);
+    return _projectFromJson(res);
+  }
+
+  /// Logs a progress update ("what's been done") and sets the project's
+  /// current completion %, without touching its other details.
+  Future<ClubProject> addProjectUpdate(String token, int projectId,
+      {required int pct, required String note}) async {
+    final res = await _post('/club/projects/$projectId/updates',
+        {'pct': pct, 'note': note},
+        token: token);
+    return _projectFromJson(res);
   }
 
   Future<void> deleteProject(String token, int id) =>

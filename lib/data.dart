@@ -58,6 +58,18 @@ class Member {
   String get contact => [phone, email].where((s) => s.isNotEmpty).join(' · ');
 }
 
+/// A progress log entry on a project — what was done and the completion %
+/// as of that update. Read-only history; posted via ProjectUpdateDraft.
+class ProjectUpdateEntry {
+  final int id;
+  final int pct;
+  final String note;
+  final String authorName;
+  final DateTime createdAt;
+  const ProjectUpdateEntry(
+      this.id, this.pct, this.note, this.authorName, this.createdAt);
+}
+
 class Project {
   final int id;
   String name;
@@ -76,8 +88,10 @@ class Project {
   // rotaryAreasOfFocus in api_client.dart), or null ("Uncategorized" in
   // reports); separate from the free-text [area] above.
   String? areaOfFocus;
-  int hoursVolunteered;
   int beneficiariesReached;
+  // Progress history, newest first — posted via the lightweight "Add
+  // update" flow rather than the full project editor.
+  List<ProjectUpdateEntry> updates;
   Project({
     required this.id,
     required this.name,
@@ -88,8 +102,8 @@ class Project {
     required this.deadline,
     this.photo,
     this.areaOfFocus,
-    this.hoursVolunteered = 0,
     this.beneficiariesReached = 0,
+    this.updates = const [],
   });
 
   String get pctLabel => '$pct%';
@@ -105,8 +119,18 @@ class Project {
       deadline: deadline,
       photo: photo,
       areaOfFocus: areaOfFocus,
-      hoursVolunteered: hoursVolunteered,
-      beneficiariesReached: beneficiariesReached);
+      beneficiariesReached: beneficiariesReached,
+      updates: updates);
+}
+
+/// Working copy of the "Add progress update" bottom sheet fields.
+class ProjectUpdateDraft {
+  final int projectId;
+  int pct;
+  String note = '';
+  bool saving = false;
+  String? error;
+  ProjectUpdateDraft({required this.projectId, required this.pct});
 }
 
 // ── calendar helpers (real current week, not a fixed demo week) ─────────

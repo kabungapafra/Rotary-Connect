@@ -582,8 +582,12 @@ class AppState extends ChangeNotifier {
                 deadline: p.deadline,
                 photo: p.image,
                 areaOfFocus: p.areaOfFocus,
-                hoursVolunteered: p.hoursVolunteered,
                 beneficiariesReached: p.beneficiariesReached,
+                updates: [
+                  for (final u in p.updates)
+                    ProjectUpdateEntry(
+                        u.id, u.pct, u.note, u.authorName, u.createdAt),
+                ],
               ),
           ]);
         projectsLoaded = true;
@@ -863,6 +867,7 @@ class AppState extends ChangeNotifier {
       eventQR != null ||
       uploadSheet != null ||
       projectEditor != null ||
+      projectUpdateSheet != null ||
       memberEditor != null ||
       memberProfile != null ||
       apologySheet != null ||
@@ -898,6 +903,8 @@ class AppState extends ChangeNotifier {
       closeMilestoneEditor();
     } else if (projectEditor != null) {
       closeProjectEditor();
+    } else if (projectUpdateSheet != null) {
+      closeProjectUpdate();
     } else if (memberEditor != null) {
       closeMemberEditor();
     } else if (memberProfile != null) {
@@ -1416,8 +1423,6 @@ class AppState extends ChangeNotifier {
   void setProjectDeadline(String v) =>
       _update(() => projectEditor?.deadline = v);
   void setProjectPct(int v) => _update(() => projectEditor?.pct = v);
-  void setProjectHoursVolunteered(int v) =>
-      _update(() => projectEditor?.hoursVolunteered = v);
   void setProjectBeneficiariesReached(int v) =>
       _update(() => projectEditor?.beneficiariesReached = v);
   void setProjectPhoto(Uint8List bytes) => _update(() {
@@ -1470,12 +1475,45 @@ class AppState extends ChangeNotifier {
           deadline: deadline,
           image: image,
           areaOfFocus: p.areaOfFocus,
-          hoursVolunteered: p.hoursVolunteered,
           beneficiariesReached: p.beneficiariesReached);
       _update(() => projectEditor = null);
       await loadProjects();
     } on ApiException {
       _update(() => projectEditor = null);
+    }
+  }
+
+  /// Working copy while the "Add progress update" sheet is open — the
+  /// lightweight flow for logging what's been done and the current %,
+  /// separate from [projectEditor]'s full name/area/desc/deadline fields.
+  ProjectUpdateDraft? projectUpdateSheet;
+
+  void openProjectUpdate(Project p) => _update(
+      () => projectUpdateSheet = ProjectUpdateDraft(projectId: p.id, pct: p.pct));
+  void closeProjectUpdate() => _update(() => projectUpdateSheet = null);
+  void setProjectUpdatePct(int v) =>
+      _update(() => projectUpdateSheet?.pct = v);
+  void setProjectUpdateNote(String v) =>
+      _update(() => projectUpdateSheet?.note = v);
+
+  Future<void> submitProjectUpdate() async {
+    final draft = projectUpdateSheet;
+    final token = authToken;
+    if (draft == null || token == null) return;
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      await _api.addProjectUpdate(token, draft.projectId,
+          pct: draft.pct, note: draft.note.trim());
+      _update(() => projectUpdateSheet = null);
+      await loadProjects();
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
     }
   }
 
