@@ -9,8 +9,25 @@ class TodayScreen extends StatelessWidget {
   final AppState state;
   const TodayScreen({super.key, required this.state});
 
+  /// Visiting Rotarians grouped by their own club (most visitors first) —
+  /// feeds both "Visiting clubs today" and the CLUB OF THE DAY banner,
+  /// which goes to whichever club brought the most visitors.
+  List<MapEntry<String, int>> get _visitingClubs {
+    final counts = <String, int>{};
+    for (final g in state.todayGuests) {
+      if (g.type == 'Visiting Rotarian' && g.clubName.isNotEmpty) {
+        counts[g.clubName] = (counts[g.clubName] ?? 0) + 1;
+      }
+    }
+    final entries = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final visitingClubs = _visitingClubs;
+    final clubOfDay = visitingClubs.isEmpty ? null : visitingClubs.first;
     return Stack(
       children: [
         ListView(
@@ -41,6 +58,59 @@ class TodayScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (clubOfDay != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .12),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: .25)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                                color: RCColors.gold, shape: BoxShape.circle),
+                            alignment: Alignment.center,
+                            child: Text('★',
+                                style: TextStyle(
+                                    color: RCColors.blue,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16)),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('CLUB OF THE DAY',
+                                    style: TextStyle(
+                                        fontSize: 10.5,
+                                        letterSpacing: 1.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: RCColors.gold)),
+                                Text(clubOfDay.key,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                                Text(
+                                    '${clubOfDay.value} visiting Rotarian${clubOfDay.value == 1 ? '' : 's'}',
+                                    style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11.5)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -54,6 +124,15 @@ class TodayScreen extends StatelessWidget {
                       RCStatBox(
                           value: '${state.todayCheckedInCount}',
                           label: 'Members in'),
+                      const SizedBox(width: 10),
+                      RCStatBox(
+                          value: '${state.todayGuests.length}',
+                          label: 'Guests',
+                          valueColor: RCColors.goldOnLight),
+                      const SizedBox(width: 10),
+                      RCStatBox(
+                          value: '${visitingClubs.length}',
+                          label: 'Clubs visiting'),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -84,26 +163,28 @@ class TodayScreen extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 20),
-                  const RCSectionHeader(title: 'Visiting Rotarians'),
+                  const RCSectionHeader(title: 'Guests & visiting Rotarians'),
                   const SizedBox(height: 10),
                   _GuestList(
-                    guests: state.todayGuests
-                        .where((g) => g.type == 'Visiting Rotarian')
-                        .toList(),
+                    guests: state.todayGuests,
                     loading: state.todayLoading,
-                    emptyText: 'No visiting Rotarians today.',
+                    emptyText: 'No guests or visiting Rotarians yet.',
                   ),
-                  const SizedBox(height: 20),
-                  const RCSectionHeader(title: 'Guests & web registrations'),
+                  if (visitingClubs.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const RCSectionHeader(title: 'Visiting clubs today'),
+                    const SizedBox(height: 10),
+                    for (var i = 0; i < visitingClubs.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _VisitingClubCard(
+                          name: visitingClubs[i].key,
+                          count: visitingClubs[i].value,
+                          isClubOfDay: i == 0,
+                        ),
+                      ),
+                  ],
                   const SizedBox(height: 10),
-                  _GuestList(
-                    guests: state.todayGuests
-                        .where((g) => g.type != 'Visiting Rotarian')
-                        .toList(),
-                    loading: state.todayLoading,
-                    emptyText: 'No guests or web registrations yet.',
-                  ),
-                  const SizedBox(height: 20),
                   const RCSectionHeader(title: 'Apologies'),
                   const SizedBox(height: 10),
                   if (state.apologies.isEmpty)
@@ -183,9 +264,11 @@ class _GuestRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isVisitingRotarian = guest.type == 'Visiting Rotarian';
+    final detail = guest.via == 'web' ? 'Web · ${guest.time}' : guest.time;
     final subtitle = guest.clubName.isEmpty
-        ? guest.type
-        : '${guest.type} · ${guest.clubName}';
+        ? detail
+        : '${guest.clubName} · $detail';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -212,11 +295,94 @@ class _GuestRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(guest.via == 'web' ? 'Web · ${guest.time}' : guest.time,
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: RCColors.green,
-                  fontWeight: FontWeight.w700)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isVisitingRotarian ? RCColors.amberBg : RCColors.chipBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(guest.type,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        isVisitingRotarian ? RCColors.amber : RCColors.blue)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitingClubCard extends StatelessWidget {
+  final String name;
+  final int count;
+  final bool isClubOfDay;
+  const _VisitingClubCard(
+      {required this.name, required this.count, required this.isClubOfDay});
+
+  /// "Rotary Club of Naalya" -> "RN"-style tile initials: first letters of
+  /// the two most distinctive words (skipping filler like "of"/"club").
+  String get _abbr {
+    final words = name
+        .split(RegExp(r'\s+'))
+        .where((w) =>
+            w.isNotEmpty && !{'of', 'the', 'club'}.contains(w.toLowerCase()))
+        .toList();
+    if (words.isEmpty) return '?';
+    if (words.length == 1) return words.first[0].toUpperCase();
+    return (words.first[0] + words.last[0]).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RCCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: RCColors.chipBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(_abbr,
+                style: TextStyle(
+                    color: RCColors.blue,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textDark)),
+                Text('$count visiting Rotarian${count == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                        fontSize: 11, color: RCColors.textMuted)),
+              ],
+            ),
+          ),
+          if (isClubOfDay)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: RCColors.amberBg,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text('CLUB OF THE DAY',
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: RCColors.amber)),
+            ),
         ],
       ),
     );
