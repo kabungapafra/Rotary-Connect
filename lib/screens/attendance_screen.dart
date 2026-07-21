@@ -383,6 +383,21 @@ class _ClubRegister extends StatelessWidget {
                       attendee: sel.attendees[i],
                       index: i,
                     ),
+                if (sel.guests.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text('Guests & web registrations · ${sel.guests.length}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: RCColors.blue)),
+                  const SizedBox(height: 4),
+                  for (var i = 0; i < sel.guests.length; i++)
+                    _GuestRow(
+                      isLast: i == sel.guests.length - 1,
+                      guest: sel.guests[i],
+                      index: sel.attendees.length + i,
+                    ),
+                ],
               ],
             ),
           ),
@@ -445,6 +460,55 @@ class _RegRow extends StatelessWidget {
             ),
           ),
           Text(attendee.time,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: RCColors.green)),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuestRow extends StatelessWidget {
+  final MeetingGuest guest;
+  final int index;
+  final bool isLast;
+  const _GuestRow(
+      {required this.guest, required this.index, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = guest.clubName.isEmpty
+        ? guest.type
+        : '${guest.type} · ${guest.clubName}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: RCColors.divider)),
+      ),
+      child: Row(
+        children: [
+          RCAvatar(color: RCColors.avatarColor(index), size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(guest.name,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textDark)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: RCColors.textMuted)),
+              ],
+            ),
+          ),
+          Text(guest.via == 'web' ? 'Web · ${guest.time}' : guest.time,
               style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,

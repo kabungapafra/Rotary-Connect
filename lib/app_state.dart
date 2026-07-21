@@ -1126,6 +1126,9 @@ class AppState extends ChangeNotifier {
         phone: knownPhone,
         hostName: '',
         guestType: guestType,
+        // A logged-in member visiting another club is a Rotarian from
+        // their own club — name it on the host club's register.
+        memberClub: authToken != null ? displayClubName : '',
       );
       return;
     }
@@ -1241,6 +1244,13 @@ class AppState extends ChangeNotifier {
       phone: guestPhone.trim(),
       hostName: guestHost.trim(),
       guestType: guestType,
+      // The visitor's own club: a logged-in member's comes from their
+      // account; a walk-in Visiting Rotarian typed theirs into the
+      // "Home club" field (which is also guestClub — the field doubles as
+      // the visited club's name only in the visitingElsewhere case above).
+      memberClub: authToken != null
+          ? displayClubName
+          : (isVisitingRotarian ? guestClub.trim() : ''),
     );
   }
 
@@ -1253,6 +1263,7 @@ class AppState extends ChangeNotifier {
     required String phone,
     required String hostName,
     required String guestType,
+    String memberClub = '',
   }) async {
     _update(() {
       guestSubmitting = true;
@@ -1266,6 +1277,7 @@ class AppState extends ChangeNotifier {
         phone: phone,
         hostName: hostName,
         guestType: guestType,
+        memberClub: memberClub,
       );
       // A logged-in member's identity always comes from their account —
       // only remember a *visitor* identity for devices with no member

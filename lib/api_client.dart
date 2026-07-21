@@ -162,14 +162,27 @@ class MeetingAttendee {
   const MeetingAttendee(this.name, this.role, this.time);
 }
 
+/// A non-member on the register: a walk-in who scanned the club QR
+/// ("scan") or someone who registered through an event's public web RSVP
+/// form ("web").
+class MeetingGuest {
+  final String name;
+  final String type;
+  final String clubName; // a Visiting Rotarian's own club, else ''
+  final String time;
+  final String via; // 'scan' | 'web'
+  const MeetingGuest(this.name, this.type, this.clubName, this.time, this.via);
+}
+
 class ClubMeeting {
   final String date;
   final String name;
   final int checkinCount;
   final bool attended;
   final List<MeetingAttendee> attendees;
-  const ClubMeeting(
-      this.date, this.name, this.checkinCount, this.attended, this.attendees);
+  final List<MeetingGuest> guests;
+  const ClubMeeting(this.date, this.name, this.checkinCount, this.attended,
+      this.attendees, this.guests);
 }
 
 class MemberSummary {
@@ -392,6 +405,7 @@ class ApiClient {
     required String phone,
     required String hostName,
     required String guestType,
+    String memberClub = '',
   }) async {
     final res = await _post('/checkin/guest', {
       if (clubId != null) 'club_id': clubId,
@@ -400,6 +414,7 @@ class ApiClient {
       'phone': phone,
       'host_name': hostName,
       'guest_type': guestType,
+      'member_club': memberClub,
     });
     return GuestCheckInResult(
         res['club_id'] as int, res['club_name'] as String);
@@ -631,6 +646,16 @@ class ApiClient {
                 in (m['attendees'] as List).cast<Map<String, dynamic>>())
               MeetingAttendee(a['name'] as String, a['role'] as String,
                   a['time'] as String),
+          ],
+          [
+            for (final g in ((m['guests'] as List?) ?? const [])
+                .cast<Map<String, dynamic>>())
+              MeetingGuest(
+                  g['name'] as String,
+                  g['type'] as String,
+                  g['club_name'] as String? ?? '',
+                  g['time'] as String? ?? '',
+                  g['via'] as String? ?? 'scan'),
           ],
         ),
     ];
