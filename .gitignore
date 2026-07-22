@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Release signing — the real keystore and its passwords. This repo is
+# public; never let these be committed.
+/android/key.properties
+/android/keystore/
+
 # Separate repos living inside this working tree
 /backend/
 /admin_dashboard/
