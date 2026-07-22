@@ -15,6 +15,12 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ended events (this week's occurrence already over) don't belong in
+    // an "Upcoming events" preview — the Events screen itself already
+    // marks those ENDED instead of hiding them, but this teaser list has
+    // no room for that badge, so it just leaves them out.
+    final upcomingEvents =
+        state.events.where((e) => e.registrationOpen).toList();
     return Stack(
       children: [
         ListView(
@@ -147,7 +153,7 @@ class HomeScreen extends StatelessWidget {
                       actionLabel: 'See calendar',
                       onAction: state.goEvents),
                   const SizedBox(height: 10),
-                  if (state.events.isEmpty)
+                  if (upcomingEvents.isEmpty)
                     RCCard(
                       onTap: state.goEvents,
                       child: const Text(
@@ -164,10 +170,10 @@ class HomeScreen extends StatelessWidget {
                       height: 168,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: state.events.length.clamp(0, 6),
+                        itemCount: upcomingEvents.length.clamp(0, 6),
                         separatorBuilder: (_, sep) => const SizedBox(width: 12),
                         itemBuilder: (context, i) {
-                          final e = state.events[i];
+                          final e = upcomingEvents[i];
                           return SizedBox(
                             width: 150,
                             child: Container(

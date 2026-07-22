@@ -659,10 +659,12 @@ class AppState extends ChangeNotifier {
 
   // attendance
   String attView = 'mine'; // mine | club
-  String registerTab = 'members'; // members | guests | clubs
+  String registerTab = 'members'; // members | guests | apologies | clubs
   int selectedMeeting = 0;
   bool reportToast = false;
   Timer? _reportTimer;
+  List<ApologyInfo> registerApologies = [];
+  bool registerApologiesLoading = false;
 
   // ── gallery ──────────────────────────────────────────────────────────
   // State and logic live in [gallery]; these forward to it so every
@@ -1617,8 +1619,38 @@ class AppState extends ChangeNotifier {
   // ── attendance ─────────────────────────────────────────────────────────
   void pickAttMine() => _update(() => attView = 'mine');
   void pickAttClub() => _update(() => attView = 'club');
-  void pickRegisterTab(String v) => _update(() => registerTab = v);
-  void pickMeeting(int i) => _update(() => selectedMeeting = i);
+
+  void pickRegisterTab(String v) {
+    _update(() => registerTab = v);
+    if (v == 'apologies') _loadRegisterApologies();
+  }
+
+  void pickMeeting(int i) {
+    _update(() {
+      selectedMeeting = i;
+      registerTab = 'members';
+      registerApologies = [];
+    });
+  }
+
+  /// Apologies for the selected past meeting's date — fetched lazily
+  /// since the club register loads every meeting's attendees/guests up
+  /// front but apologies are a separate endpoint, queried per date.
+  Future<void> _loadRegisterApologies() async {
+    final token = authToken;
+    if (token == null || clubMeetings.isEmpty) return;
+    final sel = clubMeetings[selectedMeeting.clamp(0, clubMeetings.length - 1)];
+    _update(() => registerApologiesLoading = true);
+    try {
+      final list = await _api.fetchApologies(token, meetingDate: sel.dateIso);
+      _update(() {
+        registerApologies = list;
+        registerApologiesLoading = false;
+      });
+    } on ApiException {
+      _update(() => registerApologiesLoading = false);
+    }
+  }
 
   String get reportName {
     if (clubMeetings.isEmpty) return 'attendance-report.pdf';

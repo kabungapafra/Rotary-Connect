@@ -195,13 +195,14 @@ class MeetingGuest {
 
 class ClubMeeting {
   final String date;
+  final String dateIso;
   final String name;
   final int checkinCount;
   final bool attended;
   final List<MeetingAttendee> attendees;
   final List<MeetingGuest> guests;
-  const ClubMeeting(this.date, this.name, this.checkinCount, this.attended,
-      this.attendees, this.guests);
+  const ClubMeeting(this.date, this.dateIso, this.name, this.checkinCount,
+      this.attended, this.attendees, this.guests);
 }
 
 class MemberSummary {
@@ -682,6 +683,7 @@ class ApiClient {
       for (final m in list.cast<Map<String, dynamic>>())
         ClubMeeting(
           m['date'] as String,
+          m['date_iso'] as String,
           m['name'] as String,
           m['checkin_count'] as int,
           m['attended'] as bool,
@@ -817,8 +819,12 @@ class ApiClient {
     );
   }
 
-  Future<List<ApologyInfo>> fetchApologies(String token) async {
-    final list = await _getList('/club/apologies', token);
+  Future<List<ApologyInfo>> fetchApologies(String token,
+      {String? meetingDate}) async {
+    final path = meetingDate == null
+        ? '/club/apologies'
+        : '/club/apologies?meeting_date=$meetingDate';
+    final list = await _getList(path, token);
     return [
       for (final a in list.cast<Map<String, dynamic>>())
         ApologyInfo(

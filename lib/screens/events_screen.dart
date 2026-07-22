@@ -543,7 +543,7 @@ class _EventCard extends StatelessWidget {
                                 fontWeight: FontWeight.w800, fontSize: 11)),
                       ),
                     )
-                  else if (!event.editable)
+                  else if (!event.registrationOpen)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
