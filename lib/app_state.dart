@@ -109,6 +109,12 @@ class AppState extends ChangeNotifier {
       clubName = prefs.getString('club_name') ?? clubName;
       clubLogo = prefs.getString('club_logo');
       clubType = prefs.getString('club_type') ?? clubType;
+      final charterIso = prefs.getString('club_charter_date');
+      clubCharterDate = charterIso == null ? null : DateTime.tryParse(charterIso);
+      clubDistrict = prefs.getString('club_district') ?? '';
+      clubCharterFoundingMembers = prefs.getInt('club_charter_founding_members');
+      clubCharterPresident = prefs.getString('club_charter_president') ?? '';
+      clubCharterSponsorClub = prefs.getString('club_charter_sponsor_club') ?? '';
       RCColors.setClubType(clubType);
       clubBrandingKnown = true;
       // Stay on the splash screen — its welcome animation plays every
@@ -144,6 +150,21 @@ class AppState extends ChangeNotifier {
     } else {
       await prefs.remove('club_logo');
     }
+    final charterDate = clubCharterDate;
+    if (charterDate != null) {
+      await prefs.setString('club_charter_date', charterDate.toIso8601String());
+    } else {
+      await prefs.remove('club_charter_date');
+    }
+    await prefs.setString('club_district', clubDistrict);
+    final foundingMembers = clubCharterFoundingMembers;
+    if (foundingMembers != null) {
+      await prefs.setInt('club_charter_founding_members', foundingMembers);
+    } else {
+      await prefs.remove('club_charter_founding_members');
+    }
+    await prefs.setString('club_charter_president', clubCharterPresident);
+    await prefs.setString('club_charter_sponsor_club', clubCharterSponsorClub);
   }
 
   // Set by PushService as soon as FCM hands over a token, which can happen
@@ -339,6 +360,11 @@ class AppState extends ChangeNotifier {
   String clubName = 'Rotary Club of Mbalwa';
   String? clubLogo; // data URL uploaded by the system admin
   String clubType = 'rotary'; // "rotary" | "rotaract", set by the system admin
+  DateTime? clubCharterDate; // self-set by the President/Secretary in-app
+  String clubDistrict = ''; // set by the system admin at onboarding
+  int? clubCharterFoundingMembers; // self-set, like clubCharterDate
+  String clubCharterPresident = '';
+  String clubCharterSponsorClub = '';
   // Not persisted like the branding fields above — always re-read from the
   // backend (at login, and opportunistically whenever loadSummary() runs)
   // so a club suspended mid-session is caught on the next such call.
@@ -422,6 +448,76 @@ class AppState extends ChangeNotifier {
   bool get canEditClubHistory =>
       _historyEditorRoles.contains(currentMemberRole.trim());
 
+  bool charterInfoEditorOpen = false;
+  void openCharterInfoEditor() => _update(() {
+        charterInfoEditorOpen = true;
+        charterInfoError = null;
+      });
+  void closeCharterInfoEditor() =>
+      _update(() => charterInfoEditorOpen = false);
+
+  bool savingCharterDate = false;
+  // Surfaced by _CharterInfoEditorSheet — without this, a failed save
+  // (e.g. the backend not yet having this endpoint) reverted silently and
+  // just looked like the tap had done nothing.
+  String? charterInfoError;
+
+  /// Sets or clears (pass null) the club's charter date — shown on the
+  /// Home "Club history" card. The one club-profile field the President/
+  /// Secretary edit in-app rather than the system admin.
+  Future<void> setCharterDate(DateTime? date) async {
+    final token = authToken;
+    if (token == null || !canEditClubHistory || savingCharterDate) return;
+    _update(() {
+      savingCharterDate = true;
+      charterInfoError = null;
+    });
+    try {
+      final saved = await _api.setClubCharterDate(token, date);
+      _update(() {
+        clubCharterDate = saved;
+        savingCharterDate = false;
+      });
+      unawaited(_persistSession());
+    } on ApiException catch (e) {
+      _update(() {
+        savingCharterDate = false;
+        charterInfoError = e.message;
+      });
+    }
+  }
+
+  bool savingCharterInfo = false;
+
+  /// Sets the rest of the "CHARTERED" banner (founding member count,
+  /// charter president, sponsoring club) alongside [setCharterDate].
+  Future<void> setCharterInfo(
+      {int? foundingMembers,
+      required String charterPresident,
+      required String sponsorClub}) async {
+    final token = authToken;
+    if (token == null || !canEditClubHistory || savingCharterInfo) return;
+    _update(() => savingCharterInfo = true);
+    try {
+      final saved = await _api.setClubCharterInfo(token,
+          foundingMembers: foundingMembers,
+          charterPresident: charterPresident,
+          sponsorClub: sponsorClub);
+      _update(() {
+        clubCharterFoundingMembers = saved.foundingMembers;
+        clubCharterPresident = saved.charterPresident;
+        clubCharterSponsorClub = saved.sponsorClub;
+        savingCharterInfo = false;
+      });
+      unawaited(_persistSession());
+    } on ApiException catch (e) {
+      _update(() {
+        savingCharterInfo = false;
+        charterInfoError = e.message;
+      });
+    }
+  }
+
   /// Creating and resolving club votes is limited to the President and
   /// Secretary — plain board members can't. Matches the backend's
   /// `_require_manager` gate in polls.py.
@@ -478,6 +574,8 @@ class AppState extends ChangeNotifier {
   List<EventItem> get visibleEvents => eventsController.visibleEvents;
   String get eventsSectionLabel => eventsController.sectionLabel;
   bool get canDeleteEvent => eventsController.canDeleteEvent;
+  bool get savingEvent => eventsController.savingEvent;
+  bool get deletingEvent => eventsController.deletingEvent;
   NextMeeting? get nextMeeting => eventsController.nextMeeting;
   bool get nextMeetingLoaded => eventsController.nextMeetingLoaded;
   bool get nextMeetingLoading => eventsController.nextMeetingLoading;
@@ -538,6 +636,8 @@ class AppState extends ChangeNotifier {
   String get milestoneFilter => secretary.milestoneFilter;
   String get secretaryTab => secretary.tab;
   List<MilestoneInfo> get visibleMilestones => secretary.visibleMilestones;
+  List<PastLeaderInfo> get pastLeaders => secretary.pastLeaders;
+  PastLeaderDraft? get pastLeaderEditor => secretary.pastLeaderEditor;
 
   Future<void> loadSummary() async {
     final token = authToken;
@@ -818,11 +918,13 @@ class AppState extends ChangeNotifier {
   void setVoteType(String v) => polls.setVoteType(v);
   void setVoteTitle(String v) => polls.setVoteTitle(v);
   void setVoteSub(String v) => polls.setVoteSub(v);
-  void setVoteCloses(String v) => polls.setVoteCloses(v);
-  void setVoteOptions(String v) => polls.setVoteOptions(v);
+  void setVoteClosesDate(DateTime d) => polls.setVoteClosesDate(d);
+  void toggleVoteCandidate(String memberName) =>
+      polls.toggleVoteCandidate(memberName);
   Future<void> saveVoteEditor() => polls.saveVoteEditor();
   Future<void> castVote(String choice) => polls.castVote(choice);
   void runDraw() => polls.runDraw();
+  Future<void> closePoll() => polls.closePoll();
 
   void goGallery() {
     go('gallery');
@@ -853,7 +955,10 @@ class AppState extends ChangeNotifier {
 
   void goClubHistory() {
     go('history');
-    if (authToken != null) loadMilestones();
+    if (authToken != null) {
+      loadMilestones();
+      loadPastLeaders();
+    }
   }
 
   void goSplash() => go('splash');
@@ -981,6 +1086,11 @@ class AppState extends ChangeNotifier {
         clubName = result.clubName;
         clubLogo = result.clubLogo;
         clubType = result.clubType;
+        clubCharterDate = result.clubCharterDate;
+        clubDistrict = result.clubDistrict;
+        clubCharterFoundingMembers = result.clubCharterInfo.foundingMembers;
+        clubCharterPresident = result.clubCharterInfo.charterPresident;
+        clubCharterSponsorClub = result.clubCharterInfo.sponsorClub;
         RCColors.setClubType(clubType);
         clubStatus = result.clubStatus;
         clubBrandingKnown = true;
@@ -1542,6 +1652,7 @@ class AppState extends ChangeNotifier {
   // `state.loadSecretaryWorkspace()` / `state.saveMinuteEditor()` etc.
   // call sites don't need to change.
   Future<void> loadMilestones() => secretary.loadMilestones();
+  Future<void> loadPastLeaders() => secretary.loadPastLeaders();
   Future<void> loadSecretaryWorkspace() => secretary.load();
   void pickSecretaryTab(String tab) => secretary.pickTab(tab);
   void openMinuteEditor() => secretary.openMinuteEditor();
@@ -1567,6 +1678,13 @@ class AppState extends ChangeNotifier {
   void setMilestoneText(String v) => secretary.setMilestoneText(v);
   Future<void> saveMilestoneEditor() => secretary.saveMilestoneEditor();
   Future<void> deleteMilestone(int id) => secretary.deleteMilestone(id);
+  void openPastLeaderEditor() => secretary.openPastLeaderEditor();
+  void closePastLeaderEditor() => secretary.closePastLeaderEditor();
+  void setPastLeaderYears(String v) => secretary.setPastLeaderYears(v);
+  void setPastLeaderPresident(String v) => secretary.setPastLeaderPresident(v);
+  void setPastLeaderSecretary(String v) => secretary.setPastLeaderSecretary(v);
+  Future<void> savePastLeaderEditor() => secretary.savePastLeaderEditor();
+  Future<void> deletePastLeader(int id) => secretary.deletePastLeader(id);
   Future<void> uploadClubDocument(String title, List<int> pdfBytes) =>
       secretary.uploadClubDocument(title, pdfBytes);
   Future<void> deleteClubDocument(int id) => secretary.deleteClubDocument(id);
@@ -1604,7 +1722,7 @@ class AppState extends ChangeNotifier {
   void setEditorTime(String v) => eventsController.setEditorTime(v);
   void setEditorEndTime(String v) => eventsController.setEditorEndTime(v);
   void setEditorVenue(String v) => eventsController.setEditorVenue(v);
-  void setEditorDay(String dow) => eventsController.setEditorDay(dow);
+  void setEditorDate(DateTime d) => eventsController.setEditorDate(d);
   void setEditorPhoto(Uint8List bytes) => eventsController.setEditorPhoto(bytes);
   void removeEventPhoto() => eventsController.removeEventPhoto();
   Future<void> saveEvent() => eventsController.saveEvent();

@@ -39,8 +39,20 @@ class LoginResult {
   final String? clubLogo; // data URL uploaded by the system admin
   final String clubType; // "rotary" | "rotaract"
   final String clubStatus; // "active" | "suspended"
-  const LoginResult(this.token, this.member, this.clubId, this.clubName,
-      this.clubLogo, this.clubType, this.clubStatus);
+  final DateTime? clubCharterDate;
+  final String clubDistrict;
+  final ClubCharterInfo clubCharterInfo;
+  const LoginResult(
+      this.token,
+      this.member,
+      this.clubId,
+      this.clubName,
+      this.clubLogo,
+      this.clubType,
+      this.clubStatus,
+      this.clubCharterDate,
+      this.clubDistrict,
+      this.clubCharterInfo);
 }
 
 class AddedClubMember {
@@ -69,6 +81,9 @@ class ClubMemberInfo {
 class ClubEvent {
   final int id;
   final String dow;
+  // Null for a recurring weekly event; set for a one-time event pinned to
+  // this exact calendar date.
+  final DateTime? date;
   final String name;
   final String meta;
   final String? image; // public R2 URL, null until a banner is uploaded
@@ -79,7 +94,7 @@ class ClubEvent {
   // Always true without an end time.
   final bool editable;
   const ClubEvent(this.id, this.dow, this.name, this.meta, this.image,
-      this.registrationOpen, this.editable);
+      this.registrationOpen, this.editable, {this.date});
 }
 
 class GuestCheckInResult {
@@ -328,6 +343,24 @@ class MilestoneInfo {
   const MilestoneInfo(this.id, this.year, this.title, this.category, this.text);
 }
 
+/// The rest of the Club History screen's "CHARTERED" banner alongside the
+/// charter date — founding member count, charter president, sponsor club.
+class ClubCharterInfo {
+  final int? foundingMembers;
+  final String charterPresident;
+  final String sponsorClub;
+  const ClubCharterInfo(
+      this.foundingMembers, this.charterPresident, this.sponsorClub);
+}
+
+class PastLeaderInfo {
+  final int id;
+  final String years;
+  final String president;
+  final String secretary;
+  const PastLeaderInfo(this.id, this.years, this.president, this.secretary);
+}
+
 class ReportRowInfo {
   final String label;
   final String value;
@@ -411,6 +444,14 @@ class ApiClient {
       res['club_logo'] as String?,
       res['club_type'] as String? ?? 'rotary',
       res['club_status'] as String? ?? 'active',
+      res['club_charter_date'] == null
+          ? null
+          : DateTime.tryParse(res['club_charter_date'] as String),
+      res['club_district'] as String? ?? '',
+      ClubCharterInfo(
+          res['club_charter_founding_members'] as int?,
+          res['club_charter_president'] as String? ?? '',
+          res['club_charter_sponsor_club'] as String? ?? ''),
     );
   }
 
@@ -570,23 +611,29 @@ class ApiClient {
         ClubEvent(e['id'] as int, e['dow'] as String, e['name'] as String,
             e['meta'] as String, e['image'] as String?,
             e['registration_open'] as bool? ?? true,
-            e['editable'] as bool? ?? true),
+            e['editable'] as bool? ?? true,
+            date: e['event_date'] == null
+                ? null
+                : DateTime.tryParse(e['event_date'] as String)),
     ];
   }
 
   /// [image] is a "data:image/...;base64,..." URL to set/replace the
   /// banner, the sentinel "__remove__" to clear it, or null to leave it
-  /// as-is.
+  /// as-is. [date] ("YYYY-MM-DD") pins a one-time event to that exact
+  /// date; null keeps/creates a recurring weekly event.
   Future<ClubEvent> saveEvent(String token,
       {int? id,
       required String dow,
       required String name,
       required String meta,
-      String? image}) async {
+      String? image,
+      String? date}) async {
     final body = {
       'dow': dow,
       'name': name,
       'meta': meta,
+      'event_date': date,
       if (image != null) 'image': image,
     };
     final res = id == null
@@ -599,7 +646,10 @@ class ApiClient {
         res['meta'] as String,
         res['image'] as String?,
         res['registration_open'] as bool? ?? true,
-        res['editable'] as bool? ?? true);
+        res['editable'] as bool? ?? true,
+        date: res['event_date'] == null
+            ? null
+            : DateTime.tryParse(res['event_date'] as String));
   }
 
   Future<void> deleteEvent(String token, int id) =>
@@ -988,6 +1038,13 @@ class ApiClient {
     return _pollFromJson(res);
   }
 
+  /// Closes a motion/election early — the President, Secretary, or the
+  /// poll's own creator (enforced server-side).
+  Future<PollInfo> closePoll(String token, int pollId) async {
+    final res = await _post('/club/polls/$pollId/close', null, token: token);
+    return _pollFromJson(res);
+  }
+
   // ── secretary workspace ─────────────────────────────────────────────
   MinuteInfo _minuteFromJson(Map<String, dynamic> m) => MinuteInfo(
       m['id'] as int,
@@ -1092,6 +1149,61 @@ class ApiClient {
 
   Future<void> deleteMilestone(String token, int id) =>
       _delete('/club/secretary/milestones/$id', token);
+
+  /// Sets or clears (pass null) the club's own charter date — the one
+  /// club-profile field the President/Secretary edit in-app rather than
+  /// the system admin.
+  Future<DateTime?> setClubCharterDate(String token, DateTime? date) async {
+    final res = await _patch(
+        '/club/secretary/charter-date',
+        {'charter_date': date?.toIso8601String().split('T').first},
+        token: token);
+    final iso = res['charter_date'] as String?;
+    return iso == null ? null : DateTime.tryParse(iso);
+  }
+
+  /// Sets the rest of the Club History screen's "CHARTERED" banner
+  /// (founding member count, charter president, sponsoring club).
+  Future<ClubCharterInfo> setClubCharterInfo(String token,
+      {int? foundingMembers,
+      required String charterPresident,
+      required String sponsorClub}) async {
+    final res = await _patch(
+        '/club/secretary/charter-info',
+        {
+          'founding_members': foundingMembers,
+          'charter_president': charterPresident,
+          'sponsor_club': sponsorClub,
+        },
+        token: token);
+    return ClubCharterInfo(
+        res['founding_members'] as int?,
+        res['charter_president'] as String? ?? '',
+        res['sponsor_club'] as String? ?? '');
+  }
+
+  Future<List<PastLeaderInfo>> fetchPastLeaders(String token) async {
+    final list = await _getList('/club/secretary/past-leaders', token);
+    return [
+      for (final m in list.cast<Map<String, dynamic>>())
+        PastLeaderInfo(m['id'] as int, m['years'] as String,
+            m['president'] as String, m['secretary'] as String),
+    ];
+  }
+
+  Future<PastLeaderInfo> createPastLeader(String token,
+      {required String years,
+      required String president,
+      required String secretary}) async {
+    final res = await _post('/club/secretary/past-leaders',
+        {'years': years, 'president': president, 'secretary': secretary},
+        token: token);
+    return PastLeaderInfo(res['id'] as int, res['years'] as String,
+        res['president'] as String, res['secretary'] as String);
+  }
+
+  Future<void> deletePastLeader(String token, int id) =>
+      _delete('/club/secretary/past-leaders/$id', token);
 
   Future<List<ClubDocumentInfo>> fetchClubDocuments(String token) async {
     final list = await _getList('/club/secretary/documents', token);

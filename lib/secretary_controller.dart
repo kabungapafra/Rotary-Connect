@@ -23,6 +23,15 @@ class MilestoneDraft {
   String? error;
 }
 
+/// Working copy of the "Add past leader" bottom sheet fields.
+class PastLeaderDraft {
+  String years = '';
+  String president = '';
+  String secretary = '';
+  bool saving = false;
+  String? error;
+}
+
 /// The Secretary workspace's data and logic (minutes, milestones, the
 /// monthly/annual reports, club documents) — split out of AppState so this
 /// one role's concern isn't tangled with treasury, events, gallery, and
@@ -36,6 +45,8 @@ class SecretaryController extends ChangeNotifier {
 
   List<MinuteInfo> minutes = [];
   List<MilestoneInfo> milestones = [];
+  List<PastLeaderInfo> pastLeaders = [];
+  PastLeaderDraft? pastLeaderEditor;
   ReportInfo? monthlyReport;
   ReportInfo? annualReport;
   List<ClubDocumentInfo> clubDocuments = [];
@@ -65,6 +76,7 @@ class SecretaryController extends ChangeNotifier {
   void reset() {
     minutes = [];
     milestones = [];
+    pastLeaders = [];
     monthlyReport = null;
     annualReport = null;
     clubDocuments = [];
@@ -81,6 +93,19 @@ class SecretaryController extends ChangeNotifier {
     try {
       final list = await _api.fetchMilestones(token);
       _update(() => milestones = list);
+    } on ApiException {
+      // Keep whatever was last loaded on a transient network error.
+    }
+  }
+
+  /// Past leaders alone — same reasoning as [loadMilestones]: the Club
+  /// history screen is open to every member.
+  Future<void> loadPastLeaders() async {
+    final token = _getToken();
+    if (token == null) return;
+    try {
+      final list = await _api.fetchPastLeaders(token);
+      _update(() => pastLeaders = list);
     } on ApiException {
       // Keep whatever was last loaded on a transient network error.
     }
@@ -308,6 +333,58 @@ class SecretaryController extends ChangeNotifier {
     try {
       await _api.deleteMilestone(token, id);
       _update(() => milestones.removeWhere((m) => m.id == id));
+    } on ApiException {
+      // Leave the entry showing so the secretary can retry.
+    }
+  }
+
+  void openPastLeaderEditor() =>
+      _update(() => pastLeaderEditor = PastLeaderDraft());
+  void closePastLeaderEditor() => _update(() => pastLeaderEditor = null);
+  void setPastLeaderYears(String v) =>
+      _update(() => pastLeaderEditor?.years = v);
+  void setPastLeaderPresident(String v) =>
+      _update(() => pastLeaderEditor?.president = v);
+  void setPastLeaderSecretary(String v) =>
+      _update(() => pastLeaderEditor?.secretary = v);
+
+  Future<void> savePastLeaderEditor() async {
+    final draft = pastLeaderEditor;
+    final token = _getToken();
+    if (draft == null || token == null) return;
+    if (draft.years.trim().isEmpty || draft.president.trim().isEmpty) {
+      _update(() => draft.error = 'Enter the years and president.');
+      return;
+    }
+    _update(() {
+      draft.saving = true;
+      draft.error = null;
+    });
+    try {
+      final term = await _api.createPastLeader(
+        token,
+        years: draft.years.trim(),
+        president: draft.president.trim(),
+        secretary: draft.secretary.trim(),
+      );
+      _update(() {
+        pastLeaders.insert(0, term);
+        pastLeaderEditor = null;
+      });
+    } on ApiException catch (e) {
+      _update(() {
+        draft.saving = false;
+        draft.error = e.message;
+      });
+    }
+  }
+
+  Future<void> deletePastLeader(int id) async {
+    final token = _getToken();
+    if (token == null) return;
+    try {
+      await _api.deletePastLeader(token, id);
+      _update(() => pastLeaders.removeWhere((t) => t.id == id));
     } on ApiException {
       // Leave the entry showing so the secretary can retry.
     }

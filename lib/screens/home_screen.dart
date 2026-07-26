@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets/apology_sheet.dart';
 import '../widgets/club_logo.dart';
 import '../widgets/common.dart';
+import '../widgets/date_time_field.dart';
 import '../widgets/poll_card.dart';
 import '../widgets/pressable.dart';
 import '../widgets/wordmark.dart';
@@ -15,12 +16,12 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ended events (this week's occurrence already over) don't belong in
-    // an "Upcoming events" preview — the Events screen itself already
-    // marks those ENDED instead of hiding them, but this teaser list has
-    // no room for that badge, so it just leaves them out.
-    final upcomingEvents =
-        state.events.where((e) => e.registrationOpen).toList();
+    // Every club event recurs weekly, so one whose occurrence already
+    // passed this week is still "upcoming" (it happens again next week) —
+    // filtering by registrationOpen here used to hide it for the rest of
+    // the week, which is why the dashboard could look empty despite the
+    // club having events. Show the same list the Events screen shows.
+    final upcomingEvents = List.of(state.events);
     return Stack(
       children: [
         ListView(
@@ -53,11 +54,7 @@ class HomeScreen extends StatelessWidget {
                   if (state.activePoll != null &&
                       (state.activePoll!.status == 'open' ||
                           state.activePoll!.assignments != null)) ...[
-                    RCSectionHeader(
-                        title: 'Club vote',
-                        actionLabel: state.canCreatePoll ? '+ New vote' : null,
-                        onAction:
-                            state.canCreatePoll ? state.openVoteEditor : null),
+                    const RCSectionHeader(title: 'Club vote'),
                     const SizedBox(height: 10),
                     PollCard(state: state, poll: state.activePoll!),
                     const SizedBox(height: 20),
@@ -74,24 +71,39 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  RCSectionHeader(
-                      title: 'Club history',
-                      actionLabel: 'View timeline',
-                      onAction: state.goClubHistory),
-                  const SizedBox(height: 10),
                   RCCard(
                     onTap: state.goClubHistory,
                     child: Row(
                       children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                              color: RCColors.chipBg,
+                              borderRadius: BorderRadius.circular(12)),
+                          alignment: Alignment.center,
+                          child: Icon(Icons.account_balance,
+                              color: RCColors.blue, size: 20),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            state.milestones.isEmpty
-                                ? 'See milestones, awards, and events from the club\'s past.'
-                                : '${state.milestones.length} entr${state.milestones.length == 1 ? 'y' : 'ies'} recorded',
-                            style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: RCColors.textMuted),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Club history',
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: RCColors.textDark)),
+                              const SizedBox(height: 2),
+                              Text(
+                                state.clubCharterDate != null
+                                    ? 'Chartered ${formatDateDayMonYear(state.clubCharterDate!)} · milestones, awards & past leaders'
+                                    : 'Milestones, awards & past leaders',
+                                style: const TextStyle(
+                                    fontSize: 11.5, color: RCColors.textMuted),
+                              ),
+                            ],
                           ),
                         ),
                         Text('›',
@@ -266,10 +278,20 @@ class HomeScreen extends StatelessWidget {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: RCColors.textDark)),
-                                Text(state.projects[i].area,
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: RCColors.textMuted)),
+                                if (state.projects[i].area.isNotEmpty)
+                                  Text(state.projects[i].area,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: RCColors.textMuted)),
+                                if (state.projects[i].desc.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(state.projects[i].desc,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: RCColors.textMuted)),
+                                ],
                               ],
                             ),
                           ),

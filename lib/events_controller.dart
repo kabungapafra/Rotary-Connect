@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import 'data.dart';
 import 'date_labels.dart';
+import 'widgets/date_time_field.dart' show formatDateYmd;
 
 /// The club's events — calendar, the event editor sheet, registration QR
 /// generation, and the Home screen's "Next meeting" card — split out of
@@ -72,6 +73,7 @@ class EventsController extends ChangeNotifier {
               EventItem.fromMeta(
                   id: e.id,
                   dow: e.dow,
+                  date: e.date,
                   name: e.name,
                   meta: e.meta,
                   registrationOpen: e.registrationOpen,
@@ -123,10 +125,47 @@ class EventsController extends ChangeNotifier {
     return '$weekdayShort · ${date.day} $monthShort';
   }
 
+  bool _isSameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// A recurring event occurs on [date] whenever its dow matches; a
+  /// one-time event only on its own exact date — never on some other
+  /// date that merely shares its weekday.
+  bool _occursOn(EventItem e, DateTime date) {
+    if (e.date != null) return _isSameDate(e.date!, date);
+    return e.dow == weekOrder[date.weekday - 1];
+  }
+
   List<EventItem> get visibleEvents {
-    final list = selectedDay == null
-        ? List.of(events)
-        : events.where((e) => e.dow == selectedDay).toList();
+    List<EventItem> list;
+    final monthDate = selectedMonthDate;
+    if (monthDate != null) {
+      // A specific date was tapped in the Month grid — only what actually
+      // occurs on that exact date, not every event sharing its weekday.
+      list = events.where((e) => _occursOn(e, monthDate)).toList();
+    } else if (selectedDay != null) {
+      // A weekday was tapped in the Week strip — resolve it to its real
+      // date this week before checking occurrence.
+      final idx = weekOrder.indexOf(selectedDay!);
+      final date = mondayOfThisWeek().add(Duration(days: idx < 0 ? 0 : idx));
+      list = events.where((e) => _occursOn(e, date)).toList();
+    } else if (calendarView == 'week') {
+      // Nothing selected in Week view: everything happening this week —
+      // every recurring event (they all land somewhere in the week) plus
+      // any one-time event whose date falls inside it.
+      final monday = mondayOfThisWeek();
+      list = events.where((e) {
+        if (e.date == null) return true;
+        final diff = e.date!.difference(monday).inDays;
+        return diff >= 0 && diff < 7;
+      }).toList();
+    } else {
+      // Nothing selected in Month view: everything happening this month.
+      list = events.where((e) {
+        if (e.date == null) return true;
+        return e.date!.year == calendarYear && e.date!.month == calendarMonth;
+      }).toList();
+    }
     list.sort(
         (a, b) => weekOrder.indexOf(a.dow).compareTo(weekOrder.indexOf(b.dow)));
     return list;
@@ -160,18 +199,26 @@ class EventsController extends ChangeNotifier {
         selectedMonthDate = null;
       });
 
-  bool dayHasEvents(String dow) => events.any((e) => e.dow == dow);
+  bool dayHasEvents(String dow) {
+    final idx = weekOrder.indexOf(dow);
+    final date = mondayOfThisWeek().add(Duration(days: idx < 0 ? 0 : idx));
+    return events.any((e) => _occursOn(e, date));
+  }
 
-  /// True only for the single nearest upcoming date (today or later) that
-  /// matches some event's day-of-week — used by the Month calendar's dot,
-  /// which used to mark every date sharing that weekday (so one weekly
-  /// recurring event lit up the whole month) instead of just the next
-  /// time it actually happens.
+  /// True for the single nearest upcoming date (today or later) that
+  /// matches some recurring event's day-of-week — used by the Month
+  /// calendar's dot, which used to mark every date sharing that weekday
+  /// (so one weekly recurring event lit up the whole month) instead of
+  /// just the next time it actually happens — plus true for a one-time
+  /// event's own exact date, wherever in the month it falls.
   bool isNextOccurrence(DateTime date) {
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    if (events.any((e) => e.date != null && _isSameDate(e.date!, dateOnly))) {
+      return true;
+    }
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
-    final dateOnly = DateTime(date.year, date.month, date.day);
-    final dows = events.map((e) => e.dow).toSet();
+    final dows = events.where((e) => e.date == null).map((e) => e.dow).toSet();
     return dows.any((dow) => nextOccurrenceOfDow(dow, todayOnly) == dateOnly);
   }
 
@@ -216,14 +263,24 @@ class EventsController extends ChangeNotifier {
         selectedDay = null;
       });
 
+  // Every event is pinned to one exact date — a date already tapped in the
+  // Month grid carries straight into the new event, otherwise it defaults
+  // to today so the DATE field is never left blank.
   void openAddEvent() => _update(() {
-        editor = EventItem(id: 0, dow: selectedDay ?? 'WED', name: '', meta: '');
+        final date = selectedMonthDate ?? DateTime.now();
+        editor = EventItem(
+            id: 0, dow: weekOrder[date.weekday - 1], date: date, name: '', meta: '');
         editorIsNew = true;
       });
 
   void openEditEvent(EventItem e) => _update(() {
         editor = EventItem.fromMeta(
-            id: e.id, dow: e.dow, name: e.name, meta: e.meta, photo: e.photo);
+            id: e.id,
+            dow: e.dow,
+            date: e.date,
+            name: e.name,
+            meta: e.meta,
+            photo: e.photo);
         editorIsNew = false;
       });
 
@@ -231,7 +288,14 @@ class EventsController extends ChangeNotifier {
   void setEditorTime(String v) => _update(() => editor?.time = v);
   void setEditorEndTime(String v) => _update(() => editor?.endTime = v);
   void setEditorVenue(String v) => _update(() => editor?.venue = v);
-  void setEditorDay(String dow) => _update(() => editor?.dow = dow);
+
+  /// Picks the event's date — also keeps `dow` in sync so the
+  /// event card's weekday label is right immediately, before the save
+  /// round-trip returns the backend-derived value.
+  void setEditorDate(DateTime d) => _update(() {
+        editor?.date = d;
+        editor?.dow = weekOrder[d.weekday - 1];
+      });
   void setEditorPhoto(Uint8List bytes) => _update(() {
         editor?.pendingPhotoBytes = bytes;
         editor?.photoRemoved = false;
@@ -244,10 +308,29 @@ class EventsController extends ChangeNotifier {
 
   bool get canDeleteEvent => editor != null && !editorIsNew;
 
+  // Guards Save/Delete against double-taps — without this, tapping twice
+  // before the sheet closes fired two create requests and left two events
+  // on the calendar.
+  bool savingEvent = false;
+  bool deletingEvent = false;
+
   Future<void> saveEvent() async {
     final cur = editor;
     final token = _getToken();
-    if (cur == null || cur.name.trim().isEmpty || token == null) return;
+    if (cur == null ||
+        cur.name.trim().isEmpty ||
+        token == null ||
+        savingEvent) {
+      return;
+    }
+    if (cur.date == null) return;
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    // Defensive: the date picker's firstDate already blocks picking a
+    // past day — this mirrors the backend's own belt-and-suspenders check
+    // in case of clock drift or a stale in-memory session.
+    if (cur.date!.isBefore(todayOnly)) return;
+    _update(() => savingEvent = true);
     // The backend (and every list/card display) still reads one "TIME ·
     // VENUE" string — the editor just offers separate fields and joins
     // them back together here. Times join with "to" ("6:00 PM to 8:00
@@ -268,25 +351,36 @@ class EventsController extends ChangeNotifier {
           dow: cur.dow,
           name: cur.name.trim(),
           meta: meta,
-          image: image);
-      _update(() => editor = null);
+          image: image,
+          date: formatDateYmd(cur.date!));
+      _update(() {
+        editor = null;
+        savingEvent = false;
+      });
       await load();
       await loadNextMeeting();
     } on ApiException {
-      _update(() => editor = null);
+      _update(() {
+        editor = null;
+        savingEvent = false;
+      });
     }
   }
 
   Future<void> deleteEvent() async {
     final cur = editor;
     final token = _getToken();
-    if (cur == null || token == null) return;
+    if (cur == null || token == null || deletingEvent) return;
+    _update(() => deletingEvent = true);
     try {
       await _api.deleteEvent(token, cur.id);
     } on ApiException {
       // fall through — list reload below reflects the server's truth
     }
-    _update(() => editor = null);
+    _update(() {
+      editor = null;
+      deletingEvent = false;
+    });
     await load();
     await loadNextMeeting();
   }

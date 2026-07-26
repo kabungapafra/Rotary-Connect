@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
 import '../app_state.dart';
+import '../poll_controller.dart' show PollDraft;
 import '../theme.dart';
-import 'common.dart';
+import '../widgets/date_time_field.dart';
 import 'pressable.dart';
 import 'synced_text_field.dart';
 
@@ -21,56 +22,129 @@ class PollCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RCCard(
+    final isDraw = poll.type == 'draw';
+    return Container(
+      decoration: BoxDecoration(
+        color: RCColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: RCColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                    color: RCColors.chipBg,
-                    borderRadius: BorderRadius.circular(999)),
-                child: Text(_typeLabels[poll.type] ?? poll.type.toUpperCase(),
+          Container(
+            color: RCColors.blue,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: isDraw
+                          ? RCColors.gold
+                          : Colors.white.withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(999)),
+                  child: Text(_typeLabels[poll.type] ?? poll.type.toUpperCase(),
+                      style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: isDraw ? RCColors.blue : Colors.white)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    poll.status == 'closed'
+                        ? 'CLOSED'
+                        : (poll.closesLabel.isNotEmpty
+                            ? 'CLOSES ${poll.closesLabel.toUpperCase()}'
+                            : ''),
                     style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: .5,
-                        color: RCColors.blue)),
-              ),
-              if (poll.status == 'closed') ...[
-                const SizedBox(width: 6),
-                const Text('CLOSED',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: RCColors.textMuted)),
+                        color: Colors.white.withValues(alpha: .7)),
+                  ),
+                ),
+                if (poll.status == 'open' && state.canCreatePoll)
+                  Material(
+                    color: Colors.white.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(999),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: state.openVoteEditor,
+                      child: const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        child: Text('＋ New',
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ),
               ],
-              const Spacer(),
-              if (poll.closesLabel.isNotEmpty)
-                Text('Closes ${poll.closesLabel}',
-                    style: const TextStyle(
-                        fontSize: 10.5, color: RCColors.textMuted)),
-            ],
+            ),
           ),
-          const SizedBox(height: 10),
-          Text(poll.title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: RCColors.textDark)),
-          if (poll.sub.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(poll.sub,
-                style:
-                    const TextStyle(fontSize: 11.5, color: RCColors.textMuted)),
-          ],
-          const SizedBox(height: 12),
-          if (poll.type == 'draw')
-            _DrawBody(state: state, poll: poll)
-          else
-            _BallotBody(state: state, poll: poll),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(poll.title,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: RCColors.textDark,
+                        height: 1.3)),
+                if (poll.sub.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(poll.sub,
+                      style: const TextStyle(
+                          fontSize: 11.5, color: RCColors.textMuted)),
+                ],
+                const SizedBox(height: 12),
+                if (isDraw)
+                  _DrawBody(state: state, poll: poll)
+                else
+                  _BallotBody(state: state, poll: poll),
+                // President/Secretary can end a vote before its closing
+                // date — e.g. once a quorum's already in, no need to wait
+                // it out.
+                if (poll.status == 'open' && state.canManageClub) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: PressableScale(
+                      child: OutlinedButton(
+                        onPressed: state.closePoll,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: RCColors.red,
+                          side: const BorderSide(color: Color(0xFFF3C9C4)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                            poll.type == 'election'
+                                ? 'End election'
+                                : 'End vote',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -88,9 +162,9 @@ class _DrawBody extends StatelessWidget {
     if (assignments != null) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: RCColors.goldOnLight.withValues(alpha: .12),
+          color: RCColors.amberBg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -98,7 +172,7 @@ class _DrawBody extends StatelessWidget {
           children: [
             const Text('WHO GOT WHO',
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1,
                     color: RCColors.amber)),
@@ -139,42 +213,81 @@ class _DrawBody extends StatelessWidget {
     if (state.drawSpinning) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: RCColors.chipBg,
+          color: RCColors.blue,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(state.drawSpinName,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: RCColors.blue)),
+        child: Column(
+          children: [
+            Text('DRAWING…',
+                style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: RCColors.gold)),
+            const SizedBox(height: 6),
+            Text(state.drawSpinName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+          ],
+        ),
       );
     }
     if (!state.canCreatePoll) {
       return const Text('The draw hasn\'t been run yet.',
           style: TextStyle(fontSize: 12, color: RCColors.textMuted));
     }
-    return PressableScale(
-      child: ElevatedButton(
-        onPressed: state.runDraw,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: RCColors.gold,
-          foregroundColor: RCColors.blue,
-          padding: const EdgeInsets.all(12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            // A subtle outline in the text color keeps the button reading
-            // as a button even when gold is white (Rotaract) and it would
-            // otherwise blend straight into the white card behind it.
-            side: BorderSide(color: RCColors.blue.withValues(alpha: .18)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F9FC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: const Color(0xFFD4DBE8), width: 1.5),
           ),
-          elevation: 0,
+          child: Column(
+            children: [
+              const Text('🎲', style: TextStyle(fontSize: 22)),
+              const SizedBox(height: 4),
+              Text('${poll.options.length} entrants in the hat',
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4A5670))),
+            ],
+          ),
         ),
-        child: const Text('Start draw',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-      ),
+        const SizedBox(height: 10),
+        PressableScale(
+          child: ElevatedButton(
+            onPressed: state.runDraw,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: RCColors.gold,
+              foregroundColor: RCColors.blue,
+              padding: const EdgeInsets.all(13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                // A subtle outline in the text color keeps the button
+                // reading as a button even when gold is white (Rotaract)
+                // and it would otherwise blend straight into the white
+                // card behind it.
+                side: BorderSide(color: RCColors.blue.withValues(alpha: .18)),
+              ),
+              elevation: 0,
+            ),
+            child: const Text('Start draw',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -194,17 +307,25 @@ class _BallotBody extends StatelessWidget {
           for (final option in poll.options)
             PressableScale(
               child: Material(
-                color: RCColors.chipBg,
-                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   onTap: () => state.castVote(option),
-                  child: Padding(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(minWidth: 90),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                        horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: const Color(0xFFD4DBE8), width: 1.5),
+                    ),
                     child: Text(option,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                             color: RCColors.blue)),
                   ),
@@ -222,20 +343,19 @@ class _BallotBody extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(r.label,
-                    style: TextStyle(
+                child: Text(
+                    '${r.label} · ${total == 0 ? 0 : (r.count / total * 100).round()}%',
+                    style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: poll.myVote == r.label
-                            ? RCColors.blue
-                            : RCColors.textDark)),
+                        fontWeight: FontWeight.w800,
+                        color: RCColors.textDark)),
               ),
               Text('${r.count} vote${r.count == 1 ? '' : 's'}',
-                  style:
-                      const TextStyle(fontSize: 11, color: RCColors.textMuted)),
+                  style: const TextStyle(
+                      fontSize: 11, color: Color(0xFF8B96A8))),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
@@ -245,7 +365,13 @@ class _BallotBody extends StatelessWidget {
               color: RCColors.blue,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+        ],
+        if (poll.myVote != null) ...[
+          const SizedBox(height: 2),
+          Text('✓ Your vote — ${poll.myVote} — has been recorded',
+              style: const TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: RCColors.green)),
         ],
       ],
     );
@@ -394,45 +520,25 @@ class VoteEditorSheet extends StatelessWidget {
                     ],
                     if (draft.type == 'election') ...[
                       const SizedBox(height: 12),
-                      const Text('CANDIDATES (ONE PER LINE, AT LEAST 2)',
+                      const Text('CANDIDATES (SELECT AT LEAST 2 MEMBERS)',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               letterSpacing: .5,
                               color: Color(0xFF8B96A8))),
                       const SizedBox(height: 6),
-                      SyncedTextField(
-                        value: draft.options,
-                        builder: (context, controller) => TextField(
-                          controller: controller,
-                          onChanged: state.setVoteOptions,
-                          minLines: 2,
-                          maxLines: 4,
-                          style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                              color: RCColors.textDark),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'One per line',
-                            hintStyle: const TextStyle(
-                                fontSize: 13, color: Color(0xFF8B96A8)),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 11),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    const BorderSide(color: Color(0xFFD4DBE8))),
-                            enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    const BorderSide(color: Color(0xFFD4DBE8))),
-                            focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: RCColors.blue)),
-                          ),
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final m in state.clubMembers
+                              .where((m) => m.status == 'active'))
+                            _TypeChip(
+                              label: m.name,
+                              active: draft.candidates.contains(m.name),
+                              onTap: () => state.toggleVoteCandidate(m.name),
+                            ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 12),
@@ -443,36 +549,7 @@ class VoteEditorSheet extends StatelessWidget {
                             letterSpacing: .5,
                             color: Color(0xFF8B96A8))),
                     const SizedBox(height: 6),
-                    SyncedTextField(
-                      value: draft.closes,
-                      builder: (context, controller) => TextField(
-                        controller: controller,
-                        onChanged: state.setVoteCloses,
-                        style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: RCColors.textDark),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: 'e.g. Fri 19 Jul',
-                          hintStyle: const TextStyle(
-                              fontSize: 13, color: Color(0xFF8B96A8)),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 11),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFD4DBE8))),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFD4DBE8))),
-                          focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: RCColors.blue)),
-                        ),
-                      ),
-                    ),
+                    _ClosesDateField(state: state, draft: draft),
                     if (draft.error != null) ...[
                       const SizedBox(height: 10),
                       Text(draft.error!,
@@ -531,6 +608,49 @@ class _TypeChip extends StatelessWidget {
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                   color: active ? Colors.white : const Color(0xFF5A6A85))),
+        ),
+      ),
+    );
+  }
+}
+
+/// The vote editor's "closes" field — a date picker (never a past date),
+/// not free text, so it can't be typed as something unparseable.
+class _ClosesDateField extends StatelessWidget {
+  final AppState state;
+  final PollDraft draft;
+  const _ClosesDateField({required this.state, required this.draft});
+
+  @override
+  Widget build(BuildContext context) {
+    final picked = draft.closesDate;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () async {
+        final result = await pickRCDate(context,
+            initialDate: picked ?? DateTime.now(), firstDate: DateTime.now());
+        if (result != null) state.setVoteClosesDate(result);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFD4DBE8)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                  picked != null ? formatDateDayMonYear(picked) : 'No closing date set',
+                  style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: picked != null
+                          ? RCColors.textDark
+                          : const Color(0xFF8B96A8))),
+            ),
+            Icon(Icons.calendar_today, size: 16, color: RCColors.blue),
+          ],
         ),
       ),
     );

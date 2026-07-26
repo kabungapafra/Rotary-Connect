@@ -155,7 +155,9 @@ const Map<String, String> dayNames = {
   'SUN': 'Sunday',
 };
 
-DateTime _mondayOfThisWeek() {
+/// The Monday of the current calendar week — shared by [dayNums] and by
+/// EventsController's week-scoping of one-time dated events.
+DateTime mondayOfThisWeek() {
   final now = DateTime.now();
   return DateTime(now.year, now.month, now.day)
       .subtract(Duration(days: now.weekday - 1));
@@ -176,7 +178,7 @@ DateTime nextOccurrenceOfDow(String dow, DateTime from) {
 
 /// Day-of-month for each weekday of the *current* week.
 Map<String, String> get dayNums {
-  final monday = _mondayOfThisWeek();
+  final monday = mondayOfThisWeek();
   return {
     for (var i = 0; i < 7; i++)
       weekOrder[i]: '${monday.add(Duration(days: i)).day}',
@@ -201,6 +203,10 @@ List<WeekDay> get weekDays {
 class EventItem {
   final int id;
   String dow;
+  // The exact calendar date this event happens on — it only ever
+  // shows/occurs on that date. Null only for a legacy weekday-recurring
+  // row created before every event was required to have one.
+  DateTime? date;
   String name;
   // `meta` is the single "6:00 PM to 8:00 PM · Gardens Hall" string the
   // backend stores and every list/card display already reads.
@@ -228,6 +234,7 @@ class EventItem {
   EventItem(
       {required this.id,
       required this.dow,
+      this.date,
       required this.name,
       required this.meta,
       this.time = '',
@@ -237,7 +244,10 @@ class EventItem {
       this.editable = true,
       this.photo});
 
-  String get num => dayNums[dow] ?? '';
+  // A dated event's day-of-month is its own date, not whichever day of
+  // the *current* week shares its weekday (dayNums is only valid for a
+  // recurring event, which really does land somewhere in the current week).
+  String get num => date != null ? '${date!.day}' : (dayNums[dow] ?? '');
 
   /// Splits `meta` into (time, endTime, venue) for the editor fields —
   /// mirrors the backend's parse_event_time/parse_event_end_time/
@@ -246,6 +256,7 @@ class EventItem {
   factory EventItem.fromMeta(
       {required int id,
       required String dow,
+      DateTime? date,
       required String name,
       required String meta,
       bool registrationOpen = true,
@@ -268,6 +279,7 @@ class EventItem {
     return EventItem(
         id: id,
         dow: dow,
+        date: date,
         name: name,
         meta: meta,
         time: time,
@@ -281,6 +293,7 @@ class EventItem {
   EventItem copy() => EventItem(
       id: id,
       dow: dow,
+      date: date,
       name: name,
       meta: meta,
       time: time,

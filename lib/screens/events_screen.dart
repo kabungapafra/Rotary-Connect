@@ -808,21 +808,21 @@ class _EditorSheet extends StatelessWidget {
                       onChanged: state.setEditorVenue,
                     ),
                     const SizedBox(height: 14),
-                    const _FieldLabel('DAY'),
+                    const _FieldLabel('DATE'),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        for (var i = 0; i < weekOrder.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 6),
-                          Expanded(
-                            child: _DayChip(
-                              label: weekOrder[i],
-                              active: ed.dow == weekOrder[i],
-                              onTap: () => state.setEditorDay(weekOrder[i]),
-                            ),
-                          ),
-                        ],
-                      ],
+                    _EditorInput(
+                      hint: 'Tap to choose a date',
+                      value:
+                          ed.date != null ? formatDateDayMonYear(ed.date!) : '',
+                      onChanged: (_) {},
+                      readOnly: true,
+                      icon: Icons.calendar_today,
+                      onTap: () async {
+                        final picked = await pickRCDate(context,
+                            initialDate: ed.date ?? DateTime.now(),
+                            firstDate: DateTime.now());
+                        if (picked != null) state.setEditorDate(picked);
+                      },
                     ),
                     const SizedBox(height: 18),
                     Row(
@@ -830,7 +830,10 @@ class _EditorSheet extends StatelessWidget {
                         if (state.canDeleteEvent) ...[
                           PressableScale(
                             child: ElevatedButton(
-                              onPressed: state.deleteEvent,
+                              onPressed: (state.deletingEvent ||
+                                      state.savingEvent)
+                                  ? null
+                                  : state.deleteEvent,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFDECEA),
                                 foregroundColor: RCColors.red,
@@ -840,10 +843,18 @@ class _EditorSheet extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              child: const Text('Delete',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13)),
+                              child: state.deletingEvent
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: RCColors.red),
+                                    )
+                                  : const Text('Delete',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13)),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -851,7 +862,11 @@ class _EditorSheet extends StatelessWidget {
                         Expanded(
                           child: PressableScale(
                             child: ElevatedButton(
-                              onPressed: state.saveEvent,
+                              onPressed: (state.savingEvent ||
+                                      state.deletingEvent ||
+                                      ed.date == null)
+                                  ? null
+                                  : state.saveEvent,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: RCColors.blue,
                                 foregroundColor: Colors.white,
@@ -860,10 +875,17 @@ class _EditorSheet extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              child: const Text('Save event',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14)),
+                              child: state.savingEvent
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Text('Save event',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14)),
                             ),
                           ),
                         ),
@@ -1277,34 +1299,3 @@ class _EditorInput extends StatelessWidget {
   }
 }
 
-class _DayChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _DayChip(
-      {required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: active ? RCColors.blue : RCColors.chipBg,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: active ? Colors.white : const Color(0xFF5A6A85),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

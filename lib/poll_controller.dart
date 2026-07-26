@@ -4,14 +4,20 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'widgets/date_time_field.dart' show formatDateDayMonYear;
 
 /// Working copy of the "New vote" bottom sheet fields.
 class PollDraft {
   String type = 'motion'; // motion | election | draw
   String title = '';
   String sub = '';
-  String closes = '';
-  String options = ''; // newline/comma separated, election & draw only
+  // Picked via a date field (not typed), and never a past date — see
+  // EventsController's saveEvent for the same pattern on events.
+  DateTime? closesDate;
+  // Election only: the selected candidates' member names — picked from
+  // the actual club roster instead of typed in free text, so a name can't
+  // be misspelled or refer to someone who isn't a member.
+  final Set<String> candidates = {};
   bool saving = false;
   String? error;
 }
@@ -64,8 +70,13 @@ class PollController extends ChangeNotifier {
   void setVoteType(String v) => _update(() => voteEditor?.type = v);
   void setVoteTitle(String v) => _update(() => voteEditor?.title = v);
   void setVoteSub(String v) => _update(() => voteEditor?.sub = v);
-  void setVoteCloses(String v) => _update(() => voteEditor?.closes = v);
-  void setVoteOptions(String v) => _update(() => voteEditor?.options = v);
+  void setVoteClosesDate(DateTime d) =>
+      _update(() => voteEditor?.closesDate = d);
+  void toggleVoteCandidate(String memberName) => _update(() {
+        final candidates = voteEditor?.candidates;
+        if (candidates == null) return;
+        if (!candidates.remove(memberName)) candidates.add(memberName);
+      });
 
   Future<void> saveVoteEditor() async {
     final draft = voteEditor;
@@ -75,11 +86,9 @@ class PollController extends ChangeNotifier {
       _update(() => draft.error = 'Enter a title.');
       return;
     }
-    final options = draft.options
-        .split(RegExp(r'[\n,]'))
-        .map((o) => o.trim())
-        .where((o) => o.isNotEmpty)
-        .toList();
+    final options = draft.type == 'election'
+        ? draft.candidates.map((name) => 'Rtn. $name').toList()
+        : <String>[];
     if (draft.type == 'election' && options.length < 2) {
       _update(() => draft.error = 'An election needs at least 2 candidates.');
       return;
@@ -94,7 +103,8 @@ class PollController extends ChangeNotifier {
         type: draft.type,
         title: draft.title.trim(),
         sub: draft.sub.trim(),
-        closesLabel: draft.closes.trim(),
+        closesLabel:
+            draft.closesDate != null ? formatDateDayMonYear(draft.closesDate!) : '',
         options: options,
       );
       _update(() {
@@ -106,6 +116,21 @@ class PollController extends ChangeNotifier {
         draft.saving = false;
         draft.error = e.message;
       });
+    }
+  }
+
+  /// Ends a motion/election before its closing date — President, Secretary,
+  /// or the poll's own creator (enforced server-side; the button that
+  /// calls this is gated the same way client-side).
+  Future<void> closePoll() async {
+    final poll = active;
+    final token = _getToken();
+    if (poll == null || token == null || poll.status != 'open') return;
+    try {
+      final updated = await _api.closePoll(token, poll.id);
+      _update(() => active = updated);
+    } on ApiException {
+      // leave the poll showing as open — the member can try again
     }
   }
 
