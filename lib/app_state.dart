@@ -648,7 +648,13 @@ class AppState extends ChangeNotifier {
         summary = s;
         clubStatus = s.clubStatus;
         if (clubStatus == 'suspended' && tab != 'suspended') tab = 'suspended';
+        clubCharterDate = s.clubCharterDate;
+        clubDistrict = s.clubDistrict;
+        clubCharterFoundingMembers = s.clubCharterInfo.foundingMembers;
+        clubCharterPresident = s.clubCharterInfo.charterPresident;
+        clubCharterSponsorClub = s.clubCharterInfo.sponsorClub;
       });
+      unawaited(_persistSession());
     } on ApiException catch (e) {
       // A rejected token means the member no longer exists (or the session
       // is invalid) — sign out. Other errors: retry on next navigation.

@@ -229,6 +229,9 @@ class MemberSummary {
   final String clubStatus; // "active" | "suspended"
   final bool checkedInToday;
   final int weekStreak;
+  final DateTime? clubCharterDate;
+  final String clubDistrict;
+  final ClubCharterInfo clubCharterInfo;
   const MemberSummary(
       this.checkInCount,
       this.meetingsTotal,
@@ -237,7 +240,10 @@ class MemberSummary {
       this.memberCount,
       this.clubStatus,
       this.checkedInToday,
-      this.weekStreak);
+      this.weekStreak,
+      this.clubCharterDate,
+      this.clubDistrict,
+      this.clubCharterInfo);
 }
 
 class CheckInResult {
@@ -768,6 +774,14 @@ class ApiClient {
       res['club_status'] as String? ?? 'active',
       res['checked_in_today'] as bool? ?? false,
       res['week_streak'] as int? ?? 0,
+      res['club_charter_date'] == null
+          ? null
+          : DateTime.tryParse(res['club_charter_date'] as String),
+      res['club_district'] as String? ?? '',
+      ClubCharterInfo(
+          res['club_charter_founding_members'] as int?,
+          res['club_charter_president'] as String? ?? '',
+          res['club_charter_sponsor_club'] as String? ?? ''),
     );
   }
 
