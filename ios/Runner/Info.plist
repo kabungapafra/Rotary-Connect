@@ -36,6 +36,8 @@
 		<string>Rotary Connect needs access to your photos to add them to the club gallery.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Rotary Connect saves gallery photos you download to your Photos.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Rotary Connect does not use your location.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
