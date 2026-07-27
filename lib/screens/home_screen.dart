@@ -47,28 +47,26 @@ class HomeScreen extends StatelessWidget {
                     _SecretaryCard(state: state),
                     const SizedBox(height: 20),
                   ],
-                  // A closed motion/election has nothing left to show —
-                  // hide the card once it's done. A closed draw is the
-                  // exception: "closed" is exactly when its assignments
-                  // (the whole point of running it) become visible.
-                  if (state.activePoll != null &&
-                      (state.activePoll!.status == 'open' ||
-                          state.activePoll!.assignments != null)) ...[
+                  // A closed motion/election has nothing left to show, so
+                  // it's treated the same as no poll at all below. A closed
+                  // draw is the exception: "closed" is exactly when its
+                  // assignments (the whole point of running it) become
+                  // visible. Either way the card's blue header always
+                  // renders (matching the reference design) — only the
+                  // body underneath depends on there being a real vote.
+                  if ((state.activePoll != null &&
+                          (state.activePoll!.status == 'open' ||
+                              state.activePoll!.assignments != null)) ||
+                      state.canCreatePoll) ...[
                     const RCSectionHeader(title: 'Club vote'),
                     const SizedBox(height: 10),
-                    PollCard(state: state, poll: state.activePoll!),
-                    const SizedBox(height: 20),
-                  ] else if (state.canCreatePoll) ...[
-                    RCSectionHeader(
-                        title: 'Club vote',
-                        actionLabel: '+ New vote',
-                        onAction: state.openVoteEditor),
-                    const SizedBox(height: 10),
-                    const RCCard(
-                      child: Text('No club vote right now.',
-                          style: TextStyle(
-                              fontSize: 12.5, color: RCColors.textMuted)),
-                    ),
+                    PollCard(
+                        state: state,
+                        poll: state.activePoll != null &&
+                                (state.activePoll!.status == 'open' ||
+                                    state.activePoll!.assignments != null)
+                            ? state.activePoll
+                            : null),
                     const SizedBox(height: 20),
                   ],
                   RCCard(

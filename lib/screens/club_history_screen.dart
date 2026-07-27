@@ -323,11 +323,11 @@ class _CharterBanner extends StatelessWidget {
       if (state.clubCharterPresident.trim().isNotEmpty)
         'Charter President: ${state.clubCharterPresident.trim()}',
       if (state.clubCharterSponsorClub.trim().isNotEmpty)
-        'Sponsored by ${state.clubCharterSponsorClub.trim()}',
+        'Mother Club: ${state.clubCharterSponsorClub.trim()}',
     ];
     final detailLine = detailParts.isNotEmpty
         ? detailParts.join(' · ')
-        : (canEdit ? 'Tap to add founding members, charter president & sponsor club' : '');
+        : (canEdit ? 'Tap to add founding members, charter president & mother club' : '');
     final banner = Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -549,7 +549,7 @@ class _CharterInfoEditorSheetState extends State<_CharterInfoEditorSheet> {
                       decoration: _fieldDecoration('e.g. Rtn. Charles Mubiru'),
                     ),
                     const SizedBox(height: 12),
-                    _fieldLabel('SPONSOR CLUB'),
+                    _fieldLabel('MOTHER CLUB'),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _sponsorClub,

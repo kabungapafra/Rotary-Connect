@@ -7,11 +7,13 @@ import '../widgets/date_time_field.dart';
 import 'pressable.dart';
 import 'synced_text_field.dart';
 
-/// The club's current vote — motion/election ballot or random draw.
-/// Shown on Home so every member sees it.
+/// The club's current vote — motion/election ballot or random draw. Shown
+/// on Home so every member sees it. The blue header (type badge, closes
+/// label, "+ New" action) always renders, matching the reference design —
+/// only the body below it depends on whether a vote is actually running.
 class PollCard extends StatelessWidget {
   final AppState state;
-  final PollInfo poll;
+  final PollInfo? poll;
   const PollCard({super.key, required this.state, required this.poll});
 
   static const _typeLabels = {
@@ -22,7 +24,8 @@ class PollCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDraw = poll.type == 'draw';
+    final poll = this.poll;
+    final isDraw = poll?.type == 'draw';
     return Container(
       decoration: BoxDecoration(
         color: RCColors.cardBg,
@@ -49,7 +52,10 @@ class PollCard extends StatelessWidget {
                           ? RCColors.gold
                           : Colors.white.withValues(alpha: .16),
                       borderRadius: BorderRadius.circular(999)),
-                  child: Text(_typeLabels[poll.type] ?? poll.type.toUpperCase(),
+                  child: Text(
+                      poll == null
+                          ? 'MOTION'
+                          : (_typeLabels[poll.type] ?? poll.type.toUpperCase()),
                       style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -59,11 +65,13 @@ class PollCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    poll.status == 'closed'
-                        ? 'CLOSED'
-                        : (poll.closesLabel.isNotEmpty
-                            ? 'CLOSES ${poll.closesLabel.toUpperCase()}'
-                            : ''),
+                    poll == null
+                        ? 'NO ACTIVE VOTE'
+                        : (poll.status == 'closed'
+                            ? 'CLOSED'
+                            : (poll.closesLabel.isNotEmpty
+                                ? 'CLOSES ${poll.closesLabel.toUpperCase()}'
+                                : '')),
                     style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
@@ -71,7 +79,8 @@ class PollCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: .7)),
                   ),
                 ),
-                if (poll.status == 'open' && state.canCreatePoll)
+                if ((poll == null || poll.status == 'open') &&
+                    state.canCreatePoll)
                   Material(
                     color: Colors.white.withValues(alpha: .16),
                     borderRadius: BorderRadius.circular(999),
@@ -94,7 +103,10 @@ class PollCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-            child: Column(
+            child: poll == null
+                ? const Text('No club vote right now.',
+                    style: TextStyle(fontSize: 12.5, color: RCColors.textMuted))
+                : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(poll.title,
