@@ -33,6 +33,7 @@ List<String> clubPositions(String clubType) => [
       'Committee Member',
       'Auditor',
       'Legal Advisor',
+      'Family of Rotary',
     ];
 
 class Member {

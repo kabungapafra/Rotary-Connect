@@ -79,8 +79,7 @@ class PollCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: .7)),
                   ),
                 ),
-                if ((poll == null || poll.status == 'open') &&
-                    state.canCreatePoll)
+                if (state.canCreatePoll)
                   Material(
                     color: Colors.white.withValues(alpha: .16),
                     borderRadius: BorderRadius.circular(999),
@@ -172,6 +171,16 @@ class _DrawBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final assignments = poll.assignments;
     if (assignments != null) {
+      // Only managers and Family of Rotary get the full roster (matched by
+      // the server, not this check) — everyone else's `assignments` is
+      // already filtered down to just their own entry, so a single result
+      // gets a bigger, simpler "YOUR DRAW" callout instead of the two-column
+      // giver/recipient table that only makes sense with the full list.
+      final isFullList = assignments.length > 1;
+      if (assignments.isEmpty) {
+        return const Text('You weren\'t part of this draw.',
+            style: TextStyle(fontSize: 12, color: RCColors.textMuted));
+      }
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -182,42 +191,50 @@ class _DrawBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('WHO GOT WHO',
-                style: TextStyle(
+            Text(isFullList ? 'WHO GOT WHO' : 'YOUR DRAW',
+                style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1,
                     color: RCColors.amber)),
             const SizedBox(height: 8),
-            for (final a in assignments)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(a.giver,
-                          style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: RCColors.textDark)),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6),
-                      child: Text('→',
-                          style:
-                              TextStyle(fontSize: 12, color: RCColors.amber)),
-                    ),
-                    Expanded(
-                      child: Text(a.recipient,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: RCColors.textDark)),
-                    ),
-                  ],
-                ),
-              ),
+            if (isFullList)
+              for (final a in assignments)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(a.giver,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: RCColors.textDark)),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Text('→',
+                            style: TextStyle(
+                                fontSize: 12, color: RCColors.amber)),
+                      ),
+                      Expanded(
+                        child: Text(a.recipient,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: RCColors.textDark)),
+                      ),
+                    ],
+                  ),
+                )
+            else
+              Text(assignments.first.recipient,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: RCColors.textDark)),
           ],
         ),
       );
