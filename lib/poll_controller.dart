@@ -172,6 +172,12 @@ class PollController extends ChangeNotifier {
             drawSpinning = false;
           });
         } on ApiException {
+          // The draw may already have run elsewhere (e.g. another manager
+          // won a race to hit this endpoint first) — the server rejects
+          // our attempt, but the real result now exists. Refetch instead
+          // of just clearing the spinner, or this client is stuck showing
+          // "Start draw" forever and can never see the actual assignments.
+          await load();
           _update(() => drawSpinning = false);
         }
       } else {

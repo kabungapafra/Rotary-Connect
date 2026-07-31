@@ -969,6 +969,49 @@ class AppState extends ChangeNotifier {
 
   void goSplash() => go('splash');
 
+  /// Force-refetches every kind of data the tab on screen right now shows
+  /// — called when the app resumes from the background, so a member
+  /// returning to the app sees everything fresh (not just polls: gallery,
+  /// treasury, secretary docs, events, members, projects too) the same way
+  /// a force-quit and reopen would, without having to actually do that.
+  /// Unlike the `go<Tab>()` methods this bypasses their "only load once
+  /// per session" guards on purpose — those guards exist to avoid
+  /// redundant refetches on ordinary tab-to-tab navigation, but a resume
+  /// from the background is exactly when stale cached data is most likely.
+  /// Screens with no server data of their own (splash/login/scan/etc.)
+  /// are simply not in the switch, so they're left alone.
+  void refreshCurrentTab() {
+    if (authToken == null) return;
+    switch (tab) {
+      case 'home':
+        loadSummary();
+        loadActivePoll();
+        loadGallery();
+        loadNextMeeting();
+      case 'today':
+        loadToday();
+        loadApologies();
+      case 'gallery':
+        loadGallery();
+      case 'treasury':
+        loadTreasury();
+      case 'secretary':
+        loadSecretaryWorkspace();
+      case 'history':
+        loadMilestones();
+        loadPastLeaders();
+      case 'attendance':
+        loadMeetings();
+        loadSummary();
+      case 'events':
+        loadEvents();
+      case 'projects':
+        loadProjects();
+      case 'members':
+        loadClubMembers();
+    }
+  }
+
   /// Every screen in this app is reached directly from Home (or from the
   /// bottom nav), so "back" always resolves to Home — matching what each
   /// screen's own visible back button already does. Open overlays (photo

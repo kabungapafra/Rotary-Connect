@@ -83,17 +83,28 @@ class RotaryMbalwaApp extends StatefulWidget {
   State<RotaryMbalwaApp> createState() => _RotaryMbalwaAppState();
 }
 
-class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
+class _RotaryMbalwaAppState extends State<RotaryMbalwaApp>
+    with WidgetsBindingObserver {
   final AppState state = AppState();
-  // Tracks the tab shown in the previous build so leaving the splash
-  // screen specifically can get its own, more deliberate transition —
-  // the app's one grand-entrance moment — instead of the quick, subtle
-  // cross-fade used for ordinary in-app navigation.
+  // Tracks the tab shown after the last actual navigation so leaving the
+  // splash screen specifically can get its own, more deliberate transition
+  // — the app's one grand-entrance moment — instead of the quick, subtle
+  // cross-fade used for ordinary in-app navigation. Deliberately NOT
+  // recomputed on every build: AppState.notifyListeners() also fires for
+  // in-place edits on the current screen (e.g. every keystroke on a login
+  // field), and recomputing this from build() flipped _leavingSplash mid-
+  // transition on the very next keystroke, which changed the widget layers
+  // AnimatedSwitcher wraps the screen in and forced Flutter to unmount and
+  // remount the whole screen underneath — dropping keyboard focus after
+  // the first character. Updating it only when the tab genuinely changes
+  // keeps that wrapping stable across same-tab rebuilds.
   String _previousTab = 'splash';
+  bool _leavingSplash = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     state.addListener(_onStateChanged);
     // Firebase may not be available (misconfigured, no Play Services, or —
     // as with `flutter test`'s widget harness — no platform channel at
@@ -113,10 +124,24 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
     }
   }
 
-  void _onStateChanged() => setState(() {});
+  void _onStateChanged() {
+    if (state.tab != _previousTab) {
+      _leavingSplash = _previousTab == 'splash' && state.tab != 'splash';
+      _previousTab = state.tab;
+    }
+    setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) {
+      state.refreshCurrentTab();
+    }
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     state.removeListener(_onStateChanged);
     super.dispose();
   }
@@ -182,15 +207,13 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp> {
                   // more deliberate fade + rise + gentle scale-in.
                   Expanded(
                     child: Builder(builder: (context) {
-                      final leavingSplash =
-                          _previousTab == 'splash' && state.tab != 'splash';
-                      _previousTab = state.tab;
                       return AnimatedSwitcher(
-                        duration:
-                            Duration(milliseconds: leavingSplash ? 600 : 280),
+                        duration: Duration(
+                            milliseconds: _leavingSplash ? 600 : 280),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) => leavingSplash
+                        transitionBuilder: (child, animation) =>
+                            _leavingSplash
                             ? FadeTransition(
                                 opacity: animation,
                                 child: SlideTransition(
