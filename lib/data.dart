@@ -15,6 +15,8 @@ List<String> clubPositions(String clubType) => [
       'President',
       'President-Elect',
       'Immediate Past President',
+      'Past President',
+      'Charter President',
       'Secretary',
       'Treasurer',
       'Sergeant-at-Arms',
