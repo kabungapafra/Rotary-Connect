@@ -280,6 +280,18 @@ class ApologyInfo {
       this.id, this.memberName, this.memberRole, this.meetingDate, this.reason);
 }
 
+class VisitReportInfo {
+  final int id;
+  final String memberName;
+  final String memberRole;
+  final String visitedClubName;
+  final String meetingDate;
+  final String meetingType;
+  final String notes;
+  const VisitReportInfo(this.id, this.memberName, this.memberRole,
+      this.visitedClubName, this.meetingDate, this.meetingType, this.notes);
+}
+
 class TreasurySummary {
   final int duesAmount;
   final String duesPeriod;
@@ -897,6 +909,51 @@ class ApiClient {
           a['member_role'] as String,
           a['meeting_date'] as String,
           a['reason'] as String,
+        ),
+    ];
+  }
+
+  // ── club visit reports ──────────────────────────────────────────────
+  Future<VisitReportInfo> submitVisitReport(
+    String token,
+    String visitedClubName,
+    String meetingDate, {
+    String meetingType = 'Club meeting',
+    String notes = '',
+  }) async {
+    final res = await _post(
+      '/checkin/visit-report',
+      {
+        'visited_club_name': visitedClubName,
+        'meeting_date': meetingDate,
+        'meeting_type': meetingType,
+        'notes': notes,
+      },
+      token: token,
+    );
+    return VisitReportInfo(
+      res['id'] as int,
+      res['member_name'] as String,
+      res['member_role'] as String,
+      res['visited_club_name'] as String,
+      res['meeting_date'] as String,
+      res['meeting_type'] as String,
+      res['notes'] as String,
+    );
+  }
+
+  Future<List<VisitReportInfo>> fetchVisitReports(String token) async {
+    final list = await _getList('/club/secretary/visit-reports', token);
+    return [
+      for (final r in list.cast<Map<String, dynamic>>())
+        VisitReportInfo(
+          r['id'] as int,
+          r['member_name'] as String,
+          r['member_role'] as String,
+          r['visited_club_name'] as String,
+          r['meeting_date'] as String,
+          r['meeting_type'] as String,
+          r['notes'] as String,
         ),
     ];
   }

@@ -52,6 +52,7 @@ class SecretaryController extends ChangeNotifier {
   List<ClubDocumentInfo> clubDocuments = [];
   bool documentUploading = false;
   String? documentError;
+  List<VisitReportInfo> visitReports = [];
   MinuteInfo? minuteOpen; // minute whose body is being viewed/edited
   bool minuteBodySaving = false;
   bool minuteAudioUploading = false;
@@ -62,7 +63,7 @@ class SecretaryController extends ChangeNotifier {
   MinuteDraft? minuteEditor;
   MilestoneDraft? milestoneEditor;
   String milestoneFilter = 'All';
-  String tab = 'minutes'; // minutes | monthly | annual | docs
+  String tab = 'minutes'; // minutes | monthly | annual | docs | visits
 
   void _update(VoidCallback fn) {
     fn();
@@ -80,6 +81,7 @@ class SecretaryController extends ChangeNotifier {
     monthlyReport = null;
     annualReport = null;
     clubDocuments = [];
+    visitReports = [];
     minuteOpen = null;
     loaded = false;
     _minutesPollTimer?.cancel();
@@ -127,13 +129,17 @@ class SecretaryController extends ChangeNotifier {
         _api.fetchMonthlyReport(token),
         _api.fetchAnnualReport(token),
         if (isSecretary) _api.fetchClubDocuments(token),
+        if (isSecretary) _api.fetchVisitReports(token),
       ]);
       _update(() {
         minutes = results[0] as List<MinuteInfo>;
         milestones = results[1] as List<MilestoneInfo>;
         monthlyReport = results[2] as ReportInfo;
         annualReport = results[3] as ReportInfo;
-        if (isSecretary) clubDocuments = results[4] as List<ClubDocumentInfo>;
+        if (isSecretary) {
+          clubDocuments = results[4] as List<ClubDocumentInfo>;
+          visitReports = results[5] as List<VisitReportInfo>;
+        }
         loaded = true;
         loading = false;
       });

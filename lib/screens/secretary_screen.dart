@@ -197,6 +197,7 @@ class SecretaryScreen extends StatelessWidget {
                                 ['monthly', 'Monthly'],
                                 ['annual', 'Annual'],
                                 ['docs', 'Docs'],
+                                ['visits', 'Visits'],
                               ]
                             : const [
                                 ['monthly', 'Monthly'],
@@ -229,6 +230,7 @@ class SecretaryScreen extends StatelessWidget {
                           report: state.annualReport,
                         ),
                       'docs' => _DocumentsTab(state: state),
+                      'visits' => _VisitReportsTab(state: state),
                       _ => _MinutesTab(state: state),
                     },
             ),
@@ -794,6 +796,107 @@ class _DocumentRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Make-up visits members have self-reported after attending another
+/// club's meeting — read-only for the Secretary, who credits them
+/// elsewhere (e.g. the attendance register) after checking the details.
+class _VisitReportsTab extends StatelessWidget {
+  final AppState state;
+  const _VisitReportsTab({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const RCSectionHeader(title: 'Club visit reports'),
+        const SizedBox(height: 10),
+        if (state.visitReports.isEmpty)
+          const RCCard(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No visit reports yet.\nMembers can report a meeting they attended at another club right after scanning in.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: RCColors.textMuted),
+            ),
+          )
+        else
+          RCCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < state.visitReports.length; i++)
+                  _VisitReportRow(
+                    report: state.visitReports[i],
+                    isLast: i == state.visitReports.length - 1,
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _VisitReportRow extends StatelessWidget {
+  final VisitReportInfo report;
+  final bool isLast;
+  const _VisitReportRow({required this.report, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: RCColors.divider)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(report.visitedClubName,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textDark)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: RCColors.chipBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(report.meetingType,
+                    style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: RCColors.textMuted)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+              '${report.memberName} · ${report.meetingDate.length >= 10 ? report.meetingDate.substring(0, 10) : report.meetingDate}',
+              style: const TextStyle(fontSize: 11.5, color: RCColors.textMuted)),
+          if (report.notes.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(report.notes,
+                style: const TextStyle(
+                    fontSize: 12, color: RCColors.textDark, height: 1.3)),
+          ],
+        ],
       ),
     );
   }

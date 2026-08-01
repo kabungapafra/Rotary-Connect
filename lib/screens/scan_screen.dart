@@ -7,6 +7,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets/pressable.dart';
 import '../widgets/synced_text_field.dart';
+import '../widgets/visit_report_sheet.dart';
 
 class ScanScreen extends StatelessWidget {
   final AppState state;
@@ -114,6 +115,7 @@ class ScanScreen extends StatelessWidget {
               Expanded(child: _buildStep(context)),
             ],
           ),
+          if (state.visitReportSheet != null) VisitReportSheet(state: state),
         ],
       ),
     );
@@ -566,6 +568,49 @@ class _ScanSuccess extends StatelessWidget {
                       fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 16),
+            PressableScale(
+              child: Material(
+                color: RCColors.scanCard,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: state.openVisitReport,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: RCColors.scanBorder),
+                    ),
+                    child: const Row(
+                      children: [
+                        Text('✈️', style: TextStyle(fontSize: 18)),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Visited another club recently?',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800)),
+                              SizedBox(height: 2),
+                              Text('Report the visit so it counts as a make-up',
+                                  style: TextStyle(
+                                      color: RCColors.scanMuted, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Text('›',
+                            style:
+                                TextStyle(color: RCColors.scanMuted, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: PressableScale(

@@ -15,6 +15,7 @@ import 'push_service.dart';
 import 'secretary_controller.dart';
 import 'theme.dart';
 import 'treasury_controller.dart';
+import 'widgets/date_time_field.dart' show formatDateYmd;
 
 class CertInfo {
   final String title;
@@ -25,6 +26,17 @@ class CertInfo {
 /// Working copy of the "Send apology" bottom sheet fields.
 class ApologyDraft {
   String reason = '';
+  bool saving = false;
+  String? error;
+}
+
+/// A member self-reporting a meeting they attended at another club —
+/// deliberately no district field, the Secretary only needs the club name.
+class VisitReportDraft {
+  String clubVisited = '';
+  DateTime meetingDate = DateTime.now();
+  String meetingType = 'Club meeting';
+  String notes = '';
   bool saving = false;
   String? error;
 }
@@ -542,6 +554,9 @@ class AppState extends ChangeNotifier {
   bool apologiesLoading = false;
   List<ApologyInfo> apologies = [];
 
+  // club visit reports — a member reporting attendance at another club
+  VisitReportDraft? visitReportSheet;
+
   // ── polls ────────────────────────────────────────────────────────────
   // State and logic live in [polls]; these forward to it so every screen
   // that already reads `state.activePoll` etc. keeps working unchanged
@@ -625,6 +640,7 @@ class AppState extends ChangeNotifier {
   List<ClubDocumentInfo> get clubDocuments => secretary.clubDocuments;
   bool get documentUploading => secretary.documentUploading;
   String? get documentError => secretary.documentError;
+  List<VisitReportInfo> get visitReports => secretary.visitReports;
   MinuteInfo? get minuteOpen => secretary.minuteOpen;
   bool get minuteBodySaving => secretary.minuteBodySaving;
   bool get minuteAudioUploading => secretary.minuteAudioUploading;
@@ -906,6 +922,46 @@ class AppState extends ChangeNotifier {
         apologies.add(result);
         apologySheet = null;
       });
+    } on ApiException catch (e) {
+      _update(() {
+        sheet.saving = false;
+        sheet.error = e.message;
+      });
+    }
+  }
+
+  void openVisitReport() => _update(() => visitReportSheet = VisitReportDraft());
+  void closeVisitReport() => _update(() => visitReportSheet = null);
+  void setVisitReportClub(String v) =>
+      _update(() => visitReportSheet?.clubVisited = v);
+  void setVisitReportDate(DateTime v) =>
+      _update(() => visitReportSheet?.meetingDate = v);
+  void setVisitReportType(String v) =>
+      _update(() => visitReportSheet?.meetingType = v);
+  void setVisitReportNotes(String v) =>
+      _update(() => visitReportSheet?.notes = v);
+
+  Future<void> submitVisitReport() async {
+    final sheet = visitReportSheet;
+    final token = authToken;
+    if (sheet == null || token == null) return;
+    if (sheet.clubVisited.trim().isEmpty) {
+      _update(() => sheet.error = 'Enter which club you visited.');
+      return;
+    }
+    _update(() {
+      sheet.saving = true;
+      sheet.error = null;
+    });
+    try {
+      await _api.submitVisitReport(
+        token,
+        sheet.clubVisited.trim(),
+        formatDateYmd(sheet.meetingDate),
+        meetingType: sheet.meetingType,
+        notes: sheet.notes.trim(),
+      );
+      _update(() => visitReportSheet = null);
     } on ApiException catch (e) {
       _update(() {
         sheet.saving = false;
