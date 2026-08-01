@@ -100,6 +100,12 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp>
   // keeps that wrapping stable across same-tab rebuilds.
   String _previousTab = 'splash';
   bool _leavingSplash = false;
+  // iOS fires `inactive` then `resumed` for the home-swipe/app-switcher
+  // gesture even when the app was never actually backgrounded (the user's
+  // still mid-gesture, previewing it in the switcher) — only a `resumed`
+  // that follows a genuine `paused` means the app was actually left and
+  // come back to, so only that should trigger a refresh.
+  bool _wasPaused = false;
 
   @override
   void initState() {
@@ -135,7 +141,10 @@ class _RotaryMbalwaAppState extends State<RotaryMbalwaApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
-      state.refreshCurrentTab();
+      if (_wasPaused) state.refreshCurrentTab();
+      _wasPaused = false;
+    } else if (lifecycleState == AppLifecycleState.paused) {
+      _wasPaused = true;
     }
   }
 
