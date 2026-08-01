@@ -829,8 +829,12 @@ class AppState extends ChangeNotifier {
 
   void goScan() {
     // Entered from Home's "Check in" — swiping back from here belongs to
-    // goHome(), not the splash guest-entry case below.
+    // goHome(), not the splash guest-entry case below. Always the home
+    // club's own check-in now that there's no Member/Guest toggle on
+    // screen to switch a member into the visiting-another-club flow —
+    // that's the "Report a club visit" banner's job after a scan instead.
     _scanFromSplash = false;
+    scanMode = 'member';
     go('scan');
   }
 
@@ -1292,16 +1296,6 @@ class AppState extends ChangeNotifier {
       });
 
   // ── scan ───────────────────────────────────────────────────────────────
-  void pickMember() => _update(() {
-        scanMode = 'member';
-        scanStep = 'idle';
-      });
-
-  void pickGuest() => _update(() {
-        scanMode = 'guest';
-        scanStep = 'idle';
-      });
-
   Future<void> simulateScan() async {
     if (scanMode == 'guest') {
       _update(() {

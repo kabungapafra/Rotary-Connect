@@ -93,25 +93,7 @@ class ScanScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: _ScanTab(
-                            label: 'Member',
-                            active: state.scanMode == 'member',
-                            onTap: state.pickMember)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: _ScanTab(
-                            label: 'Guest',
-                            active: state.scanMode == 'guest',
-                            onTap: state.pickGuest)),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 12),
               Expanded(child: _buildStep(context)),
             ],
           ),
@@ -346,34 +328,6 @@ class _CameraStarting extends StatelessWidget {
                 style: TextStyle(color: Colors.white70, fontSize: 12.5)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ScanTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _ScanTab(
-      {required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return PressableScale(
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: active ? RCColors.scanAccent : RCColors.scanCard,
-          foregroundColor: active ? RCColors.blue : RCColors.scanMuted,
-          side: BorderSide(color: active ? RCColors.scanAccent : RCColors.scanBorder),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 0,
-        ),
-        child: Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
       ),
     );
   }
