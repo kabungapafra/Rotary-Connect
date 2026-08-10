@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../poll_controller.dart' show PollDraft;
 import '../theme.dart';
 import '../widgets/date_time_field.dart';
+import 'common.dart';
 import 'pressable.dart';
 import 'synced_text_field.dart';
 
@@ -432,7 +433,7 @@ class VoteEditorSheet extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.fromLTRB(
-                  20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+                  20, 14, 20, sheetBottomInset(context) + 24),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -513,7 +513,8 @@ class _ProjectEditorSheet extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              padding: EdgeInsets.fromLTRB(
+                  20, 14, 20, sheetBottomInset(context) + 24),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

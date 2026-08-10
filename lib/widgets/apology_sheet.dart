@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import 'common.dart';
 import 'pressable.dart';
 import 'synced_text_field.dart';
 
@@ -30,7 +31,7 @@ class ApologySheet extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.fromLTRB(
-                  20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+                  20, 14, 20, sheetBottomInset(context) + 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

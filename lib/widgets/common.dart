@@ -14,6 +14,19 @@ int photoDecodeWidth(BuildContext context, [double? logicalWidth]) {
   return ((logicalWidth ?? mq.size.width) * mq.devicePixelRatio).round();
 }
 
+/// Bottom padding for a sheet pinned to the physical bottom of the screen:
+/// clears the keyboard while it's up, and the gesture/navigation bar while it
+/// isn't. The two never double up — an open keyboard covers the navigation bar
+/// and zeroes `padding.bottom`.
+///
+/// Only for sheets that hide the bottom nav (see the visibility condition in
+/// main.dart). Sheets that leave it showing already sit above it, and adding
+/// this would pad them twice.
+double sheetBottomInset(BuildContext context) {
+  final mq = MediaQuery.of(context);
+  return mq.viewInsets.bottom + mq.padding.bottom;
+}
+
 /// White rounded card with the soft blue drop-shadow used throughout.
 class RCCard extends StatelessWidget {
   final Widget child;

@@ -860,7 +860,7 @@ class _MilestoneEditorSheet extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.fromLTRB(
-                  20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+                  20, 14, 20, sheetBottomInset(context) + 24),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
