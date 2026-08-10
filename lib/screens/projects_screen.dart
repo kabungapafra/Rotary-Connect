@@ -119,7 +119,10 @@ class _ProjectCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(project.photo!,
-                  height: 90, width: double.infinity, fit: BoxFit.cover),
+                  height: 90,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  cacheWidth: photoDecodeWidth(context)),
             ),
             const SizedBox(height: 10),
           ],
@@ -594,7 +597,8 @@ class _ProjectEditorSheet extends StatelessWidget {
                             : Image.network(ed.photo!,
                                 height: 120,
                                 width: double.infinity,
-                                fit: BoxFit.cover),
+                                fit: BoxFit.cover,
+                                cacheWidth: photoDecodeWidth(context)),
                       ),
                       const SizedBox(height: 8),
                       Row(

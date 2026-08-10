@@ -144,6 +144,8 @@ class HomeScreen extends StatelessWidget {
                                               state.galleryUploads[i].thumb ??
                                                   state.galleryUploads[i].image,
                                           fit: BoxFit.cover,
+                                          memCacheWidth:
+                                              photoDecodeWidth(context) ~/ 3,
                                           fadeInDuration: const Duration(
                                               milliseconds: 150),
                                           placeholder: (context, _) =>
@@ -205,7 +207,9 @@ class HomeScreen extends StatelessWidget {
                                     height: 96,
                                     child: e.photo != null
                                         ? Image.network(e.photo!,
-                                            fit: BoxFit.cover)
+                                            fit: BoxFit.cover,
+                                            cacheWidth:
+                                                photoDecodeWidth(context, 150))
                                         : RCPhotoPlaceholder(
                                             label: e.dow,
                                             borderRadius: BorderRadius.zero),

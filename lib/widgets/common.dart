@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
+/// Decode width, in physical pixels, for a photo painted [logicalWidth] wide
+/// (full screen width when omitted). Pass to `Image.network`'s `cacheWidth` or
+/// `CachedNetworkImage`'s `memCacheWidth`.
+///
+/// Uploads are capped at 1920px wide, which decodes to roughly 8 MB of RGBA in
+/// memory no matter how small the box painting it is — the event and project
+/// lists paint them 90–130px tall. Decoding at the size actually painted keeps
+/// a long scroll from holding several of those at once.
+int photoDecodeWidth(BuildContext context, [double? logicalWidth]) {
+  final mq = MediaQuery.of(context);
+  return ((logicalWidth ?? mq.size.width) * mq.devicePixelRatio).round();
+}
+
 /// White rounded card with the soft blue drop-shadow used throughout.
 class RCCard extends StatelessWidget {
   final Widget child;

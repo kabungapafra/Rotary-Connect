@@ -212,6 +212,7 @@ class _Album extends StatelessWidget {
                     imageUrl: up.thumb ?? up.image,
                     height: 100,
                     fit: BoxFit.cover,
+                    memCacheWidth: photoDecodeWidth(context) ~/ 3,
                     fadeInDuration: const Duration(milliseconds: 150),
                     placeholder: (context, _) =>
                         Container(color: const Color(0xFFE8EDF5)),

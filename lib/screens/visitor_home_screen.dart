@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../api_client.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../widgets/common.dart';
 import '../widgets/pressable.dart';
 import '../widgets/skeleton.dart';
 
@@ -190,6 +191,7 @@ class _ClubLogo extends StatelessWidget {
             width: size,
             height: size,
             fit: BoxFit.cover,
+            cacheWidth: photoDecodeWidth(context, size),
             errorBuilder: (_, error, stackTrace) => fallback()),
       );
     }

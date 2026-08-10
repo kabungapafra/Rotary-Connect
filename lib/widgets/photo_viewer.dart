@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import 'common.dart';
 import 'pressable.dart';
 
 /// Full-screen photo viewer overlay — tap anywhere to close, matching the
@@ -45,7 +46,9 @@ class PhotoViewerOverlay extends StatelessWidget {
                       )
                     : currentIndex < 0
                         ? CachedNetworkImage(
-                            imageUrl: photo.imageUrl!, fit: BoxFit.contain)
+                            imageUrl: photo.imageUrl!,
+                            fit: BoxFit.contain,
+                            memCacheWidth: photoDecodeWidth(context))
                         : GestureDetector(
                             // Swallow taps on the page view itself so only
                             // the surrounding scrim closes the viewer.
@@ -62,11 +65,14 @@ class PhotoViewerOverlay extends StatelessWidget {
                               itemBuilder: (context, i) => CachedNetworkImage(
                                   imageUrl: albumPhotos[i].image,
                                   fit: BoxFit.contain,
+                                  memCacheWidth: photoDecodeWidth(context),
                                   placeholder: albumPhotos[i].thumb == null
                                       ? null
                                       : (context, _) => CachedNetworkImage(
                                           imageUrl: albumPhotos[i].thumb!,
-                                          fit: BoxFit.contain)),
+                                          fit: BoxFit.contain,
+                                          memCacheWidth:
+                                              photoDecodeWidth(context))),
                             ),
                           ),
               ),

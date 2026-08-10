@@ -475,7 +475,10 @@ class _EventCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (event.photo != null)
-              Image.network(event.photo!, height: 110, fit: BoxFit.cover),
+              Image.network(event.photo!,
+                  height: 110,
+                  fit: BoxFit.cover,
+                  cacheWidth: photoDecodeWidth(context)),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -686,7 +689,8 @@ class _EditorSheet extends StatelessWidget {
                             : Image.network(ed.photo!,
                                 height: 130,
                                 width: double.infinity,
-                                fit: BoxFit.cover),
+                                fit: BoxFit.cover,
+                                cacheWidth: photoDecodeWidth(context)),
                       ),
                       const SizedBox(height: 8),
                       Row(
