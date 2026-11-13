@@ -67,7 +67,7 @@ class AppState extends ChangeNotifier {
   late final EventsController eventsController =
       EventsController(_api, () => authToken)..addListener(notifyListeners);
   late final MembersController membersController = MembersController(
-      _api, () => authToken, () => canManageClub)
+      _api, () => authToken, () => canManageMembers)
     ..addListener(notifyListeners);
 
   AppState() {
@@ -431,6 +431,12 @@ class AppState extends ChangeNotifier {
   /// `MANAGER_ROLES`. The reverse doesn't hold: the Secretary workspace
   /// stays the Secretary's alone (see [isSecretary]).
   bool get canManageClub => isPresident || isSecretary;
+
+  /// A Club Admin (onboarded by the system admin instead of a President)
+  /// can add and manage members — including adding the President — but
+  /// nothing else. Matches the backend's `MEMBER_MANAGER_ROLES`.
+  bool get isClubAdmin => currentMemberRole.trim() == 'Club Admin';
+  bool get canManageMembers => canManageClub || isClubAdmin;
 
   /// Generating an event's registration QR/link is limited to the club's
   /// executive roles, not every member.

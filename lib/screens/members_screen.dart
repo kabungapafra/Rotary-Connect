@@ -54,8 +54,9 @@ class MembersScreen extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.w800)),
-                      // Only the Club President can add and manage members.
-                      if (state.canManageClub)
+                      // Only the President, Secretary or Club Admin can add
+                      // and manage members.
+                      if (state.canManageMembers)
                         PressableScale(
                           child: ElevatedButton(
                             onPressed: state.openAddMember,
@@ -295,7 +296,7 @@ class _MemberProfileSheet extends StatelessWidget {
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       color: RCColors.textDark)),
-                              if (state.canManageClub && m.id != 0)
+                              if (state.canManageMembers && m.id != 0)
                                 GestureDetector(
                                   onTap: () => state.openRoleEditor(m),
                                   child: Row(
@@ -394,7 +395,7 @@ class _MemberProfileSheet extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (state.canManageClub && m.id != 0) ...[
+                    if (state.canManageMembers && m.id != 0) ...[
                       const SizedBox(height: 16),
                       PressableScale(
                         child: ElevatedButton(
