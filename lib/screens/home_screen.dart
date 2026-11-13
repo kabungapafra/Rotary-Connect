@@ -373,12 +373,8 @@ class _Header extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                // Original card footprint held fixed — the logo inside is
-                // bigger than the card and deliberately spills past it.
-                // OverflowBox is what permits that (a plain child gets
-                // clamped to the parent's height), but it must be given
-                // BOUNDED constraints — hence the SizedBox — or it blows
-                // up the whole header row's layout.
+                // Fixed card footprint. The SizedBox gives the logo BOUNDED
+                // constraints — unbounded, it blows up the header row.
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                     color: Colors.white,
@@ -386,18 +382,17 @@ class _Header extends StatelessWidget {
                 child: SizedBox(
                   width: 96,
                   height: 40,
-                  // The spill treatment only suits real logo artwork; the
-                  // wordmark fallback (no uploaded logo) must stay inside
-                  // the card or its club line bleeds onto the blue header.
+                  // Whatever shape the logo is, it fits wholly inside the
+                  // card. Uploaded logos have their empty margins trimmed
+                  // server-side, so fitting doesn't shrink them to a speck.
                   child: state.clubLogo == null
                       ? FittedBox(
                           fit: BoxFit.contain,
                           child: Wordmark(state: state),
                         )
-                      : OverflowBox(
-                          maxWidth: 140,
-                          maxHeight: 64,
-                          child: ClubLogoImage(state: state, height: 64),
+                      : FittedBox(
+                          fit: BoxFit.contain,
+                          child: ClubLogoImage(state: state, height: 40),
                         ),
                 ),
               ),
