@@ -8,7 +8,11 @@ import 'package:rotary_connect/api_client.dart';
 import 'package:rotary_connect/screens/scan_screen.dart';
 
 void main() {
-  test('reads the club id from the web-form link', () {
+  test('reads the club id from the check-in domain link', () {
+    expect(decodeClubQr('https://checkin.digiflecttech.dev/visit/42'), 42);
+  });
+
+  test('still reads links printed on the API host', () {
     expect(decodeClubQr('$apiBaseUrl/visit/42'), 42);
   });
 
