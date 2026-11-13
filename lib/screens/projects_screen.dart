@@ -50,7 +50,7 @@ class ProjectsScreen extends StatelessWidget {
                             fontSize: 20,
                             fontWeight: FontWeight.w800)),
                   ),
-                  if (state.canManageClub)
+                  if (state.canManageEventsAndProjects)
                     PressableScale(
                       child: ElevatedButton(
                         onPressed: state.openAddProject,
@@ -108,7 +108,7 @@ class _ProjectCard extends StatelessWidget {
     // instead of taking over the main tap target. Everyone else can still
     // tap to see the description, progress %, and update history — the
     // same sheet, just without the posting controls.
-    final canEdit = state.canManageClub;
+    final canEdit = state.canManageEventsAndProjects;
     return RCCard(
       padding: const EdgeInsets.all(16),
       onTap: () => state.openProjectUpdate(project),
@@ -283,7 +283,7 @@ class _ProjectUpdateSheet extends StatelessWidget {
     final project =
         state.projects.where((p) => p.id == draft.projectId).firstOrNull;
     if (project == null) return const SizedBox.shrink();
-    final canEdit = state.canManageClub;
+    final canEdit = state.canManageEventsAndProjects;
     return Positioned.fill(
       child: Stack(
         children: [

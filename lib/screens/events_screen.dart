@@ -51,7 +51,7 @@ class EventsScreen extends StatelessWidget {
                                   fontSize: 12)),
                         ],
                       ),
-                      if (state.canManageClub)
+                      if (state.canManageEventsAndProjects)
                         PressableScale(
                           child: ElevatedButton(
                             onPressed: state.openAddEvent,
@@ -148,7 +148,7 @@ class EventsScreen extends StatelessWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: RCColors.textMuted)),
-                          if (state.canManageClub) ...[
+                          if (state.canManageEventsAndProjects) ...[
                             const SizedBox(height: 10),
                             PressableScale(
                               child: ElevatedButton(

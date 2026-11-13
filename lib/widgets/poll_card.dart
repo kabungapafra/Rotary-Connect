@@ -126,10 +126,10 @@ class PollCard extends StatelessWidget {
                   _DrawBody(state: state, poll: poll)
                 else
                   _BallotBody(state: state, poll: poll),
-                // President/Secretary can end a vote before its closing
-                // date — e.g. once a quorum's already in, no need to wait
-                // it out.
-                if (poll.status == 'open' && state.canManageClub) ...[
+                // President/Secretary/Club Admin can end a vote before its
+                // closing date — e.g. once a quorum's already in, no need
+                // to wait it out.
+                if (poll.status == 'open' && state.canCreatePoll) ...[
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerRight,

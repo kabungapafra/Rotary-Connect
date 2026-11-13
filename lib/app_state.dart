@@ -433,10 +433,12 @@ class AppState extends ChangeNotifier {
   bool get canManageClub => isPresident || isSecretary;
 
   /// A Club Admin (onboarded by the system admin instead of a President)
-  /// can add and manage members — including adding the President — but
-  /// nothing else. Matches the backend's `MEMBER_MANAGER_ROLES`.
+  /// sets the club up: members (including adding the President), events,
+  /// projects, votes and club history — but not the Secretary workspace.
+  /// Matches the backend's `MEMBER_MANAGER_ROLES` / `CLUB_CONTENT_ROLES`.
   bool get isClubAdmin => currentMemberRole.trim() == 'Club Admin';
   bool get canManageMembers => canManageClub || isClubAdmin;
+  bool get canManageEventsAndProjects => canManageClub || isClubAdmin;
 
   /// Generating an event's registration QR/link is limited to the club's
   /// executive roles, not every member.
@@ -449,19 +451,21 @@ class AppState extends ChangeNotifier {
     'Immediate Past President',
     'Treasurer',
     'Board Director',
+    'Club Admin',
   };
   bool get canGenerateEventQr =>
       _eventRegistrationRoles.contains(currentMemberRole.trim());
 
   /// Club history (milestones) is normally the Secretary's alone to edit,
   /// but the President and Immediate Past President — who'd know the
-  /// club's own history best — can too. Matches the backend's
-  /// `HISTORY_EDITOR_ROLES` gate.
+  /// club's own history best — can too, as can the Club Admin setting it
+  /// up. Matches the backend's `HISTORY_EDITOR_ROLES` gate.
   static const Set<String> _historyEditorRoles = {
     'Club President',
     'President',
     'Immediate Past President',
     'Secretary',
+    'Club Admin',
   };
   bool get canEditClubHistory =>
       _historyEditorRoles.contains(currentMemberRole.trim());
@@ -536,10 +540,10 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Creating and resolving club votes is limited to the President and
-  /// Secretary — plain board members can't. Matches the backend's
-  /// `_require_manager` gate in polls.py.
-  bool get canCreatePoll => canManageClub;
+  /// Creating and resolving club votes is limited to the President,
+  /// Secretary and Club Admin — plain board members can't. Matches the
+  /// backend's `_require_manager` gate in polls.py.
+  bool get canCreatePoll => canManageClub || isClubAdmin;
 
   // check-in (member scan)
   bool checkInLoading = false;
