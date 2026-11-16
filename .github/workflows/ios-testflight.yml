@@ -46,6 +46,16 @@ jobs:
           done
           exit $missing
 
+      # Apple only accepts uploads built with the iOS 26 SDK (Xcode 26+);
+      # the runner's default Xcode is older, so pick the newest Xcode 26.
+      - name: Select Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then echo "::error::No Xcode 26 on this runner"; exit 1; fi
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
