@@ -1,0 +1,88 @@
+name: iOS TestFlight
+
+# Builds a signed App Store IPA and uploads it to TestFlight. Run by hand
+# (Actions → iOS TestFlight → Run workflow) when a release is ready —
+# not on every push, since each upload needs a new build number in
+# pubspec.yaml and Apple rejects a duplicate.
+#
+# Signing uses Codemagic's open-source CLI tools (no Codemagic account):
+# they create or reuse the App Store certificate and provisioning profile
+# through the App Store Connect API. Repository secrets required:
+#   APP_STORE_CONNECT_ISSUER_ID      Users and Access → Integrations
+#   APP_STORE_CONNECT_KEY_IDENTIFIER the API key's Key ID (App Manager role)
+#   APP_STORE_CONNECT_PRIVATE_KEY    full contents of the AuthKey_XXXX.p8
+#   CERTIFICATE_PRIVATE_KEY          an RSA private key (PEM) that the
+#                                    distribution certificate is tied to
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: rotary-ios-testflight
+  cancel-in-progress: false
+
+env:
+  BUNDLE_ID: com.rotaryconnect.rotaryConnect
+
+jobs:
+  testflight:
+    name: 🚀 Build and upload to TestFlight
+    runs-on: macos-15
+    env:
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check signing secrets are set
+        run: |
+          missing=0
+          for v in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER \
+                   APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret $v"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.4"
+          channel: stable
+          cache: true
+
+      - name: Install Codemagic CLI tools
+        run: pipx install codemagic-cli-tools
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Fetch signing files
+        run: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build signed IPA
+        run: flutter build ipa --release --export-options-plist="$HOME/export_options.plist"
+
+      - name: Upload to TestFlight
+        run: app-store-connect publish --path build/ios/ipa/*.ipa
+
+      - name: Keep the IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: RotaryConnect-appstore-ipa
+          path: build/ios/ipa/*.ipa
+          retention-days: 14
+
+      - name: Restore login keychain
+        if: always()
+        run: keychain use-login
